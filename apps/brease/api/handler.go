@@ -19,24 +19,68 @@ type PathParams struct {
 	ContextID string `path:"contextID"`
 }
 
-func (b *BreaseHandler) AllRules(c *gin.Context) error {
-	contextID := c.Param("contextID")
-	c.String(http.StatusOK, fmt.Sprintf("Rules for: %s", contextID))
-	return nil
+type AllRulesRequest struct {
+	PathParams
+	CompileCode bool `json:"compileCode"`
 }
 
-func (b *BreaseHandler) ExecuteRules(c *gin.Context) error {
-	return nil
+type AllRulesResponse struct {
+	Rules []Rule `json:"rules"`
+	Code  string `json:"code"`
 }
 
-func (b *BreaseHandler) AddRule(c *gin.Context) error {
-	return nil
+type EvaluateRulesRequest struct {
+	PathParams
+	Object        map[string]interface{} `json:"object" validate:"required"`
+	OverrideRules []Rule                 `json:"overrideRules"`
+	OverrideCode  string                 `json:"overrideCode"`
 }
 
-func (b *BreaseHandler) ReplaceRule(c *gin.Context) error {
-	return nil
+type EvaluateRulesResponse struct {
+	Results []EvaluationResult `json:"results"`
 }
 
-func (b *BreaseHandler) DeleteRule(c *gin.Context) error {
+type AddRuleRequest struct {
+	PathParams
+	Rule Rule `json:"rule"`
+}
+
+type AddRuleResponse struct {
+	Rule Rule `json:"rule"`
+}
+
+type RemoveRuleRequest struct {
+	PathParams
+	ID string `json:"-" validate:"required" path:"id"`
+}
+
+type ReplaceRuleRequest struct {
+	PathParams
+	ID   string `json:"-" validate:"required" path:"id"`
+	Rule Rule   `json:"rule" validate:"required"`
+}
+
+type ReplaceRuleResponse struct {
+	Rule Rule `json:"rule"`
+}
+
+func (b *BreaseHandler) AllRules(c *gin.Context, r *AllRulesRequest) (AllRulesResponse, error) {
+	c.String(http.StatusOK, fmt.Sprintf("Rules for: %s", r.ContextID))
+	return AllRulesResponse{}, nil
+}
+
+func (b *BreaseHandler) ExecuteRules(c *gin.Context, r *EvaluateRulesRequest) (EvaluateRulesResponse, error) {
+	return EvaluateRulesResponse{}, fmt.Errorf("not yet implemented")
+}
+
+func (b *BreaseHandler) AddRule(c *gin.Context, r *AddRuleRequest) (AddRuleResponse, error) {
+	return AddRuleResponse{}, fmt.Errorf("not yet implemented")
+}
+
+func (b *BreaseHandler) ReplaceRule(c *gin.Context, r *ReplaceRuleRequest) (ReplaceRuleResponse, error) {
+	return ReplaceRuleResponse{}, fmt.Errorf("not yet implemented")
+}
+
+func (b *BreaseHandler) RemoveRule(c *gin.Context, r *RemoveRuleRequest) error {
 	return nil
 }

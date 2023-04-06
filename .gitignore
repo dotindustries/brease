@@ -4,3 +4,4 @@
 .moon/docker
 .idea
 apps/brease/.env
+apps/.DS_Store

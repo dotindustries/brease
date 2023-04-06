@@ -1,8 +1,10 @@
 package main
 
 import (
+	"errors"
 	"log"
 	"os"
+	"syscall"
 
 	adapter "github.com/axiomhq/axiom-go/adapters/zap"
 	"github.com/axiomhq/axiom-go/axiom"
@@ -12,7 +14,7 @@ import (
 
 func tracer() (logger *zap.Logger, client *axiom.Client, flushFn func()) {
 	flushFn = func() {
-		if syncErr := logger.Sync(); syncErr != nil {
+		if syncErr := logger.Sync(); syncErr != nil && !errors.Is(syncErr, syscall.ENOTTY) {
 			log.Fatal(syncErr)
 		}
 	}
@@ -27,11 +29,6 @@ func tracer() (logger *zap.Logger, client *axiom.Client, flushFn func()) {
 
 	if axiomToken == "" || axiomOrg == "" {
 		logger = zap.New(consoleCore)
-		flushFn = func() {
-			if syncErr := logger.Sync(); syncErr != nil {
-				log.Fatal(syncErr)
-			}
-		}
 		return
 	}
 

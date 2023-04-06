@@ -3,3 +3,4 @@
 .moon/cache
 .moon/docker
 .idea
+apps/brease/.env

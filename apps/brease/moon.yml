@@ -1,0 +1,37 @@
+language: go
+
+# potentially: library
+type: application
+
+project:
+  name: brease
+  description: Business rules engine service and go package
+  channel: "#brease"
+  owner: dot.industries
+  maintainers:
+    - nadilas
+
+tasks:
+  clean:
+    command: rm -rf ./dist
+    platform: system
+    options:
+      cache: false
+  dev:
+    env:
+      SPEAKEASY_API_KEY: '${SPEAKEASY_API_KEY}'
+    command: go run .
+#    deps:
+#      - "docs"
+#  docs:
+#    command: swag init
+  release:
+    command: goreleaser release --snapshot --clean
+#    deps:
+#      - 'docs'
+    outputs:
+      - dist/
+  test:
+    command: hurl integration-tests.hurl
+    options:
+      cache: false

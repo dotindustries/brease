@@ -23,7 +23,7 @@ func ApiKeyAuthMiddleware(logger *zap.Logger) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"message": "API Key not set"})
 			return
 		}
-		token, ok := strings.CutPrefix(token, "Bearer ")
+		token, ok := strings.CutPrefix(token, "JWT ")
 		if !ok {
 			c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid API Key"})
 			return

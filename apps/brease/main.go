@@ -103,9 +103,9 @@ func newApp(logger *zap.Logger) *fizz.Fizz {
 	f.Generator().SetSecuritySchemes(map[string]*openapi.SecuritySchemeOrRef{
 		"apiToken": {
 			SecurityScheme: &openapi.SecurityScheme{
-				Type: "apiKey",
-				In:   "header",
-				Name: "x-api-token",
+				Type:         "http",
+				Scheme:       "bearer",
+				BearerFormat: "JWT",
 			},
 		},
 	})
@@ -126,7 +126,7 @@ func newApp(logger *zap.Logger) *fizz.Fizz {
 	}, tonic.Handler(bh.ReplaceRule, 200))
 	grp.DELETE("/rules/:id", []fizz.OperationOption{
 		fizz.ID("removeRule"),
-	}, tonic.Handler(bh.DeleteRule, 200))
+	}, tonic.Handler(bh.RemoveRule, 200))
 	grp.POST("/evaluate", []fizz.OperationOption{
 		fizz.ID("evaluateRules"),
 	}, tonic.Handler(bh.ExecuteRules, 200))

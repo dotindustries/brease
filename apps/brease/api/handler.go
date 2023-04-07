@@ -2,7 +2,6 @@ package api
 
 import (
 	"fmt"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
@@ -65,7 +64,6 @@ type ReplaceRuleResponse struct {
 }
 
 func (b *BreaseHandler) AllRules(c *gin.Context, r *AllRulesRequest) (AllRulesResponse, error) {
-	c.String(http.StatusOK, fmt.Sprintf("Rules for: %s", r.ContextID))
 	return AllRulesResponse{}, nil
 }
 

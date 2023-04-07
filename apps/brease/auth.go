@@ -20,21 +20,26 @@ func ApiKeyAuthMiddleware(logger *zap.Logger) gin.HandlerFunc {
 		token := c.Request.Header.Get("Authorization")
 
 		if token == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"message": "API Key not set"})
+			c.JSON(http.StatusUnauthorized, gin.H{"message": "API Key not set"})
+			c.Abort()
 			return
 		}
-		token, ok := strings.CutPrefix(token, "JWT ")
-		if !ok {
-			c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid API Key"})
-			return
-		}
-		if !useSpeakeasy && token != rootApiKey {
-			c.JSON(http.StatusUnauthorized, gin.H{"message": "Invalid API Key"})
-			return
-		}
+		if !useSpeakeasy {
+			if token != rootApiKey {
+				c.JSON(http.StatusUnauthorized, gin.H{"message": "Invalid root API Key"})
+				c.Abort()
+				return
+			}
+		} else {
+			apiKey, ok := strings.CutPrefix(token, "JWT ")
+			if !ok {
+				c.JSON(http.StatusUnauthorized, gin.H{"message": "Invalid API Key"})
+				c.Abort()
+				return
+			}
 
-		if useSpeakeasy {
-			// TODO: grab the thing from speakeasy and check if the token is a valid one
+			logger.Debug("TODO: Verifying api key", zap.String("apiKey", apiKey))
+			// TODO: grab the thing from speakeasy and check if the apiKey is a valid one
 		}
 
 		c.Next()

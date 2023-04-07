@@ -72,7 +72,6 @@ func newApp(logger *zap.Logger) *fizz.Fizz {
 			return fields
 		},
 	}))
-	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
 
 	speakeasyApiKey := getenv("SPEAKEASY_API_KEY", "")
@@ -99,7 +98,16 @@ func newApp(logger *zap.Logger) *fizz.Fizz {
 		Title:       "brease API",
 		Description: `Business rule engine as a service API spec.`,
 		Version:     "0.1.0",
+		Contact: &openapi.Contact{
+			Name:  "Brease API Support",
+			URL:   "https://app.brease.run/support",
+			Email: "support@dot.industries",
+		},
 	}
+	f.Generator().SetServers([]*openapi.Server{
+		{URL: "http://localhost:4400", Description: "Development server"},
+		{URL: "https://api.brease.run", Description: "Cloud hosted production server"},
+	})
 	f.Generator().SetSecuritySchemes(map[string]*openapi.SecuritySchemeOrRef{
 		"apiToken": {
 			SecurityScheme: &openapi.SecurityScheme{
@@ -112,23 +120,36 @@ func newApp(logger *zap.Logger) *fizz.Fizz {
 	f.GET("/openapi.json", nil, f.OpenAPI(infos, "json"))
 
 	grp := f.Group("/:contextID", "contextID", "Rule domain context")
-	r.Use(ApiKeyAuthMiddleware(logger))
+	grp.Use(ApiKeyAuthMiddleware(logger))
 
+	security := &openapi.SecurityRequirement{
+		"apiToken": []string{},
+	}
 	// API methods
 	grp.GET("/rules", []fizz.OperationOption{
 		fizz.ID("getAllRules"),
+		fizz.Description("Returns all rules with the context"),
+		fizz.Security(security),
 	}, tonic.Handler(bh.AllRules, 200))
 	grp.POST("/rules/add", []fizz.OperationOption{
 		fizz.ID("addRule"),
+		fizz.Description("Adds a new rule to the context"),
+		fizz.Security(security),
 	}, tonic.Handler(bh.AddRule, 200))
 	grp.PUT("/rules/:id", []fizz.OperationOption{
 		fizz.ID("replaceRule"),
+		fizz.Description("Replaces an existing rule within the context"),
+		fizz.Security(security),
 	}, tonic.Handler(bh.ReplaceRule, 200))
 	grp.DELETE("/rules/:id", []fizz.OperationOption{
 		fizz.ID("removeRule"),
+		fizz.Description("Removes a rule from the context"),
+		fizz.Security(security),
 	}, tonic.Handler(bh.RemoveRule, 200))
 	grp.POST("/evaluate", []fizz.OperationOption{
 		fizz.ID("evaluateRules"),
+		fizz.Description("Evaluate rules within a context on the provided object"),
+		fizz.Security(security),
 	}, tonic.Handler(bh.ExecuteRules, 200))
 
 	return f

@@ -19,6 +19,8 @@ import (
 	"github.com/wI2L/fizz"
 	"github.com/wI2L/fizz/openapi"
 	"go.dot.industries/brease/api"
+	"go.dot.industries/brease/storage"
+	"go.dot.industries/brease/storage/buntdb"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -33,12 +35,24 @@ func main() {
 	logger, _, flush := tracer()
 	defer flush()
 
-	app := newApp(logger)
+	db := setupStorage(logger)
+	defer db.Close()
+
+	app := newApp(db, logger)
 
 	_ = endless.ListenAndServe(getenv("HOST", ":4400"), app)
 }
 
-func newApp(logger *zap.Logger) *fizz.Fizz {
+// setupStorage Determines which storage engine should be instantiated and returns an instance.
+func setupStorage(logger *zap.Logger) storage.Database {
+	db, err := buntdb.NewDatabase(buntdb.BuntDbOptions{Logger: logger})
+	if err != nil {
+		logger.Fatal("failed to initialize database", zap.Error(err))
+	}
+	return db
+}
+
+func newApp(db storage.Database, logger *zap.Logger) *fizz.Fizz {
 	r := gin.Default()
 	// https://github.com/gin-gonic/gin/blob/master/docs/doc.md#dont-trust-all-proxies
 	_ = r.SetTrustedProxies(nil)
@@ -91,7 +105,7 @@ func newApp(logger *zap.Logger) *fizz.Fizz {
 		c.IndentedJSON(http.StatusOK, stats.Report())
 	})
 
-	bh := &api.BreaseHandler{}
+	bh := api.NewHandler(db, logger)
 
 	f := fizz.NewFromEngine(r)
 	infos := &openapi.Info{
@@ -150,7 +164,7 @@ func newApp(logger *zap.Logger) *fizz.Fizz {
 		fizz.ID("evaluateRules"),
 		fizz.Description("Evaluate rules within a context on the provided object"),
 		fizz.Security(security),
-	}, tonic.Handler(bh.ExecuteRules, 200))
+	}, tonic.Handler(bh.EvaluateRules, 200))
 
 	return f
 }

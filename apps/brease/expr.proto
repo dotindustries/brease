@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+option go_package = "go.dot.industries/brease;pb";
+
+package brease;
+
+enum ConditionType {
+  NoCondition = 0;
+  Empty = 499;
+  HasValue = 500;
+  Equals = 501;
+  DoesNotEqual = 502;
+  HasPrefix = 503;
+  DoesNotHavePrefix = 504;
+  HasSuffix = 505;
+  DoesNotHaveSuffix = 506;
+  InList = 507;
+  NotInList = 508;
+  Regex = 509;
+  NotRegex = 510;
+}
+
+// A condition expression
+message Condition {
+  oneof base {
+    // Holds a direct object key to be used the value extraction
+    string key = 1;
+
+    // A reference to point to third party data to be used as the value for the condition.
+    //
+    // Data retrieval requires dalí integration.
+    // Uses a dref format based on the dalí project: `/$/key=>/~/${dataSource}/${table}/${searchColumn}/${resultColumn}`
+    string ref = 2;
+  }
+  // The type of this condition
+  ConditionType type = 3;
+  // A condition parameter holds a target value (right hand side) for a comparison
+  oneof parameter {
+    string stringValue = 4;
+    bool boolValue = 5;
+    int32 intValue = 6;
+  };
+}
+
+message Conditions {
+  repeated Condition conditions = 1;
+}
+
+message Expression {
+  oneof expr {
+    And and = 1;
+    Or or = 2;
+    Condition condition = 3;
+  };
+}
+
+message And {
+  repeated Expression expression = 1;
+}
+
+message Or {
+  repeated Expression expression = 1;
+}

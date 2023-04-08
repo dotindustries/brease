@@ -17,6 +17,8 @@ tasks:
     platform: system
     options:
       cache: false
+  proto:
+    command: protoc --go_out=paths=source_relative:./pb *.proto
   dev:
     env:
       SPEAKEASY_API_KEY: '${SPEAKEASY_API_KEY}'

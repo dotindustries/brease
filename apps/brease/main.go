@@ -5,20 +5,21 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/fvbock/endless"
 	"github.com/gin-contrib/requestid"
 	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
 	"github.com/loopfz/gadgeto/tonic"
 	stats "github.com/semihalev/gin-stats"
 	"github.com/speakeasy-api/speakeasy-go-sdk"
 	"github.com/wI2L/fizz"
 	"github.com/wI2L/fizz/openapi"
 	"go.dot.industries/brease/api"
+	"go.dot.industries/brease/auth"
+	"go.dot.industries/brease/env"
+	log2 "go.dot.industries/brease/log"
 	"go.dot.industries/brease/storage"
 	"go.dot.industries/brease/storage/buntdb"
 	"go.opentelemetry.io/otel/trace"
@@ -27,12 +28,13 @@ import (
 )
 
 func main() {
-	err := godotenv.Load(".env")
+	err := env.LoadEnv()
+
 	if err != nil {
 		log.Fatal("No environment variables")
 	}
 
-	logger, _, flush := tracer()
+	logger, _, flush := log2.Logger()
 	defer flush()
 
 	db := setupStorage(logger)
@@ -40,7 +42,7 @@ func main() {
 
 	app := newApp(db, logger)
 
-	_ = endless.ListenAndServe(getenv("HOST", ":4400"), app)
+	_ = endless.ListenAndServe(env.Getenv("HOST", ":4400"), app)
 }
 
 // setupStorage Determines which storage engine should be instantiated and returns an instance.
@@ -88,8 +90,10 @@ func newApp(db storage.Database, logger *zap.Logger) *fizz.Fizz {
 	}))
 	r.Use(gin.Recovery())
 
-	speakeasyApiKey := getenv("SPEAKEASY_API_KEY", "")
+	speakeasyApiKey := env.Getenv("SPEAKEASY_API_KEY", "")
 	if speakeasyApiKey != "" {
+		auth.InitJWKS()
+
 		// Configure the Global SDK
 		speakeasy.Configure(speakeasy.Config{
 			APIKey:    speakeasyApiKey,
@@ -134,7 +138,7 @@ func newApp(db storage.Database, logger *zap.Logger) *fizz.Fizz {
 	f.GET("/openapi.json", nil, f.OpenAPI(infos, "json"))
 
 	grp := f.Group("/:contextID", "contextID", "Rule domain context")
-	grp.Use(ApiKeyAuthMiddleware(logger))
+	grp.Use(auth.ApiKeyAuthMiddleware(logger))
 
 	security := &openapi.SecurityRequirement{
 		"apiToken": []string{},
@@ -173,14 +177,6 @@ func index(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"client": c.ClientIP(),
 		"status": "ready to rumble!",
+		// "env":    env.List(),
 	})
-}
-
-func getenv(key string, def string) string {
-	v := os.Getenv(key)
-	if v == "" {
-		return def
-	}
-
-	return v
 }

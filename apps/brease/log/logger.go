@@ -1,4 +1,4 @@
-package main
+package log
 
 import (
 	"errors"
@@ -8,11 +8,12 @@ import (
 
 	adapter "github.com/axiomhq/axiom-go/adapters/zap"
 	"github.com/axiomhq/axiom-go/axiom"
+	"go.dot.industries/brease/env"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
-func tracer() (logger *zap.Logger, client *axiom.Client, flushFn func()) {
+func Logger() (logger *zap.Logger, client *axiom.Client, flushFn func()) {
 	flushFn = func() {
 		if syncErr := logger.Sync(); syncErr != nil && !errors.Is(syncErr, syscall.ENOTTY) {
 			log.Fatal(syncErr)
@@ -24,8 +25,8 @@ func tracer() (logger *zap.Logger, client *axiom.Client, flushFn func()) {
 	consoleEnc := zapcore.NewConsoleEncoder(pe)
 	consoleCore := zapcore.NewCore(consoleEnc, zapcore.AddSync(os.Stdout), zap.DebugLevel)
 
-	axiomToken := getenv("AXIOM_TOKEN", "")
-	axiomOrg := getenv("AXIOM_ORG", "")
+	axiomToken := env.Getenv("AXIOM_TOKEN", "")
+	axiomOrg := env.Getenv("AXIOM_ORG", "")
 
 	if axiomToken == "" || axiomOrg == "" {
 		logger = zap.New(consoleCore)
@@ -39,7 +40,7 @@ func tracer() (logger *zap.Logger, client *axiom.Client, flushFn func()) {
 		log.Fatal(err)
 	}
 
-	datasetName := getenv("AXIOM_DATASET", "")
+	datasetName := env.Getenv("AXIOM_DATASET", "")
 	if datasetName != "" {
 		core, err := adapter.New(
 			adapter.SetClient(client),

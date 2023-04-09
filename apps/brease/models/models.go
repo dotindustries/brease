@@ -23,7 +23,7 @@ type Rule struct {
 	//      - $ref: '#/components/schemas/And'
 	//      - $ref: '#/components/schemas/Or'
 	//      - $ref: '#/components/schemas/Condition'
-	Expression string `json:"expression" validate:"required"`
+	Expression map[string]interface{} `json:"expression" validate:"required"`
 }
 
 type EvaluationResult struct {
@@ -32,3 +32,20 @@ type EvaluationResult struct {
 	Action     string `json:"action"`
 	Value      string `json:"Value"`
 }
+
+type ConditionType = string
+
+const (
+	ConditionEmpty             ConditionType = "e"
+	ConditionHasValue          ConditionType = "hv"
+	ConditionEquals            ConditionType = "eq"
+	ConditionDoesNotEqual      ConditionType = "neq"
+	ConditionHasPrefix         ConditionType = "px"
+	ConditionDoesNotHavePrefix ConditionType = "npx"
+	ConditionHasSuffix         ConditionType = "sx"
+	ConditionDoesNotHaveSuffix ConditionType = "nsx"
+	ConditionInList            ConditionType = "in"
+	ConditionNotInList         ConditionType = "nin"
+	ConditionRegex             ConditionType = "rgx"
+	ConditionNotRegex          ConditionType = "nrgx"
+)

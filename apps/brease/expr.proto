@@ -4,20 +4,15 @@ option go_package = "go.dot.industries/brease;pb";
 
 package brease;
 
-enum ConditionType {
-  NoCondition = 0;
-  Empty = 499;
-  HasValue = 500;
-  Equals = 501;
-  DoesNotEqual = 502;
-  HasPrefix = 503;
-  DoesNotHavePrefix = 504;
-  HasSuffix = 505;
-  DoesNotHaveSuffix = 506;
-  InList = 507;
-  NotInList = 508;
-  Regex = 509;
-  NotRegex = 510;
+// A reference to point to third party data to be used as the value for the condition.
+//
+// Data retrieval requires dalí integration.
+// Uses a dref format based on the dalí project.
+// Stringified format: `/$/key=>/~/${dataSource}/${table}/${searchColumn}/${resultColumn}`
+// Object format: { src: `/$/key`, dst: `/~/${dataSource}/${table}/${searchColumn}/${resultColumn}` }
+message ConditionBaseRef {
+  string src = 1;
+  string dst = 2;
 }
 
 // A condition expression
@@ -26,14 +21,10 @@ message Condition {
     // Holds a direct object key to be used the value extraction
     string key = 1;
 
-    // A reference to point to third party data to be used as the value for the condition.
-    //
-    // Data retrieval requires dalí integration.
-    // Uses a dref format based on the dalí project: `/$/key=>/~/${dataSource}/${table}/${searchColumn}/${resultColumn}`
-    string ref = 2;
+    ConditionBaseRef ref = 2;
   }
-  // The type of this condition
-  ConditionType type = 3;
+  // The type of this condition, based on the internally defined ConditionType
+  string type = 3;
   // A condition parameter holds a target value (right hand side) for a comparison
   oneof parameter {
     string stringValue = 4;

@@ -1,15 +1,15 @@
 package api
 
 import (
-	"encoding/base64"
 	"fmt"
 
 	"github.com/gin-gonic/gin"
+	"github.com/goccy/go-json"
 	"go.dot.industries/brease/models"
 	"go.dot.industries/brease/pb"
 	"go.dot.industries/brease/storage"
 	"go.uber.org/zap"
-	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 type BreaseHandler struct {
@@ -94,13 +94,13 @@ func (b *BreaseHandler) EvaluateRules(_ *gin.Context, r *EvaluateRulesRequest) (
 func (b *BreaseHandler) AddRule(_ *gin.Context, r *AddRuleRequest) (AddRuleResponse, error) {
 	rule := r.Rule
 
-	exprBytes, err := base64.StdEncoding.DecodeString(rule.Expression)
+	exprBytes, err := json.Marshal(rule.Expression)
 	if err != nil {
 		b.logger.Error("invalid: expression is not base64 encoded", zap.Error(err), zap.Any("expression", rule.Expression))
 		return AddRuleResponse{}, fmt.Errorf("invalid: expression is not base64 encoded: %v", err)
 	}
 	expr := &pb.Expression{}
-	if unmarshalErr := proto.Unmarshal(exprBytes, expr); err != nil {
+	if unmarshalErr := protojson.Unmarshal(exprBytes, expr); err != nil {
 		b.logger.Error("invalid: expression cannot be read", zap.Error(unmarshalErr), zap.Any("expression", rule.Expression))
 		return AddRuleResponse{}, fmt.Errorf("invalid: expression cannot be read: %v", unmarshalErr)
 	}

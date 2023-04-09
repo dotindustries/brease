@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -57,15 +58,14 @@ func ApiKeyAuthMiddleware(logger *zap.Logger) gin.HandlerFunc {
 				return
 			}
 
-			// Extract the "kid" from the JWT token header
 			kid, ok := token.Header["kid"].(string)
 			if !ok {
 				_ = c.AbortWithError(http.StatusUnauthorized, fmt.Errorf("invalid: kid not present in API key"))
 				return
 			}
 
-			// Retrieve the public key from the JWKS using the "kid"
-			key, err := jwksClient.GetKey(c.Request.Context(), kid, "kid")
+			// don't use the request's context because it's short life will prevent the underlying jwks from refreshing
+			key, err := jwksClient.GetKey(context.Background(), kid, "kid")
 			if err != nil {
 				_ = c.AbortWithError(http.StatusUnauthorized, err)
 				return
@@ -81,7 +81,6 @@ func ApiKeyAuthMiddleware(logger *zap.Logger) gin.HandlerFunc {
 				c.Abort()
 				return
 			}
-			logger.Info("valid token", zap.Any("token", token))
 		}
 
 		c.Next()

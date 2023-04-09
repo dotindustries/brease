@@ -23,8 +23,8 @@ tasks:
     env:
       SPEAKEASY_API_KEY: '${SPEAKEASY_API_KEY}'
     command: go run .
-#    deps:
-#      - "docs"
+    deps:
+      - "proto"
 #  docs:
 #    command: swag init
   release:

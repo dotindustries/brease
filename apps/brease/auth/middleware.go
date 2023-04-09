@@ -38,6 +38,13 @@ func ApiKeyAuthMiddleware(logger *zap.Logger) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
+
+		// allow for root api key to bypass jwt check
+		if rootApiKey != "" && authHeader == rootApiKey {
+			c.Next()
+			return
+		}
+
 		if !useSpeakeasy {
 			if authHeader != rootApiKey {
 				c.JSON(http.StatusUnauthorized, gin.H{"message": "Invalid root API Key"})

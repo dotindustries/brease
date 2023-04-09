@@ -104,7 +104,12 @@ func newApp(db storage.Database, logger *zap.Logger) *fizz.Fizz {
 		logger.Info("Configured Speakeasy API layer")
 	}
 
-	r.GET("/", index)
+	r.GET("/", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"client": c.ClientIP(),
+			"status": "ready to rumble!",
+		})
+	})
 	r.GET("/stats", func(c *gin.Context) {
 		c.IndentedJSON(http.StatusOK, stats.Report())
 	})
@@ -171,12 +176,4 @@ func newApp(db storage.Database, logger *zap.Logger) *fizz.Fizz {
 	}, tonic.Handler(bh.EvaluateRules, 200))
 
 	return f
-}
-
-func index(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
-		"client": c.ClientIP(),
-		"status": "ready to rumble!",
-		// "env":    env.List(),
-	})
 }

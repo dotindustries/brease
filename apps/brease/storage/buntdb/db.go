@@ -1,6 +1,7 @@
 package buntdb
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 
@@ -38,6 +39,21 @@ func NewDatabase(opts BuntDbOptions) (storage.Database, error) {
 type buntdbContainer struct {
 	db     *buntdb.DB
 	logger *zap.Logger
+}
+
+func (b *buntdbContainer) Exists(contextID string, ruleID string) (exists bool, err error) {
+	err = b.db.View(func(tx *buntdb.Tx) error {
+		_, ierr := tx.Get(ruleKey(contextID, ruleID), true)
+		if errors.Is(ierr, buntdb.ErrNotFound) {
+			exists = false
+		} else if err == nil {
+			exists = true
+		} else {
+			return ierr
+		}
+		return nil
+	})
+	return
 }
 
 func (b *buntdbContainer) ReplaceRule(contextID string, rule models.Rule) error {

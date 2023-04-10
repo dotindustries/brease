@@ -12,6 +12,7 @@ import (
 	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
 	"github.com/loopfz/gadgeto/tonic"
+	"github.com/loopfz/gadgeto/tonic/utils/jujerr"
 	stats "github.com/semihalev/gin-stats"
 	"github.com/speakeasy-api/speakeasy-go-sdk"
 	"github.com/wI2L/fizz"
@@ -116,6 +117,7 @@ func newApp(db storage.Database, logger *zap.Logger) *fizz.Fizz {
 
 	bh := api.NewHandler(db, logger)
 
+	tonic.SetErrorHook(jujerr.ErrHook)
 	f := fizz.NewFromEngine(r)
 	infos := &openapi.Info{
 		Title:       "brease API",
@@ -141,7 +143,6 @@ func newApp(db storage.Database, logger *zap.Logger) *fizz.Fizz {
 		},
 	})
 	f.GET("/openapi.json", nil, f.OpenAPI(infos, "json"))
-
 	grp := f.Group("/:contextID", "contextID", "Rule domain context")
 	grp.Use(auth.ApiKeyAuthMiddleware(logger))
 

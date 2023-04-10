@@ -10,4 +10,5 @@ type Database interface {
 	Rules(contextID string) ([]models.Rule, error)
 	RemoveRule(contextID string, ruleID string) error
 	ReplaceRule(contextID string, rule models.Rule) error
+	Exists(contextID string, ruleID string) (exists bool, err error)
 }

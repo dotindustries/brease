@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/goccy/go-json"
+	"github.com/juju/errors"
 	"go.dot.industries/brease/models"
 	"go.dot.industries/brease/pb"
 	"go.dot.industries/brease/storage"
@@ -76,51 +77,50 @@ type ReplaceRuleResponse struct {
 	Rule models.Rule `json:"rule"`
 }
 
-func (b *BreaseHandler) AllRules(_ *gin.Context, r *AllRulesRequest) (AllRulesResponse, error) {
+func (b *BreaseHandler) AllRules(_ *gin.Context, r *AllRulesRequest) (*AllRulesResponse, error) {
 	rules, err := b.db.Rules(r.ContextID)
 	if err != nil {
-		return AllRulesResponse{}, fmt.Errorf("failed to fetch rules: %v", err)
+		return nil, fmt.Errorf("failed to fetch rules: %v", err)
 	}
-	return AllRulesResponse{
+	return &AllRulesResponse{
 		Rules: rules,
 		Code:  "",
 	}, nil
 }
 
-func (b *BreaseHandler) EvaluateRules(_ *gin.Context, r *EvaluateRulesRequest) (EvaluateRulesResponse, error) {
-	return EvaluateRulesResponse{}, fmt.Errorf("not yet implemented")
+func (b *BreaseHandler) EvaluateRules(_ *gin.Context, r *EvaluateRulesRequest) (*EvaluateRulesResponse, error) {
+	return nil, errors.NotImplementedf("EvaluateRules not yet ready")
 }
 
-func (b *BreaseHandler) AddRule(_ *gin.Context, r *AddRuleRequest) (AddRuleResponse, error) {
+func (b *BreaseHandler) AddRule(c *gin.Context, r *AddRuleRequest) (*AddRuleResponse, error) {
 	rule := r.Rule
 
-	exprBytes, err := json.Marshal(rule.Expression)
+	// duplicate check
+	if exists, err := b.db.Exists(r.ContextID, rule.ID); exists && err == nil {
+		b.logger.Warn("Rule already exists. Rejecting to add", zap.String("contextID", r.ContextID), zap.String("ruleID", rule.ID))
+		return nil, errors.AlreadyExistsf("rule with ID '%s'", rule.ID)
+	} else if err != nil {
+		return nil, err
+	}
+	err := b.validateExpression(rule.Expression)
 	if err != nil {
-		b.logger.Error("invalid: expression is not base64 encoded", zap.Error(err), zap.Any("expression", rule.Expression))
-		return AddRuleResponse{}, fmt.Errorf("invalid: expression is not base64 encoded: %v", err)
+		return nil, errors.NewBadRequest(err, "invalid expression")
 	}
-	expr := &pb.Expression{}
-	if unmarshalErr := protojson.Unmarshal(exprBytes, expr); err != nil {
-		b.logger.Error("invalid: expression cannot be read", zap.Error(unmarshalErr), zap.Any("expression", rule.Expression))
-		return AddRuleResponse{}, fmt.Errorf("invalid: expression cannot be read: %v", unmarshalErr)
-	}
-	b.logger.Debug("Valid expression", zap.Any("expression", expr))
-
 	err = b.db.AddRule(r.ContextID, rule)
 	if err != nil {
-		return AddRuleResponse{}, fmt.Errorf("failed to add rule: %v", err)
+		return nil, fmt.Errorf("failed to add rule: %v", err)
 	}
-	return AddRuleResponse{
+	return &AddRuleResponse{
 		Rule: rule,
 	}, nil
 }
 
-func (b *BreaseHandler) ReplaceRule(_ *gin.Context, r *ReplaceRuleRequest) (ReplaceRuleResponse, error) {
+func (b *BreaseHandler) ReplaceRule(_ *gin.Context, r *ReplaceRuleRequest) (*ReplaceRuleResponse, error) {
 	err := b.db.ReplaceRule(r.ContextID, r.Rule)
 	if err != nil {
-		return ReplaceRuleResponse{}, fmt.Errorf("failed to update rule: %v", err)
+		return nil, fmt.Errorf("failed to update rule: %v", err)
 	}
-	return ReplaceRuleResponse{
+	return &ReplaceRuleResponse{
 		Rule: r.Rule,
 	}, nil
 }
@@ -128,5 +128,20 @@ func (b *BreaseHandler) ReplaceRule(_ *gin.Context, r *ReplaceRuleRequest) (Repl
 func (b *BreaseHandler) RemoveRule(_ *gin.Context, r *RemoveRuleRequest) error {
 	_ = b.db.RemoveRule(r.ContextID, r.ID)
 	// we don't expose whether we succeeded
+	return nil
+}
+
+func (b *BreaseHandler) validateExpression(expression map[string]interface{}) error {
+	exprBytes, err := json.Marshal(expression)
+	if err != nil {
+		b.logger.Error("expression is not base64 encoded", zap.Error(err), zap.Any("expression", expression))
+		return fmt.Errorf("expression is not base64 encoded: %v", err)
+	}
+	expr := &pb.Expression{}
+	if unmarshalErr := protojson.Unmarshal(exprBytes, expr); err != nil {
+		b.logger.Error("expression cannot be read", zap.Error(unmarshalErr), zap.Any("expression", expression))
+		return fmt.Errorf("expression cannot be read: %v", unmarshalErr)
+	}
+	b.logger.Debug("Valid expression", zap.Any("expression", expr))
 	return nil
 }

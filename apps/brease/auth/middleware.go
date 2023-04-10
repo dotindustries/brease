@@ -3,12 +3,12 @@ package auth
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	errors2 "github.com/juju/errors"
 	"go.dot.industries/brease/env"
 	"go.uber.org/zap"
 )
@@ -34,8 +34,7 @@ func ApiKeyAuthMiddleware(logger *zap.Logger) gin.HandlerFunc {
 		authHeader := c.Request.Header.Get("Authorization")
 
 		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"message": "API Key not set"})
-			c.Abort()
+			_ = c.AbortWithError(http.StatusUnauthorized, errors2.Unauthorizedf("API key not set"))
 			return
 		}
 
@@ -47,34 +46,32 @@ func ApiKeyAuthMiddleware(logger *zap.Logger) gin.HandlerFunc {
 
 		if !useSpeakeasy {
 			if authHeader != rootApiKey {
-				c.JSON(http.StatusUnauthorized, gin.H{"message": "Invalid root API Key"})
-				c.Abort()
+				_ = c.AbortWithError(http.StatusUnauthorized, errors2.Unauthorizedf("Invalid root API key"))
 				return
 			}
 		} else {
 			apiKey, ok := strings.CutPrefix(authHeader, "JWT ")
 			if !ok {
-				c.JSON(http.StatusUnauthorized, gin.H{"message": "Invalid API Key"})
-				c.Abort()
+				_ = c.AbortWithError(http.StatusUnauthorized, errors2.Unauthorizedf("Invalid API key"))
 				return
 			}
 
 			token, _, err := new(jwt.Parser).ParseUnverified(apiKey, jwt.MapClaims{})
 			if err != nil {
-				_ = c.AbortWithError(http.StatusUnauthorized, err)
+				_ = c.AbortWithError(http.StatusUnauthorized, errors2.NewUnauthorized(err, "Invalid JWT"))
 				return
 			}
 
 			kid, ok := token.Header["kid"].(string)
 			if !ok {
-				_ = c.AbortWithError(http.StatusUnauthorized, fmt.Errorf("invalid: kid not present in API key"))
+				_ = c.AbortWithError(http.StatusUnauthorized, errors2.Unauthorizedf("Invalid JWT: kid not present"))
 				return
 			}
 
 			// don't use the request's context because it's short life will prevent the underlying jwks from refreshing
 			key, err := jwksClient.GetKey(context.Background(), kid, "kid")
 			if err != nil {
-				_ = c.AbortWithError(http.StatusUnauthorized, err)
+				_ = c.AbortWithError(http.StatusUnauthorized, errors2.NewUnauthorized(err, "Invalid JWT"))
 				return
 			}
 
@@ -84,8 +81,7 @@ func ApiKeyAuthMiddleware(logger *zap.Logger) gin.HandlerFunc {
 			})
 			if err != nil {
 				logger.Error("Failed to verify the JWT.\nError: %s", zap.Error(err))
-				c.JSON(http.StatusUnauthorized, gin.H{"message": "Invalid API key"})
-				c.Abort()
+				_ = c.AbortWithError(http.StatusUnauthorized, errors2.NewUnauthorized(err, "Invalid API key"))
 				return
 			}
 		}

@@ -143,13 +143,24 @@ func newApp(db storage.Database, logger *zap.Logger) *fizz.Fizz {
 		},
 	})
 	f.GET("/openapi.json", nil, f.OpenAPI(infos, "json"))
-	grp := f.Group("/:contextID", "contextID", "Rule domain context")
-	grp.Use(auth.ApiKeyAuthMiddleware(logger))
 
 	security := &openapi.SecurityRequirement{
 		"apiToken": []string{},
 	}
-	// API methods
+
+	f.POST("/token", []fizz.OperationOption{
+		fizz.ID("getToken"),
+		fizz.Description("Generate a short lived access token for web access"),
+		fizz.Security(security),
+	}, tonic.Handler(bh.GenerateTokenPair, 200), auth.ApiKeyAuthMiddleware(logger))
+	f.POST("/refreshToken", []fizz.OperationOption{
+		fizz.ID("refreshToken"),
+		fizz.Description("Refresh the short lived access token for web access"),
+	}, tonic.Handler(bh.RefreshTokenPair, 200))
+
+	grp := f.Group("/:contextID", "contextID", "Rule domain context")
+	grp.Use(auth.ApiKeyAuthMiddleware(logger))
+
 	grp.GET("/rules", []fizz.OperationOption{
 		fizz.ID("getAllRules"),
 		fizz.Description("Returns all rules with the context"),

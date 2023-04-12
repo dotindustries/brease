@@ -13,6 +13,12 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	ContextJwtKey    = "jwt"
+	ContextUserIdKey = "userId"
+	ContextOrgKey    = "orgId"
+)
+
 var (
 	// ErrKID indicates that the JWT had an invalid kid.
 	ErrKID = errors.New("the JWT has an invalid kid")
@@ -40,6 +46,13 @@ func ApiKeyAuthMiddleware(logger *zap.Logger) gin.HandlerFunc {
 
 		// allow for root api key to bypass jwt check
 		if rootApiKey != "" && authHeader == rootApiKey {
+			orgIdHeader := c.Request.Header.Get("x-org-id")
+			if orgIdHeader == "" {
+				_ = c.AbortWithError(http.StatusUnauthorized, errors2.BadRequestf("x-org-id header not set"))
+				return
+			}
+
+			c.Set(ContextOrgKey, orgIdHeader)
 			c.Next()
 			return
 		}
@@ -83,6 +96,16 @@ func ApiKeyAuthMiddleware(logger *zap.Logger) gin.HandlerFunc {
 				logger.Error("Failed to verify the JWT.\nError: %s", zap.Error(err))
 				_ = c.AbortWithError(http.StatusUnauthorized, errors2.NewUnauthorized(err, "Invalid API key"))
 				return
+			}
+
+			c.Set(ContextJwtKey, token)
+			claims := token.Claims.(jwt.MapClaims)
+
+			userId := claims[ContextUserIdKey].(string)
+			c.Set(ContextUserIdKey, userId)
+
+			if orgId, ok := claims[ContextOrgKey]; ok {
+				c.Set(ContextOrgKey, orgId.(string))
 			}
 		}
 

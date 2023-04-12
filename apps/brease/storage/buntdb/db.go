@@ -29,6 +29,11 @@ func NewDatabase(opts BuntDbOptions) (storage.Database, error) {
 	b := &buntdbContainer{
 		db:     db,
 		logger: opts.Logger,
+		rulePool: sync.Pool{
+			New: func() interface{} {
+				return new(models.Rule)
+			},
+		},
 	}
 
 	b.createIndices()
@@ -37,13 +42,55 @@ func NewDatabase(opts BuntDbOptions) (storage.Database, error) {
 }
 
 type buntdbContainer struct {
-	db     *buntdb.DB
-	logger *zap.Logger
+	db       *buntdb.DB
+	logger   *zap.Logger
+	rulePool sync.Pool
 }
 
-func (b *buntdbContainer) Exists(contextID string, ruleID string) (exists bool, err error) {
+func (b *buntdbContainer) GetAccessToken(orgID string) (*models.TokenPair, error) {
+	atKey := fmt.Sprintf("access:%s", orgID)
+
+	val := ""
+	err := b.db.View(func(tx *buntdb.Tx) error {
+		v, ierr := tx.Get(atKey)
+		if ierr != nil {
+			return ierr
+		}
+		val = v
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if val == "" {
+		return nil, fmt.Errorf("tokenPair not found")
+	}
+
+	tp := &models.TokenPair{}
+	if err = json.Unmarshal([]byte(val), tp); err != nil {
+		return nil, fmt.Errorf("failed to read tokenPair: %v", err)
+	}
+
+	return tp, nil
+}
+
+func (b *buntdbContainer) SaveAccessToken(orgID string, tokenPair *models.TokenPair) error {
+	atKey := fmt.Sprintf("access:%s", orgID)
+
+	bts, err := json.Marshal(tokenPair)
+	if err != nil {
+		return err
+	}
+	return b.db.Update(func(tx *buntdb.Tx) error {
+		_, _, ierr := tx.Set(atKey, string(bts), nil)
+		return ierr
+	})
+}
+
+func (b *buntdbContainer) Exists(orgID string, contextID string, ruleID string) (exists bool, err error) {
 	err = b.db.View(func(tx *buntdb.Tx) error {
-		_, ierr := tx.Get(ruleKey(contextID, ruleID), true)
+		_, ierr := tx.Get(ruleKey(orgID, contextID, ruleID), true)
 		if errors.Is(ierr, buntdb.ErrNotFound) {
 			exists = false
 		} else if err == nil {
@@ -56,8 +103,8 @@ func (b *buntdbContainer) Exists(contextID string, ruleID string) (exists bool, 
 	return
 }
 
-func (b *buntdbContainer) ReplaceRule(contextID string, rule models.Rule) error {
-	rk := ruleKey(contextID, rule.ID)
+func (b *buntdbContainer) ReplaceRule(orgID string, contextID string, rule models.Rule) error {
+	rk := ruleKey(orgID, contextID, rule.ID)
 	ruleJson, jsonErr := json.Marshal(rule)
 	if jsonErr != nil {
 		return jsonErr
@@ -73,8 +120,8 @@ func (b *buntdbContainer) ReplaceRule(contextID string, rule models.Rule) error 
 	})
 }
 
-func (b *buntdbContainer) RemoveRule(contextID string, ruleID string) error {
-	rk := ruleKey(contextID, ruleID)
+func (b *buntdbContainer) RemoveRule(orgID string, contextID string, ruleID string) error {
+	rk := ruleKey(orgID, contextID, ruleID)
 	return b.db.Update(func(tx *buntdb.Tx) error {
 		oldVal, err := tx.Delete(rk)
 		if err == nil {
@@ -84,8 +131,8 @@ func (b *buntdbContainer) RemoveRule(contextID string, ruleID string) error {
 	})
 }
 
-func (b *buntdbContainer) Rules(contextID string) (rules []models.Rule, err error) {
-	rk := ruleKey(contextID, "*")
+func (b *buntdbContainer) Rules(orgID string, contextID string) (rules []models.Rule, err error) {
+	rk := ruleKey(orgID, contextID, "*")
 
 	var rawRules []string
 	err = b.db.View(func(tx *buntdb.Tx) error {
@@ -95,26 +142,21 @@ func (b *buntdbContainer) Rules(contextID string) (rules []models.Rule, err erro
 		})
 	})
 
-	var rulePool = sync.Pool{
-		New: func() interface{} {
-			return new(models.Rule)
-		},
-	}
 	for _, r := range rawRules {
-		rule := rulePool.Get().(*models.Rule)
+		rule := b.rulePool.Get().(*models.Rule)
 		umErr := json.Unmarshal([]byte(r), rule)
 		if umErr != nil {
 			return nil, umErr
 		}
-		rulePool.Put(rule)
+		b.rulePool.Put(rule)
 		rules = append(rules, *rule)
 	}
 
 	return
 }
 
-func (b *buntdbContainer) AddRule(contextID string, rule models.Rule) error {
-	rk := ruleKey(contextID, rule.ID)
+func (b *buntdbContainer) AddRule(orgID string, contextID string, rule models.Rule) error {
+	rk := ruleKey(orgID, contextID, rule.ID)
 	ruleJson, err := json.Marshal(rule)
 	if err != nil {
 		return err
@@ -135,21 +177,21 @@ func (b *buntdbContainer) Close() error {
 }
 
 func (b *buntdbContainer) createIndices() {
-	err := b.db.CreateIndex("contexts", contextKey("*"))
+	err := b.db.CreateIndex("contexts", contextKey("*", "*"))
 	if err != nil {
 		panic(err)
 	}
 
-	err = b.db.CreateIndex("rules", ruleKey("*", "*"), buntdb.IndexJSONCaseSensitive("id"))
+	err = b.db.CreateIndex("rules", ruleKey("*", "*", "*"), buntdb.IndexJSONCaseSensitive("id"))
 	if err != nil {
 		panic(err)
 	}
 }
 
-func contextKey(contextID string) string {
-	return fmt.Sprintf("context:%s", contextID)
+func contextKey(orgID string, contextID string) string {
+	return fmt.Sprintf("org:%s:context:%s", orgID, contextID)
 }
 
-func ruleKey(contextID, ruleID string) string {
-	return fmt.Sprintf("context:%s:rule:%s", contextID, ruleID)
+func ruleKey(orgID string, contextID, ruleID string) string {
+	return fmt.Sprintf("org:%s:context:%s:rule:%s", orgID, contextID, ruleID)
 }

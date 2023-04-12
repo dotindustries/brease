@@ -24,8 +24,8 @@ func InitJWKS() {
 	jwksSource := jwks.NewWebSource(url, http.DefaultClient)
 	jwksClient = jwks.NewDefaultClient(
 		jwksSource,
-		time.Minute*5, // Refresh keys every 1 hour
-		12*time.Hour,  // Expire keys after 12 hours
+		time.Minute,  // Refresh keys every 1 hour
+		12*time.Hour, // Expire keys after 12 hours
 	)
 	logger.Info("Configured Speakeasy JWKS for JWT verification.", zap.String("source", url))
 }

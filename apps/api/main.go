@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"log"
 	"net/http"
@@ -23,9 +24,20 @@ import (
 	log2 "go.dot.industries/brease/log"
 	"go.dot.industries/brease/storage"
 	"go.dot.industries/brease/storage/buntdb"
-	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
+
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"google.golang.org/grpc/credentials"
+
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/trace"
 )
 
 func main() {
@@ -37,6 +49,9 @@ func main() {
 
 	logger, _, flush := log2.Logger()
 	defer flush()
+
+	cleanup := initOTELTracer(logger)
+	defer cleanup(context.Background())
 
 	db := setupStorage(logger)
 	defer db.Close()
@@ -60,6 +75,7 @@ func newApp(db storage.Database, logger *zap.Logger) *fizz.Fizz {
 	// https://github.com/gin-gonic/gin/blob/master/docs/doc.md#dont-trust-all-proxies
 	_ = r.SetTrustedProxies(nil)
 
+	r.Use(otelgin.Middleware(otelServiceName))
 	r.Use(requestid.New())
 	r.Use(stats.RequestStats())
 	r.Use(ginzap.GinzapWithConfig(logger, &ginzap.Config{
@@ -188,4 +204,64 @@ func newApp(db storage.Database, logger *zap.Logger) *fizz.Fizz {
 	}, tonic.Handler(bh.EvaluateRules, 200))
 
 	return f
+}
+
+var (
+	otelServiceName  = env.Getenv("SERVICE_NAME", "")
+	otelCollectorURL = env.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "")
+	otelInsecure     = env.Getenv("INSECURE_MODE", "")
+)
+
+func initOTELTracer(logger *zap.Logger) func(context.Context) error {
+	if otelServiceName == "" {
+		otelServiceName = "brease"
+	}
+
+	var exporter sdktrace.SpanExporter
+	if otelCollectorURL == "" {
+		var err error
+		exporter, err = stdouttrace.New(
+			// Use human-readable output.
+			stdouttrace.WithPrettyPrint(),
+		)
+		if err != nil {
+			logger.Fatal("failed to setup OTLP tracer", zap.Error(err))
+		}
+	} else {
+		secureOption := otlptracegrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, ""))
+		if len(otelInsecure) > 0 {
+			secureOption = otlptracegrpc.WithInsecure()
+		}
+		var err error
+		exporter, err = otlptrace.New(
+			context.Background(),
+			otlptracegrpc.NewClient(
+				secureOption,
+				otlptracegrpc.WithEndpoint(otelCollectorURL),
+			),
+		)
+		if err != nil {
+			logger.Fatal("failed to connect to OTLP tracer", zap.Error(err))
+		}
+	}
+
+	resources, err := resource.New(
+		context.Background(),
+		resource.WithAttributes(
+			attribute.String("service.name", otelServiceName),
+			attribute.String("library.language", "go"),
+		),
+	)
+	if err != nil {
+		logger.Error("Could not set resources: ", zap.Error(err))
+	}
+
+	otel.SetTracerProvider(
+		sdktrace.NewTracerProvider(
+			sdktrace.WithSampler(sdktrace.AlwaysSample()),
+			sdktrace.WithBatcher(exporter),
+			sdktrace.WithResource(resources),
+		),
+	)
+	return exporter.Shutdown
 }

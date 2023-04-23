@@ -33,7 +33,7 @@ node:
 
   # Infer and automatically create moon tasks from `package.json` scripts, per project.
   # BEWARE: Tasks and scripts are not 1:1 in functionality, so please refer to the documentation.
-  inferTasksFromScripts: true
+  inferTasksFromScripts: false
 
   # Sync a project's `dependsOn` as dependencies within the project's `package.json`.
   syncProjectWorkspaceDependencies: true
@@ -56,7 +56,7 @@ typescript:
 
   # Name of the config file in the workspace root that defines shared compiler
   # options for all project reference based config files.
-  # rootOptionsConfigFileName: 'tsconfig.options.json'
+  rootOptionsConfigFileName: tsconfig.base.json
 
   # Update a project's `tsconfig.json` to route the `outDir` compiler option
   # to moon's `.moon/cache` directory.

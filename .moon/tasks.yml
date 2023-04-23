@@ -13,19 +13,7 @@ $schema: https://moonrepo.dev/schemas/tasks.json
 # globs. Globs are relative to a project, even though they are defined globally. This enables
 # enforcement of organizational patterns across all projects in the workspace.
 fileGroups:
-  # List of configuration files located within the project root.
-  configs:
-    - "*.{js,json}"
-
-  # List of non-test source files.
-  sources:
-    - src/**/*
-    - types/**/*
-
-  # List of non-source test files.
-  tests:
-    - tests/**/*.test.*
-    - "**/__tests__/**/*"
+  app: []
 
   # All static assets within the project.
   # This may include styles, images, videos, etc.
@@ -34,7 +22,23 @@ fileGroups:
     - images/**/*
     - static/**/*
     - "**/*.{scss,css}"
-    - "**/*.mdx"
+    - "**/*.{md,mdx}"
+  # List of configuration files located within the project root.
+  configs:
+    - "*.{js,json,yml,yaml}"
+
+  # List of non-test source files.
+  sources:
+    - public/**/*
+    - src/**/*
+    - types/**/*
+
+  # List of non-source test files.
+  tests:
+    - tests/**/*.test.*
+    - tests/**/*.stories.*
+    - tests/**/*.test.*
+    - "**/__tests__/**/*"
 
 # A task is an action that is ran within the context of a project, and wraps
 # around an npm or system command. Tasks that are defined here and inherited by all projects
@@ -71,3 +75,20 @@ tasks:
     # The platform to run the command on, and where to locate it.
     # Accepts "node" or "system". Defaults based on project `language`.
     platform: node
+
+  build_types:
+    command:
+      - tsc
+      - -p
+      - tsconfig.build.json
+    outputs:
+      - build
+
+  build_types_watch:
+    command:
+      - tsc
+      - -p
+      - tsconfig.build.json
+      - -w
+    outputs:
+      - build

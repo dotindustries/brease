@@ -3,5 +3,11 @@
 .moon/cache
 .moon/docker
 .idea
-apps/brease/.env
-apps/.DS_Store
+.env
+.DS_Store
+node_modules
+packages/brease-core/build
+packages/react-brease/build
+packages/react-brease/coverage
+packages/react-brease-devtools/build
+packages/vue-brease/build

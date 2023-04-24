@@ -24,7 +24,7 @@ func (b *BreaseHandler) AddRule(c *gin.Context, r *AddRuleRequest) (*AddRuleResp
 	rule := r.Rule
 
 	// duplicate check
-	if exists, err := b.db.Exists(orgID, r.ContextID, rule.ID); exists && err == nil {
+	if exists, err := b.db.Exists(c.Request.Context(), orgID, r.ContextID, rule.ID); exists && err == nil {
 		b.logger.Warn("Rule already exists. Rejecting to add", zap.String("contextID", r.ContextID), zap.String("ruleID", rule.ID))
 		return nil, errors.AlreadyExistsf("rule with ID '%s'", rule.ID)
 	} else if err != nil {
@@ -34,7 +34,7 @@ func (b *BreaseHandler) AddRule(c *gin.Context, r *AddRuleRequest) (*AddRuleResp
 	if err != nil {
 		return nil, errors.NewBadRequest(err, "invalid expression")
 	}
-	err = b.db.AddRule(orgID, r.ContextID, rule)
+	err = b.db.AddRule(c.Request.Context(), orgID, r.ContextID, rule)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add rule: %v", err)
 	}

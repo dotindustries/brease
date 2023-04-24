@@ -1,6 +1,7 @@
 package buntdb
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -12,12 +13,12 @@ import (
 	"go.uber.org/zap"
 )
 
-type BuntDbOptions struct {
+type Options struct {
 	Path   string
 	Logger *zap.Logger
 }
 
-func NewDatabase(opts BuntDbOptions) (storage.Database, error) {
+func NewDatabase(opts Options) (storage.Database, error) {
 	if opts.Path == "" {
 		opts.Path = ":memory:"
 	}
@@ -47,7 +48,7 @@ type buntdbContainer struct {
 	rulePool sync.Pool
 }
 
-func (b *buntdbContainer) GetAccessToken(orgID string) (*models.TokenPair, error) {
+func (b *buntdbContainer) GetAccessToken(_ context.Context, orgID string) (*models.TokenPair, error) {
 	atKey := fmt.Sprintf("access:%s", orgID)
 
 	val := ""
@@ -75,7 +76,7 @@ func (b *buntdbContainer) GetAccessToken(orgID string) (*models.TokenPair, error
 	return tp, nil
 }
 
-func (b *buntdbContainer) SaveAccessToken(orgID string, tokenPair *models.TokenPair) error {
+func (b *buntdbContainer) SaveAccessToken(_ context.Context, orgID string, tokenPair *models.TokenPair) error {
 	atKey := fmt.Sprintf("access:%s", orgID)
 
 	bts, err := json.Marshal(tokenPair)
@@ -88,7 +89,7 @@ func (b *buntdbContainer) SaveAccessToken(orgID string, tokenPair *models.TokenP
 	})
 }
 
-func (b *buntdbContainer) Exists(orgID string, contextID string, ruleID string) (exists bool, err error) {
+func (b *buntdbContainer) Exists(_ context.Context, orgID string, contextID string, ruleID string) (exists bool, err error) {
 	err = b.db.View(func(tx *buntdb.Tx) error {
 		_, ierr := tx.Get(ruleKey(orgID, contextID, ruleID), true)
 		if errors.Is(ierr, buntdb.ErrNotFound) {
@@ -103,7 +104,7 @@ func (b *buntdbContainer) Exists(orgID string, contextID string, ruleID string) 
 	return
 }
 
-func (b *buntdbContainer) ReplaceRule(orgID string, contextID string, rule models.Rule) error {
+func (b *buntdbContainer) ReplaceRule(_ context.Context, orgID string, contextID string, rule models.Rule) error {
 	rk := ruleKey(orgID, contextID, rule.ID)
 	ruleJson, jsonErr := json.Marshal(rule)
 	if jsonErr != nil {
@@ -120,7 +121,7 @@ func (b *buntdbContainer) ReplaceRule(orgID string, contextID string, rule model
 	})
 }
 
-func (b *buntdbContainer) RemoveRule(orgID string, contextID string, ruleID string) error {
+func (b *buntdbContainer) RemoveRule(_ context.Context, orgID string, contextID string, ruleID string) error {
 	rk := ruleKey(orgID, contextID, ruleID)
 	return b.db.Update(func(tx *buntdb.Tx) error {
 		oldVal, err := tx.Delete(rk)
@@ -131,7 +132,7 @@ func (b *buntdbContainer) RemoveRule(orgID string, contextID string, ruleID stri
 	})
 }
 
-func (b *buntdbContainer) Rules(orgID string, contextID string) (rules []models.Rule, err error) {
+func (b *buntdbContainer) Rules(_ context.Context, orgID string, contextID string) (rules []models.Rule, err error) {
 	rk := ruleKey(orgID, contextID, "*")
 
 	var rawRules []string
@@ -155,7 +156,7 @@ func (b *buntdbContainer) Rules(orgID string, contextID string) (rules []models.
 	return
 }
 
-func (b *buntdbContainer) AddRule(orgID string, contextID string, rule models.Rule) error {
+func (b *buntdbContainer) AddRule(_ context.Context, orgID string, contextID string, rule models.Rule) error {
 	rk := ruleKey(orgID, contextID, rule.ID)
 	ruleJson, err := json.Marshal(rule)
 	if err != nil {

@@ -55,14 +55,14 @@ func (b *BreaseHandler) GenerateTokenPair(c *gin.Context) (*models.TokenPair, er
 		return nil, err
 	}
 
-	if err = b.db.SaveAccessToken(ownerID, tp); err != nil {
+	if err = b.db.SaveAccessToken(c.Request.Context(), ownerID, tp); err != nil {
 		return nil, fmt.Errorf("failed to save tokens to database: %v", err)
 	}
 
 	return tp, nil
 }
 
-func (b *BreaseHandler) RefreshTokenPair(_ *gin.Context, r *RefreshTokenPairRequest) (*models.TokenPair, error) {
+func (b *BreaseHandler) RefreshTokenPair(c *gin.Context, r *RefreshTokenPairRequest) (*models.TokenPair, error) {
 	token, err := jwt.Parse(r.RefreshToken, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
@@ -83,7 +83,7 @@ func (b *BreaseHandler) RefreshTokenPair(_ *gin.Context, r *RefreshTokenPairRequ
 		return nil, errors.BadRequestf("invalid refreshToken sub")
 	}
 
-	oldTokenPair, err := b.db.GetAccessToken(orgID)
+	oldTokenPair, err := b.db.GetAccessToken(c.Request.Context(), orgID)
 	if err != nil {
 		return nil, errors.BadRequestf("refreshToken not found")
 	}
@@ -97,7 +97,7 @@ func (b *BreaseHandler) RefreshTokenPair(_ *gin.Context, r *RefreshTokenPairRequ
 		return nil, err
 	}
 
-	if err = b.db.SaveAccessToken(orgID, tp); err != nil {
+	if err = b.db.SaveAccessToken(c.Request.Context(), orgID, tp); err != nil {
 		return nil, fmt.Errorf("failed to save tokens to database: %v", err)
 	}
 

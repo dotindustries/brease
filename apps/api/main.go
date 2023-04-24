@@ -63,7 +63,7 @@ func main() {
 
 // setupStorage Determines which storage engine should be instantiated and returns an instance.
 func setupStorage(logger *zap.Logger) storage.Database {
-	db, err := buntdb.NewDatabase(buntdb.BuntDbOptions{Logger: logger})
+	db, err := buntdb.NewDatabase(buntdb.Options{Logger: logger})
 	if err != nil {
 		logger.Fatal("failed to initialize database", zap.Error(err))
 	}

@@ -20,7 +20,7 @@ type AllRulesResponse struct {
 
 func (b *BreaseHandler) AllRules(c *gin.Context, r *AllRulesRequest) (*AllRulesResponse, error) {
 	orgID := c.GetString(auth.ContextOrgKey)
-	rules, err := b.db.Rules(orgID, r.ContextID)
+	rules, err := b.db.Rules(c.Request.Context(), orgID, r.ContextID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch rules: %v", err)
 	}

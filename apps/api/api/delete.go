@@ -13,7 +13,7 @@ type RemoveRuleRequest struct {
 func (b *BreaseHandler) RemoveRule(c *gin.Context, r *RemoveRuleRequest) error {
 	orgID := c.GetString(auth.ContextOrgKey)
 
-	_ = b.db.RemoveRule(orgID, r.ContextID, r.ID)
+	_ = b.db.RemoveRule(c.Request.Context(), orgID, r.ContextID, r.ID)
 	// we don't expose whether we succeeded
 	return nil
 }

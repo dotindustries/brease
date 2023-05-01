@@ -32,19 +32,19 @@ func New() cache.Cache {
 	}
 }
 
-func (c *cacheContainer) Get(ctx context.Context, key string) string {
+func (c *cacheContainer) Get(ctx context.Context, key string) any {
 	_, span := trace.StartSpan(ctx, "cache")
 	defer span.End()
 
 	if script, ok := c.ch.Get(key); ok {
-		return script.(string)
+		return script
 	}
 	return ""
 }
 
-func (c *cacheContainer) Set(ctx context.Context, key string, code any) bool {
+func (c *cacheContainer) Set(ctx context.Context, key string, value any) bool {
 	_, span := trace.StartSpan(ctx, "cache")
 	defer span.End()
 
-	return c.ch.SetWithTTL(key, code, 0, c.ttl)
+	return c.ch.SetWithTTL(key, value, 0, c.ttl)
 }

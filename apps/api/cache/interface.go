@@ -11,7 +11,7 @@ import (
 const defaultTTL = "15m"
 
 type Cache interface {
-	Get(ctx context.Context, key string) string
+	Get(ctx context.Context, key string) any
 	Set(ctx context.Context, key string, value any) bool
 }
 

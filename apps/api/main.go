@@ -20,6 +20,7 @@ import (
 	"github.com/wI2L/fizz/openapi"
 	"go.dot.industries/brease/api"
 	"go.dot.industries/brease/auth"
+	"go.dot.industries/brease/cache/memory"
 	"go.dot.industries/brease/env"
 	log2 "go.dot.industries/brease/log"
 	"go.dot.industries/brease/storage"
@@ -131,7 +132,7 @@ func newApp(db storage.Database, logger *zap.Logger) *fizz.Fizz {
 		c.IndentedJSON(http.StatusOK, stats.Report())
 	})
 
-	bh := api.NewHandler(db, logger)
+	bh := api.NewHandler(db, memory.New(), logger)
 
 	tonic.SetErrorHook(jujerr.ErrHook)
 	f := fizz.NewFromEngine(r)

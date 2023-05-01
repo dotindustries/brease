@@ -30,10 +30,13 @@ func (b *BreaseHandler) AddRule(c *gin.Context, r *AddRuleRequest) (*AddRuleResp
 	} else if err != nil {
 		return nil, err
 	}
-	err := b.validateExpression(rule.Expression)
+	_, err := models.validateExpression(rule.Expression)
 	if err != nil {
+		b.logger.Error("invalid expression", zap.Error(err), zap.Any("expression", rule.Expression))
 		return nil, errors.NewBadRequest(err, "invalid expression")
 	}
+	b.logger.Debug("Valid expression", zap.Any("expression", rule.Expression))
+
 	err = b.db.AddRule(c.Request.Context(), orgID, r.ContextID, rule)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add rule: %v", err)

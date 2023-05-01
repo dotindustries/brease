@@ -13,6 +13,7 @@ package brease;
 message ConditionBaseRef {
   string src = 1;
   string dst = 2;
+  bytes value = 3;
 }
 
 // A condition expression

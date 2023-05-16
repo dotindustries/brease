@@ -1,6 +1,6 @@
 module go.dot.industries/brease
 
-go 1.20
+go 1.18
 
 require (
 	github.com/axiomhq/axiom-go v0.15.0

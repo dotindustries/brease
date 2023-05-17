@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	errors2 "github.com/juju/errors"
 	"go.dot.industries/brease/env"
+	"go.dot.industries/brease/strings"
 	"go.uber.org/zap"
 )
 

@@ -45,7 +45,7 @@ func main() {
 	err := env.LoadEnv()
 
 	if err != nil {
-		log.Fatal("No environment variables")
+		log.Println("WARN: No .env file")
 	}
 
 	logger, _, flush := log2.Logger()

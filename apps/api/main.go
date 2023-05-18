@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -59,7 +60,10 @@ func main() {
 
 	app := newApp(db, logger)
 
-	_ = endless.ListenAndServe(env.Getenv("HOST", ":4400"), app)
+	host := env.Getenv("HOST", "")
+	port := env.Getenv("PORT", "4400")
+	addr := fmt.Sprintf("%s:%s", host, port)
+	_ = endless.ListenAndServe(addr, app)
 }
 
 // setupStorage Determines which storage engine should be instantiated and returns an instance.

@@ -15,6 +15,7 @@ type BreaseHandler struct {
 	db        storage.Database
 	logger    *zap.Logger
 	assembler *code.Assembler
+	compiler  *code.Compiler
 }
 
 func NewHandler(db storage.Database, c cache.Cache, logger *zap.Logger) *BreaseHandler {
@@ -25,5 +26,6 @@ func NewHandler(db storage.Database, c cache.Cache, logger *zap.Logger) *BreaseH
 		db:        db,
 		logger:    logger,
 		assembler: code.NewAssembler(logger, c),
+		compiler:  code.NewCompiler(logger, c),
 	}
 }

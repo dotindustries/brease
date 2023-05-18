@@ -44,9 +44,12 @@ import (
 
 func main() {
 	err := env.LoadEnv()
-
 	if err != nil {
 		log.Println("WARN: No .env file")
+	}
+
+	if env.IsDebug() {
+		env.PrintEnv()
 	}
 
 	logger, _, flush := log2.Logger()
@@ -76,11 +79,15 @@ func setupStorage(logger *zap.Logger) storage.Database {
 }
 
 func newApp(db storage.Database, logger *zap.Logger) *fizz.Fizz {
+	if !env.IsDebug() {
+		gin.SetMode(gin.ReleaseMode)
+	}
+
 	r := gin.Default()
 	// https://github.com/gin-gonic/gin/blob/master/docs/doc.md#dont-trust-all-proxies
 	_ = r.SetTrustedProxies(nil)
 
-	r.Use(otelgin.Middleware(otelServiceName))
+	r.Use(otelgin.Middleware(otelServiceName()))
 	r.Use(requestid.New())
 	r.Use(stats.RequestStats())
 	r.Use(ginzap.GinzapWithConfig(logger, &ginzap.Config{
@@ -112,13 +119,13 @@ func newApp(db storage.Database, logger *zap.Logger) *fizz.Fizz {
 	}))
 	r.Use(gin.Recovery())
 
-	speakeasyApiKey := env.Getenv("SPEAKEASY_API_KEY", "")
-	if speakeasyApiKey != "" {
+	speakeasyAPIKey := env.Getenv("SPEAKEASY_API_KEY", "")
+	if speakeasyAPIKey != "" {
 		auth.InitJWKS()
 
 		// Configure the Global SDK
 		speakeasy.Configure(speakeasy.Config{
-			APIKey:    speakeasyApiKey,
+			APIKey:    speakeasyAPIKey,
 			ApiID:     "brease",
 			VersionID: "0.1",
 		})
@@ -211,26 +218,31 @@ func newApp(db storage.Database, logger *zap.Logger) *fizz.Fizz {
 	return f
 }
 
-var (
-	otelServiceName  = env.Getenv("SERVICE_NAME", "")
-	otelCollectorURL = env.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "")
-	otelInsecure     = env.Getenv("INSECURE_MODE", "")
-)
+func otelServiceName() string {
+	return env.Getenv("SERVICE_NAME", "")
+}
 
 func initOTELTracer(logger *zap.Logger) func(context.Context) error {
-	if otelServiceName == "" {
-		otelServiceName = "brease"
+	serviceName := otelServiceName()
+	otelCollectorURL := env.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "")
+	otelInsecure := env.Getenv("INSECURE_MODE", "")
+
+	if serviceName == "" {
+		serviceName = "brease"
 	}
 
 	var exporter sdktrace.SpanExporter
 	if otelCollectorURL == "" {
 		var err error
-		exporter, err = stdouttrace.New(
-			// Use human-readable output.
-			stdouttrace.WithPrettyPrint(),
-		)
+		var opts []stdouttrace.Option
+		if pretty := env.Getenv("OTEL_PRETTY_PRINT", ""); pretty != "" {
+			opts = append(opts, stdouttrace.WithPrettyPrint())
+		}
+		exporter, err = stdouttrace.New(opts...)
 		if err != nil {
-			logger.Fatal("failed to setup OTLP tracer", zap.Error(err))
+			logger.Fatal("Failed to setup OTLP tracer", zap.Error(err))
+		} else {
+			logger.Debug("OTLP setup finished with stdout tracer")
 		}
 	} else {
 		secureOption := otlptracegrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, ""))
@@ -247,13 +259,15 @@ func initOTELTracer(logger *zap.Logger) func(context.Context) error {
 		)
 		if err != nil {
 			logger.Fatal("failed to connect to OTLP tracer", zap.Error(err))
+		} else {
+			logger.Debug("OTLP setup finished with remote tracer", zap.String("collectorURL", otelCollectorURL))
 		}
 	}
 
 	resources, err := resource.New(
 		context.Background(),
 		resource.WithAttributes(
-			attribute.String("service.name", otelServiceName),
+			attribute.String("service.name", serviceName),
 			attribute.String("library.language", "go"),
 		),
 	)

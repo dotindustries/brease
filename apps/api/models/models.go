@@ -1,5 +1,9 @@
 package models
 
+import (
+	"go.uber.org/zap/zapcore"
+)
+
 type Target struct {
 	Type   string `json:"type" validate:"required"`
 	Target string `json:"target" validate:"required"`
@@ -31,6 +35,15 @@ type EvaluationResult struct {
 	TargetType string `json:"actionTargetType"`
 	Action     string `json:"action"`
 	Value      string `json:"Value"`
+}
+
+func (e EvaluationResult) MarshalLogObject(enc zapcore.ObjectEncoder) error {
+	enc.AddString("targetID", e.TargetID)
+	enc.AddString("targetType", e.TargetType)
+	enc.AddString("action", e.Action)
+	enc.AddString("value", e.Value)
+
+	return nil
 }
 
 type ConditionType = string

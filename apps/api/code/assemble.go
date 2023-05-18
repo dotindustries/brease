@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/juju/errors"
 	"go.dot.industries/brease/cache"
 	"go.dot.industries/brease/models"
 	"go.dot.industries/brease/pb"
@@ -43,8 +42,13 @@ func (a *Assembler) BuildCode(ctx context.Context, rules []models.Rule) (string,
 		return "", err
 	}
 
+	if assembled == "" {
+		return "", fmt.Errorf("assembled code is empty")
+	}
+
 	if a.cache.Set(ctx, key, assembled) {
-		return "", fmt.Errorf("failed to cache assembled code")
+		a.logger.Error("cannot cache assembled code", zap.String("code", assembled))
+		return "", fmt.Errorf("cannot cache assembled code")
 	}
 
 	return assembled, nil
@@ -109,6 +113,7 @@ func (a *Assembler) lookupReferences(ctx context.Context, rules []models.Rule) [
 			results[i] = r.Value.(models.Rule)
 		case <-refLookupPool.Done:
 			// worker finished
+			break
 		}
 	}
 }
@@ -152,11 +157,4 @@ func lookupReferenceValues(ctx context.Context, expr *pb.Expression) {
 			ref.Value = rref.LookupReferenceValue(ctx, ref)
 		}
 	}
-}
-
-func (a *Assembler) parseRules(ctx context.Context, rules []models.Rule) (string, error) {
-	ctx, span := trace.StartSpan(ctx, "parse")
-	defer span.End()
-	
-	return "", errors.NotImplementedf("not ready yet")
 }

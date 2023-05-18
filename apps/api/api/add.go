@@ -30,7 +30,7 @@ func (b *BreaseHandler) AddRule(c *gin.Context, r *AddRuleRequest) (*AddRuleResp
 	} else if err != nil {
 		return nil, err
 	}
-	_, err := models.validateExpression(rule.Expression)
+	_, err := models.ValidateExpression(rule.Expression)
 	if err != nil {
 		b.logger.Error("invalid expression", zap.Error(err), zap.Any("expression", rule.Expression))
 		return nil, errors.NewBadRequest(err, "invalid expression")

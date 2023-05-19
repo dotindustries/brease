@@ -46,7 +46,7 @@ func (a *Assembler) BuildCode(ctx context.Context, rules []models.Rule) (string,
 		return "", fmt.Errorf("assembled code is empty")
 	}
 
-	if a.cache.Set(ctx, key, assembled) {
+	if !a.cache.Set(ctx, key, assembled) {
 		a.logger.Error("cannot cache assembled code", zap.String("code", assembled))
 		return "", fmt.Errorf("cannot cache assembled code")
 	}

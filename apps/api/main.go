@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"go.dot.industries/brease/storage/redis"
 	"go.opentelemetry.io/otel/propagation"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"io"
@@ -60,7 +61,10 @@ func main() {
 	cleanup := initOTELTracer(logger)
 	defer cleanup(context.Background())
 
-	db := setupStorage(logger)
+	db, err := setupStorage(logger)
+	if err != nil {
+		logger.Fatal("failed to initialize storage", zap.Error(err))
+	}
 	defer db.Close()
 
 	app := newApp(db, logger)
@@ -72,12 +76,16 @@ func main() {
 }
 
 // setupStorage Determines which storage engine should be instantiated and returns an instance.
-func setupStorage(logger *zap.Logger) storage.Database {
-	db, err := buntdb.NewDatabase(buntdb.Options{Logger: logger})
-	if err != nil {
-		logger.Fatal("failed to initialize database", zap.Error(err))
+func setupStorage(logger *zap.Logger) (db storage.Database, err error) {
+	if redisURL := env.Getenv("REDIS_URL", ""); redisURL != "" {
+		return redis.NewDatabase(redis.Options{
+			URL:    redisURL,
+			Logger: logger,
+		})
 	}
-	return db
+
+	// memory db as fallback
+	return buntdb.NewDatabase(buntdb.Options{Logger: logger})
 }
 
 func newApp(db storage.Database, logger *zap.Logger) *fizz.Fizz {

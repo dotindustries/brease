@@ -32,6 +32,21 @@ action := func(action, targetType, targetID, value) {
 			Name:       "hasSuffix",
 			Value:      hasSuffix,
 		},
+		"equals": &tengo.UserFunction{
+			ObjectImpl: tengo.ObjectImpl{},
+			Name:       "equals",
+			Value:      equals,
+		},
+		"inList": &tengo.UserFunction{
+			ObjectImpl: tengo.ObjectImpl{},
+			Name:       "inList",
+			Value:      inList,
+		},
+		"regex": &tengo.UserFunction{
+			ObjectImpl: tengo.ObjectImpl{},
+			Name:       "equals",
+			Value:      regex,
+		},
 	}
 )
 
@@ -44,5 +59,17 @@ func hasPrefix(args ...tengo.Object) (ret tengo.Object, err error) {
 }
 
 func hasSuffix(args ...tengo.Object) (ret tengo.Object, err error) {
+	return nil, fmt.Errorf("not yet implemented")
+}
+
+func equals(args ...tengo.Object) (ret tengo.Object, err error) {
+	return nil, fmt.Errorf("not yet implemented")
+}
+
+func inList(args ...tengo.Object) (ret tengo.Object, err error) {
+	return nil, fmt.Errorf("not yet implemented")
+}
+
+func regex(args ...tengo.Object) (ret tengo.Object, err error) {
 	return nil, fmt.Errorf("not yet implemented")
 }

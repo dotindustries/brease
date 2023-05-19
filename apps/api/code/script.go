@@ -37,7 +37,7 @@ func conditionToScript(condition *pb.Condition) (code string) {
 	case *pb.Condition_IntValue:
 		parameterValue = condition.GetIntValue()
 	case *pb.Condition_StringValue:
-		// TODO check if parameter is a JSON array or a JSON map and return accordingly
+		// TODO: handle JSON parse if JSON string
 		parameterValue = "\"" + condition.GetStringValue() + "\""
 	default:
 		parameterValue = nil
@@ -65,9 +65,9 @@ func conditionToScript(condition *pb.Condition) (code string) {
 	case models.ConditionNotInList:
 		code = fmt.Sprintf(`!%s.inList(%s, "%s", %t, %v)`, tengoModuleName, objectVariable, condition.Base, isReference, parameterValue)
 	case models.ConditionRegex:
-		code = fmt.Sprintf(`%s.regexMatch(%s, "%s", %t, %v)`, tengoModuleName, objectVariable, condition.Base, isReference, parameterValue)
+		code = fmt.Sprintf(`%s.regex(%s, "%s", %t, %v)`, tengoModuleName, objectVariable, condition.Base, isReference, parameterValue)
 	case models.ConditionNotRegex:
-		code = fmt.Sprintf(`!%s.regexMatch(%s, "%s", %t, %v)`, tengoModuleName, objectVariable, condition.Base, isReference, parameterValue)
+		code = fmt.Sprintf(`!%s.regex(%s, "%s", %t, %v)`, tengoModuleName, objectVariable, condition.Base, isReference, parameterValue)
 	}
 	return
 }

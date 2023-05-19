@@ -70,6 +70,8 @@ func (a *Assembler) assemble(ctx context.Context, rules []models.Rule) (string, 
 		// FIXME: do we need to replace base references before building code blocks?
 		//   should this entire feature be client only?
 		relevantRules = a.lookupReferences(ctx, relevantRules)
+	} else {
+		a.logger.Warn("Lookup for reference valued expressions is off. The dref library is not configured")
 	}
 
 	code, err := a.parseRules(ctx, relevantRules)

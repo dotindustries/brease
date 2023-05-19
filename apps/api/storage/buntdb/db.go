@@ -48,88 +48,25 @@ type buntdbContainer struct {
 	rulePool sync.Pool
 }
 
-func (b *buntdbContainer) GetAccessToken(_ context.Context, orgID string) (*models.TokenPair, error) {
-	atKey := fmt.Sprintf("access:%s", orgID)
-
-	val := ""
-	err := b.db.View(func(tx *buntdb.Tx) error {
-		v, ierr := tx.Get(atKey)
-		if ierr != nil {
-			return ierr
-		}
-		val = v
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	if val == "" {
-		return nil, fmt.Errorf("tokenPair not found")
-	}
-
-	tp := &models.TokenPair{}
-	if err = json.Unmarshal([]byte(val), tp); err != nil {
-		return nil, fmt.Errorf("failed to read tokenPair: %v", err)
-	}
-
-	return tp, nil
+func (b *buntdbContainer) Close() error {
+	return b.db.Close()
 }
 
-func (b *buntdbContainer) SaveAccessToken(_ context.Context, orgID string, tokenPair *models.TokenPair) error {
-	atKey := fmt.Sprintf("access:%s", orgID)
-
-	bts, err := json.Marshal(tokenPair)
-	if err != nil {
-		return err
-	}
-	return b.db.Update(func(tx *buntdb.Tx) error {
-		_, _, ierr := tx.Set(atKey, string(bts), nil)
-		return ierr
-	})
-}
-
-func (b *buntdbContainer) Exists(_ context.Context, orgID string, contextID string, ruleID string) (exists bool, err error) {
-	err = b.db.View(func(tx *buntdb.Tx) error {
-		_, ierr := tx.Get(ruleKey(orgID, contextID, ruleID), true)
-		if errors.Is(ierr, buntdb.ErrNotFound) {
-			exists = false
-		} else if err == nil {
-			exists = true
-		} else {
-			return ierr
-		}
-		return nil
-	})
-	return
-}
-
-func (b *buntdbContainer) ReplaceRule(_ context.Context, orgID string, contextID string, rule models.Rule) error {
+func (b *buntdbContainer) AddRule(_ context.Context, orgID string, contextID string, rule models.Rule) error {
 	rk := ruleKey(orgID, contextID, rule.ID)
-	ruleJson, jsonErr := json.Marshal(rule)
-	if jsonErr != nil {
-		return jsonErr
+	ruleJSON, err := json.Marshal(rule)
+	if err != nil {
+		return err
 	}
-	return b.db.Update(func(tx *buntdb.Tx) error {
-		if oldVal, replaced, err := tx.Set(rk, string(ruleJson), nil); replaced {
-			b.logger.Info("Successfully updated rule in context.", zap.String("key", rk), zap.String("old", oldVal), zap.String("new", string(ruleJson)))
-		} else {
-			return err
+	err = b.db.Update(func(tx *buntdb.Tx) error {
+		_, _, txErr := tx.Set(rk, string(ruleJSON), nil)
+		if txErr != nil {
+			return txErr
 		}
-
 		return nil
 	})
-}
 
-func (b *buntdbContainer) RemoveRule(_ context.Context, orgID string, contextID string, ruleID string) error {
-	rk := ruleKey(orgID, contextID, ruleID)
-	return b.db.Update(func(tx *buntdb.Tx) error {
-		oldVal, err := tx.Delete(rk)
-		if err == nil {
-			b.logger.Info("Successfully removed rule from context.", zap.String("key", rk), zap.String("value", oldVal))
-		}
-		return err
-	})
+	return err
 }
 
 func (b *buntdbContainer) Rules(_ context.Context, orgID string, contextID string) (rules []models.Rule, err error) {
@@ -156,25 +93,89 @@ func (b *buntdbContainer) Rules(_ context.Context, orgID string, contextID strin
 	return
 }
 
-func (b *buntdbContainer) AddRule(_ context.Context, orgID string, contextID string, rule models.Rule) error {
-	rk := ruleKey(orgID, contextID, rule.ID)
-	ruleJson, err := json.Marshal(rule)
-	if err != nil {
+func (b *buntdbContainer) RemoveRule(_ context.Context, orgID string, contextID string, ruleID string) error {
+	rk := ruleKey(orgID, contextID, ruleID)
+	return b.db.Update(func(tx *buntdb.Tx) error {
+		oldVal, err := tx.Delete(rk)
+		if err == nil {
+			b.logger.Info("Successfully removed rule from context.", zap.String("key", rk), zap.String("value", oldVal))
+		}
 		return err
+	})
+}
+
+func (b *buntdbContainer) ReplaceRule(_ context.Context, orgID string, contextID string, rule models.Rule) error {
+	rk := ruleKey(orgID, contextID, rule.ID)
+	ruleJSON, jsonErr := json.Marshal(rule)
+	if jsonErr != nil {
+		return jsonErr
 	}
-	err = b.db.Update(func(tx *buntdb.Tx) error {
-		_, _, txErr := tx.Set(rk, string(ruleJson), nil)
-		if txErr != nil {
-			return txErr
+	return b.db.Update(func(tx *buntdb.Tx) error {
+		if oldVal, replaced, err := tx.Set(rk, string(ruleJSON), nil); replaced {
+			b.logger.Info("Successfully updated rule in context.", zap.String("key", rk), zap.String("old", oldVal), zap.String("new", string(ruleJSON)))
+		} else {
+			return err
+		}
+
+		return nil
+	})
+}
+
+func (b *buntdbContainer) Exists(_ context.Context, orgID string, contextID string, ruleID string) (exists bool, err error) {
+	err = b.db.View(func(tx *buntdb.Tx) error {
+		_, ierr := tx.Get(ruleKey(orgID, contextID, ruleID), true)
+		switch {
+		case errors.Is(ierr, buntdb.ErrNotFound):
+			exists = false
+		case err == nil:
+			exists = true
+		default:
+			return ierr
 		}
 		return nil
 	})
-
-	return err
+	return
 }
 
-func (b *buntdbContainer) Close() error {
-	return b.db.Close()
+func (b *buntdbContainer) GetAccessToken(_ context.Context, orgID string) (*models.TokenPair, error) {
+	atKey := fmt.Sprintf("access:%s", orgID)
+
+	val := ""
+	err := b.db.View(func(tx *buntdb.Tx) error {
+		v, ierr := tx.Get(atKey)
+		if ierr != nil {
+			return ierr
+		}
+		val = v
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if val == "" {
+		return nil, fmt.Errorf("tokenPair not found")
+	}
+
+	tp := &models.TokenPair{}
+	if err = json.Unmarshal([]byte(val), tp); err != nil {
+		return nil, fmt.Errorf("failed to read tokenPair: %w", err)
+	}
+
+	return tp, nil
+}
+
+func (b *buntdbContainer) SaveAccessToken(_ context.Context, orgID string, tokenPair *models.TokenPair) error {
+	atKey := fmt.Sprintf("access:%s", orgID)
+
+	bts, err := json.Marshal(tokenPair)
+	if err != nil {
+		return err
+	}
+	return b.db.Update(func(tx *buntdb.Tx) error {
+		_, _, ierr := tx.Set(atKey, string(bts), nil)
+		return ierr
+	})
 }
 
 func (b *buntdbContainer) createIndices() {

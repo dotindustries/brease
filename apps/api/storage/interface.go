@@ -7,8 +7,8 @@ import (
 )
 
 type Database interface {
-	AddRule(ctx context.Context, ownerID string, contextID string, rule models.Rule) error
 	Close() error
+	AddRule(ctx context.Context, ownerID string, contextID string, rule models.Rule) error
 	Rules(ctx context.Context, ownerID string, contextID string) ([]models.Rule, error)
 	RemoveRule(ctx context.Context, ownerID string, contextID string, ruleID string) error
 	ReplaceRule(ctx context.Context, ownerID string, contextID string, rule models.Rule) error

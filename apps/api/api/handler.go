@@ -26,6 +26,6 @@ func NewHandler(db storage.Database, c cache.Cache, logger *zap.Logger) *BreaseH
 		db:        db,
 		logger:    logger,
 		assembler: code.NewAssembler(logger, c),
-		compiler:  code.NewCompiler(logger, c),
+		compiler:  code.NewCompiler(logger),
 	}
 }

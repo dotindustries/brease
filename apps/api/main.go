@@ -229,7 +229,7 @@ func newApp(db storage.Database, logger *zap.Logger) *fizz.Fizz {
 }
 
 func otelServiceName() string {
-	return env.Getenv("SERVICE_NAME", "")
+	return env.Getenv("OTEL_SERVICE_NAME", "")
 }
 
 func initOTELTracer(logger *zap.Logger) func(context.Context) error {
@@ -237,7 +237,7 @@ func initOTELTracer(logger *zap.Logger) func(context.Context) error {
 	serviceVersion := env.Getenv("OTEL_VERSION", "0.0.1")
 	serviceEnv := env.Getenv("OTEL_ENV", "dev")
 	otelCollectorURL := env.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "")
-	otelInsecure := env.Getenv("INSECURE_MODE", "")
+	otelInsecure := env.Getenv("OTEL_INSECURE_MODE", "")
 	accessToken := env.Getenv("OTEL_ACCESS_TOKEN", "")
 
 	if serviceName == "" {

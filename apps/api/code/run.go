@@ -44,7 +44,7 @@ func (r *Run) Execute(ctx context.Context, script *Script) ([]models.EvaluationR
 	}
 	if err = c.RunContext(ctx); err != nil {
 		r.logger.Error("Failed to execute run", zap.Error(err))
-		return nil, errors.Errorf("failed to execute run: %v", err)
+		return nil, err
 	}
 	r.logger.Info("Run execution finished", zap.Duration("time", time.Since(start)))
 	resVar := script.compiled.Get(resultVariable)

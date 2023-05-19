@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"go.opentelemetry.io/otel/propagation"
+	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"io"
 	"log"
 	"net/http"
@@ -224,8 +226,11 @@ func otelServiceName() string {
 
 func initOTELTracer(logger *zap.Logger) func(context.Context) error {
 	serviceName := otelServiceName()
+	serviceVersion := env.Getenv("OTEL_VERSION", "0.0.1")
+	serviceEnv := env.Getenv("OTEL_ENV", "dev")
 	otelCollectorURL := env.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "")
 	otelInsecure := env.Getenv("INSECURE_MODE", "")
+	accessToken := env.Getenv("OTEL_ACCESS_TOKEN", "")
 
 	if serviceName == "" {
 		serviceName = "brease"
@@ -245,17 +250,25 @@ func initOTELTracer(logger *zap.Logger) func(context.Context) error {
 			logger.Debug("OTLP setup finished with stdout tracer")
 		}
 	} else {
-		secureOption := otlptracegrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, ""))
+		securityOption := otlptracegrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, ""))
 		if len(otelInsecure) > 0 {
-			secureOption = otlptracegrpc.WithInsecure()
+			securityOption = otlptracegrpc.WithInsecure()
 		}
 		var err error
+		opts := []otlptracegrpc.Option{
+			securityOption,
+			otlptracegrpc.WithEndpoint(otelCollectorURL),
+		}
+
+		if accessToken != "" {
+			opts = append(opts, otlptracegrpc.WithHeaders(map[string]string{
+				"lightstep-access-token": accessToken,
+			}))
+		}
+
 		exporter, err = otlptrace.New(
 			context.Background(),
-			otlptracegrpc.NewClient(
-				secureOption,
-				otlptracegrpc.WithEndpoint(otelCollectorURL),
-			),
+			otlptracegrpc.NewClient(opts...),
 		)
 		if err != nil {
 			logger.Fatal("failed to connect to OTLP tracer", zap.Error(err))
@@ -264,23 +277,31 @@ func initOTELTracer(logger *zap.Logger) func(context.Context) error {
 		}
 	}
 
-	resources, err := resource.New(
-		context.Background(),
-		resource.WithAttributes(
-			attribute.String("service.name", serviceName),
+	resources, err := resource.Merge(
+		resource.Default(),
+		resource.NewWithAttributes(
+			semconv.SchemaURL,
+			semconv.ServiceNameKey.String(serviceName),
+			semconv.ServiceVersionKey.String(serviceVersion),
 			attribute.String("library.language", "go"),
+			attribute.String("environment", serviceEnv),
 		),
 	)
 	if err != nil {
-		logger.Error("Could not set resources: ", zap.Error(err))
+		logger.Fatal("Could not set resources: ", zap.Error(err))
 	}
 
-	otel.SetTracerProvider(
-		sdktrace.NewTracerProvider(
-			sdktrace.WithSampler(sdktrace.AlwaysSample()),
-			sdktrace.WithBatcher(exporter),
-			sdktrace.WithResource(resources),
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithSampler(sdktrace.AlwaysSample()),
+		sdktrace.WithBatcher(exporter),
+		sdktrace.WithResource(resources),
+	)
+	otel.SetTracerProvider(tp)
+	otel.SetTextMapPropagator(
+		propagation.NewCompositeTextMapPropagator(
+			propagation.TraceContext{},
+			propagation.Baggage{},
 		),
 	)
-	return exporter.Shutdown
+	return tp.Shutdown
 }

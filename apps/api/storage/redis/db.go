@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/go-redis/redis/extra/redisotel/v8"
 	"github.com/go-redis/redis/v8"
 	"github.com/goccy/go-json"
 	"go.dot.industries/brease/models"
 	"go.dot.industries/brease/storage"
+	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"go.uber.org/zap"
 	"sync"
 )
@@ -25,9 +27,11 @@ func NewDatabase(opts Options) (storage.Database, error) {
 	if err != nil {
 		return nil, err
 	}
+	db := redis.NewClient(opt)
+	db.AddHook(redisotel.NewTracingHook(redisotel.WithAttributes(semconv.NetSockPeerAddrKey.String(opt.Addr))))
 
 	r := &redisContainer{
-		db:     redis.NewClient(opt),
+		db:     db,
 		logger: opts.Logger,
 		rulePool: sync.Pool{
 			New: func() interface{} {

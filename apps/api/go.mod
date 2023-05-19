@@ -10,6 +10,7 @@ require (
 	github.com/gin-contrib/requestid v0.0.6
 	github.com/gin-contrib/zap v0.1.0
 	github.com/gin-gonic/gin v1.8.2
+	github.com/go-redis/redis/extra/redisotel/v8 v8.11.5
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/goccy/go-json v0.10.0
 	github.com/golang-jwt/jwt/v5 v5.0.0-rc.2
@@ -48,6 +49,7 @@ require (
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.11.1 // indirect
+	github.com/go-redis/redis/extra/rediscmd/v8 v8.11.5 // indirect
 	github.com/gofrs/uuid v3.2.0+incompatible // indirect
 	github.com/golang/glog v1.0.0 // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect

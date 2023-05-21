@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"go.dot.industries/brease/storage/redis"
+	trace2 "go.dot.industries/brease/trace"
 	"go.opentelemetry.io/otel/propagation"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"io"
@@ -35,7 +36,6 @@ import (
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc/credentials"
 
-	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
@@ -97,7 +97,7 @@ func newApp(db storage.Database, logger *zap.Logger) *fizz.Fizz {
 	// https://github.com/gin-gonic/gin/blob/master/docs/doc.md#dont-trust-all-proxies
 	_ = r.SetTrustedProxies(nil)
 
-	r.Use(otelgin.Middleware(otelServiceName()))
+	r.Use(trace2.Middleware(otelServiceName()))
 	r.Use(requestid.New())
 	r.Use(stats.RequestStats())
 	r.Use(ginzap.GinzapWithConfig(logger, &ginzap.Config{

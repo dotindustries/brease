@@ -9,7 +9,7 @@ type Target struct {
 	Target string `json:"target" validate:"required"`
 	// TODO: Should be anything
 	// The target value to be set (it is the json serialized representation of the value
-	Value string `json:"targetValue,omitempty"`
+	Value string `json:"value,omitempty"`
 }
 
 type Rule struct {
@@ -59,6 +59,9 @@ const (
 	ConditionDoesNotHaveSuffix ConditionType = "nsx"
 	ConditionInList            ConditionType = "in"
 	ConditionNotInList         ConditionType = "nin"
+	ConditionSome              ConditionType = "some"
+	ConditionAll               ConditionType = "all"
+	ConditionNone              ConditionType = "none"
 	ConditionRegex             ConditionType = "rgx"
 	ConditionNotRegex          ConditionType = "nrgx"
 )

@@ -13,9 +13,9 @@ import (
 
 type EvaluateRulesRequest struct {
 	PathParams
-	Object        map[string]interface{} `json:"object" validate:"required"`
-	OverrideRules []models.Rule          `json:"overrideRules"`
-	OverrideCode  string                 `json:"overrideCode"`
+	Object        interface{}   `json:"object" validate:"required"`
+	OverrideRules []models.Rule `json:"overrideRules"`
+	OverrideCode  string        `json:"overrideCode"`
 }
 
 type EvaluateRulesResponse struct {

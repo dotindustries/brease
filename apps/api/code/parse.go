@@ -67,7 +67,7 @@ func generateCodeForRule(ctx context.Context, args interface{}) (interface{}, er
 	expression := parseExpression(ctx, expr)
 
 	codeSection := fmt.Sprintf(`if %s {
-action("%s", "%s", "%s", "%s")
+	action("%s", "%s", "%s", "%s")
 }`, expression, rule.Action, rule.Target.Type, rule.Target.Target, rule.Target.Value)
 
 	pArgs.appendFn(codeSection, fmt.Sprintf("%s: %s", rule.ID, rule.Description))

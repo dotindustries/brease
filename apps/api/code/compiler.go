@@ -5,6 +5,7 @@ import (
 	"github.com/d5/tengo/v2"
 	"go.opencensus.io/trace"
 	"go.uber.org/zap"
+	"log"
 	"time"
 )
 
@@ -28,7 +29,7 @@ func (c *Compiler) CompileCode(ctx context.Context, codeBlock string) (*Script, 
 		return nil, err
 	}
 
-	return &Script{compiled: compiled}, nil
+	return &Script{compiled: compiled, codeBlock: codeBlock}, nil
 }
 
 func (c *Compiler) compile(_ context.Context, codeBlock string) (*tengo.Compiled, error) {
@@ -38,6 +39,7 @@ func (c *Compiler) compile(_ context.Context, codeBlock string) (*tengo.Compiled
 	start := time.Now()
 	compiled, err := ts.Compile()
 	if err != nil {
+		log.Println(extractCodeSection(err.Error(), codeBlock, 2))
 		c.logger.Error("Failed to compile script", zap.Error(err))
 		return nil, err
 	}

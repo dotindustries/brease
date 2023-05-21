@@ -8,6 +8,7 @@ import (
 	"go.opencensus.io/trace"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"log"
 	"time"
 )
 
@@ -16,7 +17,7 @@ const (
 )
 
 type Run struct {
-	object map[string]interface{}
+	object interface{}
 	logger *zap.Logger
 }
 
@@ -24,7 +25,7 @@ type Object struct {
 	tengo.ObjectImpl
 }
 
-func NewRun(_ context.Context, logger *zap.Logger, object map[string]interface{}) (*Run, error) {
+func NewRun(_ context.Context, logger *zap.Logger, object interface{}) (*Run, error) {
 	return &Run{
 		object: object,
 		logger: logger,
@@ -35,19 +36,20 @@ func (r *Run) Execute(ctx context.Context, script *Script) ([]models.EvaluationR
 	ctx, span := trace.StartSpan(ctx, "exec")
 	defer span.End()
 
-	c := script.compiled.Clone()
+	runner := script.compiled.Clone()
 	start := time.Now()
-	err := c.Set(objectVariable, r.object)
+	err := runner.Set(objectVariable, r.object)
 	if err != nil {
 		r.logger.Error("Failed to set object on script", zap.Error(err))
 		return nil, errors.Errorf("failed to setup run: %v", err)
 	}
-	if err = c.RunContext(ctx); err != nil {
+	if err = runner.RunContext(ctx); err != nil {
+		log.Println(extractCodeSection(err.Error(), script.codeBlock, 2))
 		r.logger.Error("Failed to execute run", zap.Error(err))
 		return nil, err
 	}
 	r.logger.Info("Run execution finished", zap.Duration("time", time.Since(start)))
-	resVar := script.compiled.Get(resultVariable)
+	resVar := runner.Get(resultVariable)
 	results := r.parseResults(resVar)
 	r.logger.Debug("Run results", zap.Array("results", resultsArray(results)))
 	return results, nil
@@ -66,14 +68,18 @@ func (r resultsArray) MarshalLogArray(arr zapcore.ArrayEncoder) error {
 
 func (r *Run) parseResults(result *tengo.Variable) (results []models.EvaluationResult) {
 	// transform results for sending back
-	rawResults := result.Array()
-	for _, raw := range rawResults {
-		r := raw.(map[string]interface{})
+	for _, raw := range result.Array() {
+		res, ok := raw.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		// if result structure changes to dynamic value types, use
+		//   github.com/mitchellh/mapstructure
 		results = append(results, models.EvaluationResult{
-			Action:     r["action"].(string),
-			TargetID:   r["targetID"].(string),
-			TargetType: r["targetType"].(string),
-			Value:      r["value"].(string),
+			Action:     res["action"].(string),
+			TargetID:   res["targetID"].(string),
+			TargetType: res["targetType"].(string),
+			Value:      res["value"].(string),
 		})
 	}
 	return

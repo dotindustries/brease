@@ -3,7 +3,7 @@ package code
 import (
 	"context"
 	"github.com/d5/tengo/v2"
-	"go.opencensus.io/trace"
+	"go.dot.industries/brease/trace"
 	"go.uber.org/zap"
 	"log"
 	"time"
@@ -20,7 +20,7 @@ func NewCompiler(logger *zap.Logger) *Compiler {
 }
 
 func (c *Compiler) CompileCode(ctx context.Context, codeBlock string) (*Script, error) {
-	ctx, span := trace.StartSpan(ctx, "code")
+	ctx, span := trace.Tracer.Start(ctx, "compile")
 	defer span.End()
 
 	compiled, err := c.compile(ctx, codeBlock)

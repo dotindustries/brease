@@ -6,7 +6,7 @@ import (
 	"go.dot.industries/brease/cache"
 	"go.dot.industries/brease/cache/memory"
 	"go.dot.industries/brease/pb"
-	"go.opencensus.io/trace"
+	"go.dot.industries/brease/trace"
 )
 
 var localCache = memory.New()
@@ -17,7 +17,7 @@ func IsConfigured() bool {
 }
 
 func LookupReferenceValue(ctx context.Context, ref *pb.ConditionBaseRef) []byte {
-	ctx, span := trace.StartSpan(ctx, "reference-query")
+	ctx, span := trace.Tracer.Start(ctx, "reference-query")
 	defer span.End()
 
 	key := cache.SimpleHash(ref)

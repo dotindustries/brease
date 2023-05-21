@@ -6,7 +6,7 @@ import (
 
 	"github.com/dgraph-io/ristretto"
 	"go.dot.industries/brease/cache"
-	"go.opencensus.io/trace"
+	"go.dot.industries/brease/trace"
 )
 
 type cacheContainer struct {
@@ -33,7 +33,7 @@ func New() cache.Cache {
 }
 
 func (c *cacheContainer) Get(ctx context.Context, key string) any {
-	_, span := trace.StartSpan(ctx, "cache")
+	_, span := trace.Tracer.Start(ctx, "cache")
 	defer span.End()
 
 	if script, ok := c.ch.Get(key); ok {
@@ -43,7 +43,7 @@ func (c *cacheContainer) Get(ctx context.Context, key string) any {
 }
 
 func (c *cacheContainer) Set(ctx context.Context, key string, value any) bool {
-	_, span := trace.StartSpan(ctx, "cache")
+	_, span := trace.Tracer.Start(ctx, "cache")
 	defer span.End()
 
 	return c.ch.SetWithTTL(key, value, 0, c.ttl)

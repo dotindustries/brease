@@ -13,6 +13,8 @@ import (
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
+var Tracer = otel.Tracer("gin-server")
+
 type config struct {
 	TracerProvider    oteltrace.TracerProvider
 	Propagators       propagation.TextMapPropagator
@@ -34,6 +36,7 @@ func (o optionFunc) apply(c *config) {
 // Middleware returns middleware that will trace incoming requests.
 // The service parameter should describe the name of the (virtual)
 // server handling the request.
+// TODO: this is not reporting anything neither to remote nor to stdout
 func Middleware(service string, opts ...Option) gin.HandlerFunc {
 	cfg := config{}
 	for _, opt := range opts {
@@ -60,7 +63,6 @@ func Middleware(service string, opts ...Option) gin.HandlerFunc {
 		}()
 		ctx := cfg.Propagators.Extract(savedCtx, propagation.HeaderCarrier(c.Request.Header))
 		var attr []trace2.Attribute
-
 		for _, kv := range httpconv.ServerRequest(service, c.Request) {
 			attr = append(attr, translateAttribute(kv))
 		}

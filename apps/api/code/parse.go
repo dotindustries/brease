@@ -8,8 +8,8 @@ import (
 
 	"go.dot.industries/brease/models"
 	"go.dot.industries/brease/pb"
+	"go.dot.industries/brease/trace"
 	"go.dot.industries/brease/worker"
-	"go.opencensus.io/trace"
 )
 
 type parserArgs struct {
@@ -18,7 +18,7 @@ type parserArgs struct {
 }
 
 func (a *Assembler) parseRules(ctx context.Context, rules []models.Rule) (string, error) {
-	ctx, span := trace.StartSpan(ctx, "parse")
+	ctx, span := trace.Tracer.Start(ctx, "parse")
 	defer span.End()
 
 	code := strings.Builder{}

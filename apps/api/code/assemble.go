@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"go.dot.industries/brease/cache"
 	"go.dot.industries/brease/models"
-	"go.opencensus.io/trace"
+	"go.dot.industries/brease/trace"
 	"go.uber.org/zap"
 )
 
@@ -22,7 +22,7 @@ func NewAssembler(logger *zap.Logger, c cache.Cache) *Assembler {
 }
 
 func (a *Assembler) BuildCode(ctx context.Context, rules []models.Rule) (string, error) {
-	ctx, span := trace.StartSpan(ctx, "code")
+	ctx, span := trace.Tracer.Start(ctx, "code")
 	defer span.End()
 
 	key := cache.SimpleHash(rules)
@@ -52,7 +52,7 @@ func (a *Assembler) BuildCode(ctx context.Context, rules []models.Rule) (string,
 }
 
 func (a *Assembler) assemble(ctx context.Context, rules []models.Rule) (string, error) {
-	ctx, span := trace.StartSpan(ctx, "assemble")
+	ctx, span := trace.Tracer.Start(ctx, "assemble")
 	defer span.End()
 
 	relevantRules := make([]models.Rule, 0, len(rules))

@@ -5,7 +5,7 @@ import (
 	"github.com/d5/tengo/v2"
 	"github.com/juju/errors"
 	"go.dot.industries/brease/models"
-	"go.opencensus.io/trace"
+	"go.dot.industries/brease/trace"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"log"
@@ -33,7 +33,7 @@ func NewRun(_ context.Context, logger *zap.Logger, object interface{}) (*Run, er
 }
 
 func (r *Run) Execute(ctx context.Context, script *Script) ([]models.EvaluationResult, error) {
-	ctx, span := trace.StartSpan(ctx, "exec")
+	ctx, span := trace.Tracer.Start(ctx, "exec")
 	defer span.End()
 
 	runner := script.compiled.Clone()

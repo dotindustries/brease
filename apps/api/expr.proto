@@ -8,8 +8,8 @@ package brease;
 //
 // Data retrieval requires dalí integration.
 // Uses a dref format based on the dalí project.
-// Stringified format: `/$/key=>/~/${dataSource}/${table}/${searchColumn}/${resultColumn}`
-// Object format: { src: `/$/key`, dst: `/~/${dataSource}/${table}/${searchColumn}/${resultColumn}` }
+// Stringified format: `$/map[0]/prop=>/~/datasource/table/searchExpr/selectExpr`
+// Object format: { src: `$/map[0]/prop`, dst: `/~/datasource/table/searchExpr/selectExpr` }
 message ConditionBaseRef {
   string src = 1;
   string dst = 2;
@@ -22,6 +22,7 @@ message Condition {
     // Holds a direct object key to be used the value extraction
     string key = 1;
 
+    // Holds a dref reference (see dalí project for details)
     ConditionBaseRef ref = 2;
   }
   // The type of this condition, based on the internally defined ConditionType
@@ -31,6 +32,7 @@ message Condition {
     string stringValue = 4;
     bool boolValue = 5;
     int32 intValue = 6;
+    bytes byteValue = 7;
   };
 }
 

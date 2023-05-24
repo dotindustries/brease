@@ -37,5 +37,8 @@
     "test_types": "tsc",
     "test_lib": "jest --config ./jest.config.ts",
     "test_lib_dev": "pnpm run test:lib --watch"
+  },
+  "dependencies": {
+    "brease-sdk": "^0.3.0"
   }
 }

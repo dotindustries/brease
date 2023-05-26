@@ -76,7 +76,7 @@ func (b *BreaseHandler) RefreshTokenPair(c *gin.Context, r *RefreshTokenPairRequ
 			break
 		}
 	}
-	if !unknown {
+	if unknown {
 		return nil, errors.BadRequestf("unknown refreshToken")
 	}
 

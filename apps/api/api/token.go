@@ -74,7 +74,7 @@ func (b *BreaseHandler) RefreshTokenPair(c *gin.Context, r *RefreshTokenPairRequ
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok || token.Valid {
+	if !ok || !token.Valid {
 		return nil, errors.BadRequestf("invalid refreshToken")
 	}
 

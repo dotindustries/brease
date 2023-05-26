@@ -4,14 +4,15 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"go.dot.industries/brease/storage/redis"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
-	"go.opentelemetry.io/otel/propagation"
-	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"io"
 	"log"
 	"net/http"
 	"time"
+
+	"go.dot.industries/brease/storage/redis"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
+	"go.opentelemetry.io/otel/propagation"
+	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 
 	"github.com/fvbock/endless"
 	"github.com/gin-contrib/requestid"
@@ -196,8 +197,8 @@ func newApp(db storage.Database, logger *zap.Logger) *fizz.Fizz {
 		fizz.Description("Refresh the short lived access token for web access"),
 	}, tonic.Handler(bh.RefreshTokenPair, 200))
 
-	grp := f.Group("/:contextID", "contextID", "Rule domain context")
-	grp.Use(auth.ApiKeyAuthMiddleware(logger))
+	grp := f.Group("/:contextID", "", "Rule domain context")
+	grp.Use(auth.APIKeyAuthMiddleware(logger))
 
 	grp.GET("/rules", []fizz.OperationOption{
 		fizz.ID("getAllRules"),

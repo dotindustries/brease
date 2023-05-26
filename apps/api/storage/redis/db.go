@@ -170,10 +170,10 @@ func (r *redisContainer) GetAccessTokens(ctx context.Context, ownerID string) (t
 
 	bts, err := r.db.Get(ctx, atKey).Bytes()
 	if err != nil {
-		return nil, fmt.Errorf("tokenPair not found")
+		return nil, fmt.Errorf("tokenPair not found: %w", err)
 	}
 
-	if err = json.Unmarshal(bts, tp); err != nil {
+	if err = json.Unmarshal(bts, &tp); err != nil {
 		return nil, fmt.Errorf("failed to read tokenPairs: %v", err)
 	}
 	return tp, nil

@@ -190,7 +190,7 @@ func newApp(db storage.Database, logger *zap.Logger) *fizz.Fizz {
 		fizz.ID("getToken"),
 		fizz.Description("Generate a short lived access token for web access"),
 		fizz.Security(security),
-	}, tonic.Handler(bh.GenerateTokenPair, 200), auth.ApiKeyAuthMiddleware(logger))
+	}, auth.APIKeyAuthMiddleware(logger), tonic.Handler(bh.GenerateTokenPair, 200))
 	f.POST("/refreshToken", []fizz.OperationOption{
 		fizz.ID("refreshToken"),
 		fizz.Description("Refresh the short lived access token for web access"),

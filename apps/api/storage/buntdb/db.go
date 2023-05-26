@@ -137,11 +137,31 @@ func (b *buntdbContainer) Exists(_ context.Context, orgID string, contextID stri
 	return
 }
 
-func (b *buntdbContainer) GetAccessToken(_ context.Context, orgID string) (*models.TokenPair, error) {
+func (b *buntdbContainer) SaveAccessToken(c context.Context, orgID string, tokenPair models.TokenPair) error {
+	atKey := fmt.Sprintf("access:%s", orgID)
+
+	tokens, err := b.GetAccessTokens(c, orgID)
+	if err != nil && !errors.Is(err, buntdb.ErrNotFound) {
+		return err
+	}
+
+	tokens = append(tokens, tokenPair)
+
+	bts, err := json.Marshal(tokens)
+	if err != nil {
+		return err
+	}
+	return b.db.Update(func(tx *buntdb.Tx) error {
+		_, _, ierr := tx.Set(atKey, string(bts), nil)
+		return ierr
+	})
+}
+
+func (b *buntdbContainer) GetAccessTokens(_ context.Context, orgID string) (tp []models.TokenPair, err error) {
 	atKey := fmt.Sprintf("access:%s", orgID)
 
 	val := ""
-	err := b.db.View(func(tx *buntdb.Tx) error {
+	err = b.db.View(func(tx *buntdb.Tx) error {
 		v, ierr := tx.Get(atKey)
 		if ierr != nil {
 			return ierr
@@ -157,25 +177,11 @@ func (b *buntdbContainer) GetAccessToken(_ context.Context, orgID string) (*mode
 		return nil, fmt.Errorf("tokenPair not found")
 	}
 
-	tp := &models.TokenPair{}
-	if err = json.Unmarshal([]byte(val), tp); err != nil {
-		return nil, fmt.Errorf("failed to read tokenPair: %w", err)
+	if err = json.Unmarshal([]byte(val), &tp); err != nil {
+		return nil, fmt.Errorf("failed to read tokenPairs: %w", err)
 	}
 
 	return tp, nil
-}
-
-func (b *buntdbContainer) SaveAccessToken(_ context.Context, orgID string, tokenPair *models.TokenPair) error {
-	atKey := fmt.Sprintf("access:%s", orgID)
-
-	bts, err := json.Marshal(tokenPair)
-	if err != nil {
-		return err
-	}
-	return b.db.Update(func(tx *buntdb.Tx) error {
-		_, _, ierr := tx.Set(atKey, string(bts), nil)
-		return ierr
-	})
 }
 
 func (b *buntdbContainer) createIndices() {

@@ -27,8 +27,8 @@ func (wp WorkerPool) Run(ctx context.Context) {
 	for i := 0; i < wp.workersCount; i++ {
 		wg.Add(1)
 		// fan out worker goroutines
-		//reading from jobs channel and
-		//pushing calcs into results channel
+		// reading from jobs channel and
+		// pushing calcs into results channel
 		go worker(ctx, &wg, wp.jobs, wp.results)
 	}
 

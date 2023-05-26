@@ -147,10 +147,17 @@ func (r *redisContainer) Exists(ctx context.Context, ownerID string, contextID s
 	return true, nil
 }
 
-func (r *redisContainer) SaveAccessToken(ctx context.Context, ownerID string, tokenPair *models.TokenPair) error {
+func (r *redisContainer) SaveAccessToken(ctx context.Context, ownerID string, tokenPair models.TokenPair) error {
 	atKey := fmt.Sprintf("access:%s", ownerID)
 
-	bts, err := json.Marshal(tokenPair)
+	tokens, err := r.GetAccessTokens(ctx, ownerID)
+	if err != nil && !errors.Is(err, redis.Nil) {
+		return err
+	}
+
+	tokens = append(tokens, tokenPair)
+
+	bts, err := json.Marshal(tokens)
 	if err != nil {
 		return err
 	}
@@ -158,7 +165,7 @@ func (r *redisContainer) SaveAccessToken(ctx context.Context, ownerID string, to
 	return r.db.Set(ctx, atKey, bts, 0).Err()
 }
 
-func (r *redisContainer) GetAccessToken(ctx context.Context, ownerID string) (*models.TokenPair, error) {
+func (r *redisContainer) GetAccessTokens(ctx context.Context, ownerID string) (tp []models.TokenPair, err error) {
 	atKey := fmt.Sprintf("access:%s", ownerID)
 
 	bts, err := r.db.Get(ctx, atKey).Bytes()
@@ -166,9 +173,8 @@ func (r *redisContainer) GetAccessToken(ctx context.Context, ownerID string) (*m
 		return nil, fmt.Errorf("tokenPair not found")
 	}
 
-	tp := &models.TokenPair{}
 	if err = json.Unmarshal(bts, tp); err != nil {
-		return nil, fmt.Errorf("failed to read tokenPair: %v", err)
+		return nil, fmt.Errorf("failed to read tokenPairs: %v", err)
 	}
 	return tp, nil
 }

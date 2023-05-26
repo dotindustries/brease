@@ -13,6 +13,6 @@ type Database interface {
 	RemoveRule(ctx context.Context, ownerID string, contextID string, ruleID string) error
 	ReplaceRule(ctx context.Context, ownerID string, contextID string, rule models.Rule) error
 	Exists(ctx context.Context, ownerID string, contextID string, ruleID string) (exists bool, err error)
-	SaveAccessToken(ctx context.Context, ownerID string, tokenPair *models.TokenPair) error
-	GetAccessToken(ctx context.Context, ownerID string) (*models.TokenPair, error)
+	SaveAccessToken(ctx context.Context, ownerID string, tokenPair models.TokenPair) error
+	GetAccessTokens(ctx context.Context, ownerID string) ([]models.TokenPair, error)
 }

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"go.dot.industries/brease/auth"
 	"go.dot.industries/brease/cache"
 	"go.dot.industries/brease/code"
 	"go.dot.industries/brease/storage"
@@ -16,9 +17,11 @@ type BreaseHandler struct {
 	logger    *zap.Logger
 	assembler *code.Assembler
 	compiler  *code.Compiler
+	token     auth.Token
 }
 
 func NewHandler(db storage.Database, c cache.Cache, logger *zap.Logger) *BreaseHandler {
+
 	if db == nil {
 		panic("database cannot be nil")
 	}
@@ -27,5 +30,6 @@ func NewHandler(db storage.Database, c cache.Cache, logger *zap.Logger) *BreaseH
 		logger:    logger,
 		assembler: code.NewAssembler(logger, c),
 		compiler:  code.NewCompiler(logger),
+		token:     auth.NewToken(logger),
 	}
 }

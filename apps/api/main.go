@@ -167,24 +167,29 @@ func newApp(db storage.Database, logger *zap.Logger) *fizz.Fizz {
 			URL:   "https://app.brease.run/support",
 			Email: "support@dot.industries",
 		},
+		License: &openapi.License{
+			Name: "MIT License",
+			URL:  "https://opensource.org/licenses/MIT",
+		},
 	}
 	f.Generator().SetServers([]*openapi.Server{
 		{URL: "http://localhost:4400", Description: "Development server"},
 		{URL: "https://api.brease.run", Description: "Cloud hosted production server"},
 	})
 	f.Generator().SetSecuritySchemes(map[string]*openapi.SecuritySchemeOrRef{
-		"apiToken": {
+		"JWTAuth": {
 			SecurityScheme: &openapi.SecurityScheme{
 				Type:         "http",
 				Scheme:       "bearer",
 				BearerFormat: "JWT",
+				Description:  "Example: \n> Authorization: JWT <token>",
 			},
 		},
 	})
 	f.GET("/openapi.json", nil, f.OpenAPI(infos, "json"))
 
 	security := &openapi.SecurityRequirement{
-		"apiToken": []string{},
+		"JWTAuth": []string{},
 	}
 
 	f.POST("/token", []fizz.OperationOption{

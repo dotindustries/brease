@@ -192,12 +192,13 @@ func newApp(db storage.Database, logger *zap.Logger) *fizz.Fizz {
 		"JWTAuth": []string{},
 	}
 
-	f.POST("/token", []fizz.OperationOption{
+	authGrp := f.Group("/", "", "Authentication endpoints")
+	authGrp.POST("/token", []fizz.OperationOption{
 		fizz.ID("getToken"),
 		fizz.Description("Generate a short lived access token for web access"),
 		fizz.Security(security),
 	}, auth.APIKeyAuthMiddleware(logger), tonic.Handler(bh.GenerateTokenPair, 200))
-	f.POST("/refreshToken", []fizz.OperationOption{
+	authGrp.POST("/refreshToken", []fizz.OperationOption{
 		fizz.ID("refreshToken"),
 		fizz.Description("Refresh the short lived access token for web access"),
 	}, tonic.Handler(bh.RefreshTokenPair, 200))

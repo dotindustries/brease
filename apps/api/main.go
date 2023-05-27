@@ -192,7 +192,7 @@ func newApp(db storage.Database, logger *zap.Logger) *fizz.Fizz {
 		"JWTAuth": []string{},
 	}
 
-	authGrp := f.Group("/", "", "Authentication endpoints")
+	authGrp := f.Group("/", "auth", "Authentication endpoints")
 	authGrp.POST("/token", []fizz.OperationOption{
 		fizz.ID("getToken"),
 		fizz.Description("Generate a short lived access token for web access"),

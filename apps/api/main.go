@@ -59,7 +59,7 @@ func main() {
 	logger, _, flush := log2.Logger()
 	defer flush()
 
-	cleanup := initOTELTracer(logger)
+	cleanup := tracer(logger)
 	defer cleanup(context.Background())
 
 	db, err := setupStorage(logger)
@@ -154,45 +154,17 @@ func newApp(db storage.Database, logger *zap.Logger) *fizz.Fizz {
 		c.IndentedJSON(http.StatusOK, stats.Report())
 	})
 
-	bh := api.NewHandler(db, memory.New(), logger)
+	f := newOpenapi(r)
+	f.GET("/openapi.json", nil, api.OpenAPISpecHandler(f, logger))
 
+	bh := api.NewHandler(db, memory.New(), logger)
 	tonic.SetErrorHook(jujerr.ErrHook)
-	f := fizz.NewFromEngine(r)
-	infos := &openapi.Info{
-		Title:       "brease API",
-		Description: `Business rule engine as a service API spec.`,
-		Version:     "0.1.0",
-		Contact: &openapi.Contact{
-			Name:  "Brease API Support",
-			URL:   "https://app.brease.run/support",
-			Email: "support@dot.industries",
-		},
-		License: &openapi.License{
-			Name: "MIT License",
-			URL:  "https://opensource.org/licenses/MIT",
-		},
-	}
-	f.Generator().SetServers([]*openapi.Server{
-		{URL: "http://localhost:4400", Description: "Development server"},
-		{URL: "https://api.brease.run", Description: "Cloud hosted production server"},
-	})
-	f.Generator().SetSecuritySchemes(map[string]*openapi.SecuritySchemeOrRef{
-		"JWTAuth": {
-			SecurityScheme: &openapi.SecurityScheme{
-				Type:         "http",
-				Scheme:       "bearer",
-				BearerFormat: "JWT",
-				Description:  "Example: \n> Authorization: JWT <token>",
-			},
-		},
-	})
-	f.GET("/openapi.json", nil, f.OpenAPI(infos, "json"))
 
 	security := &openapi.SecurityRequirement{
 		"JWTAuth": []string{},
 	}
 
-	authGrp := f.Group("/", "auth", "Authentication endpoints")
+	authGrp := f.Group("/", "auth", "Authentication")
 	authGrp.POST("/token", []fizz.OperationOption{
 		fizz.ID("getToken"),
 		fizz.Description("Generate a short lived access token for web access"),
@@ -203,7 +175,7 @@ func newApp(db storage.Database, logger *zap.Logger) *fizz.Fizz {
 		fizz.Description("Refresh the short lived access token for web access"),
 	}, tonic.Handler(bh.RefreshTokenPair, 200))
 
-	grp := f.Group("/:contextID", "", "Rule domain context")
+	grp := f.Group("/:contextID", "context", "Ruleset domain context")
 	grp.Use(auth.APIKeyAuthMiddleware(logger))
 
 	grp.GET("/rules", []fizz.OperationOption{
@@ -235,11 +207,44 @@ func newApp(db storage.Database, logger *zap.Logger) *fizz.Fizz {
 	return f
 }
 
+func newOpenapi(r *gin.Engine) *fizz.Fizz {
+	f := fizz.NewFromEngine(r)
+	f.Generator().SetInfo(&openapi.Info{
+		Title:       "brease API",
+		Description: `Business rule engine as a service`,
+		Version:     "0.1.0",
+		Contact: &openapi.Contact{
+			Name:  "Support",
+			URL:   "https://app.brease.run/support",
+			Email: "support@dot.industries",
+		},
+		License: &openapi.License{
+			Name: "MIT License",
+			URL:  "https://opensource.org/licenses/MIT",
+		},
+	})
+	f.Generator().SetServers([]*openapi.Server{
+		{URL: "https://api.brease.run", Description: "Cloud hosted production server"},
+		{URL: "http://localhost:4400", Description: "Development server"},
+	})
+	f.Generator().SetSecuritySchemes(map[string]*openapi.SecuritySchemeOrRef{
+		"JWTAuth": {
+			SecurityScheme: &openapi.SecurityScheme{
+				Type:         "http",
+				Scheme:       "bearer",
+				BearerFormat: "JWT",
+				Description:  "Example header: \n> Authorization: JWT <token>",
+			},
+		},
+	})
+	return f
+}
+
 func otelServiceName() string {
 	return env.Getenv("OTEL_SERVICE_NAME", "")
 }
 
-func initOTELTracer(logger *zap.Logger) func(context.Context) error {
+func tracer(logger *zap.Logger) func(context.Context) error {
 	serviceName := otelServiceName()
 	serviceVersion := env.Getenv("OTEL_VERSION", "0.0.1")
 	serviceEnv := env.Getenv("OTEL_ENV", "dev")

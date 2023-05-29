@@ -101,33 +101,7 @@ func newApp(db storage.Database, logger *zap.Logger) *fizz.Fizz {
 	r.Use(otelgin.Middleware(otelServiceName()))
 	r.Use(requestid.New())
 	r.Use(stats.RequestStats())
-	r.Use(ginzap.GinzapWithConfig(logger, &ginzap.Config{
-		UTC:        true,
-		TimeFormat: time.RFC3339,
-		Context: func(c *gin.Context) []zapcore.Field {
-			var fields []zapcore.Field
-			// log request ID
-			if requestID := c.Writer.Header().Get("X-Request-ID"); requestID != "" {
-				fields = append(fields, zap.String("request_id", requestID))
-			}
-
-			// log trace and span ID
-			if spanCtx := trace.SpanFromContext(c.Request.Context()).SpanContext(); spanCtx.IsValid() {
-				fields = append(fields, zap.String("trace_id", spanCtx.TraceID().String()))
-				fields = append(fields, zap.String("span_id", spanCtx.SpanID().String()))
-			}
-
-			// log request body
-			var body []byte
-			var buf bytes.Buffer
-			tee := io.TeeReader(c.Request.Body, &buf)
-			body, _ = io.ReadAll(tee)
-			c.Request.Body = io.NopCloser(&buf)
-			fields = append(fields, zap.String("body", string(body)))
-
-			return fields
-		},
-	}))
+	r.Use(ginzap.GinzapWithConfig(logger, ginLoggerConfig()))
 	r.Use(gin.Recovery())
 
 	speakeasyAPIKey := env.Getenv("SPEAKEASY_API_KEY", "")
@@ -205,6 +179,36 @@ func newApp(db storage.Database, logger *zap.Logger) *fizz.Fizz {
 	}, tonic.Handler(bh.EvaluateRules, 200))
 
 	return f
+}
+
+func ginLoggerConfig() *ginzap.Config {
+	return &ginzap.Config{
+		UTC:        true,
+		TimeFormat: time.RFC3339,
+		Context: func(c *gin.Context) []zapcore.Field {
+			var fields []zapcore.Field
+			// log request ID
+			if requestID := c.Writer.Header().Get("X-Request-ID"); requestID != "" {
+				fields = append(fields, zap.String("request_id", requestID))
+			}
+
+			// log trace and span ID
+			if spanCtx := trace.SpanFromContext(c.Request.Context()).SpanContext(); spanCtx.IsValid() {
+				fields = append(fields, zap.String("trace_id", spanCtx.TraceID().String()))
+				fields = append(fields, zap.String("span_id", spanCtx.SpanID().String()))
+			}
+
+			// log request body
+			var body []byte
+			var buf bytes.Buffer
+			tee := io.TeeReader(c.Request.Body, &buf)
+			body, _ = io.ReadAll(tee)
+			c.Request.Body = io.NopCloser(&buf)
+			fields = append(fields, zap.String("body", string(body)))
+
+			return fields
+		},
+	}
 }
 
 func newOpenapi(r *gin.Engine) *fizz.Fizz {

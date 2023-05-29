@@ -29,16 +29,17 @@ type validateAuthTokenArgs struct {
 }
 
 type validationErr struct {
-	status int
-	error  error
+	Status int
+	Error  error
 }
 
 type validateAuthTokenResult struct {
-	authed bool
-	error  *validationErr
-	token  *jwt.Token
-	userID string
-	orgID  string
+	authed        bool
+	error         *validationErr
+	token         *jwt.Token
+	userID        string
+	orgID         string
+	authenticator string
 }
 
 func APIKeyAuthMiddleware(logger *zap.Logger) gin.HandlerFunc {
@@ -73,13 +74,17 @@ func APIKeyAuthMiddleware(logger *zap.Logger) gin.HandlerFunc {
 		authed, valErr, err := getResult(pool, logger)
 
 		if authed == nil {
+			logger.Warn("All authenticators failed for request.", zap.Any("validationErr", valErr), zap.Error(err))
 			if valErr != nil {
-				_ = c.AbortWithError(valErr.status, valErr.error)
+				_ = c.AbortWithError(valErr.Status, valErr.Error)
 				return
 			}
 			if err != nil {
 				_ = c.AbortWithError(http.StatusUnauthorized, err)
+				return
 			}
+			// if no errors occurred
+			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
 
@@ -127,8 +132,10 @@ func getResult(pool worker.WorkerPool, logger *zap.Logger) (authed *validateAuth
 			firstErr = r.Err
 		}
 		res := r.Value.(validateAuthTokenResult)
-		logger.Debug("Validation result", zap.String("authenticator", string(r.Descriptor.ID)), zap.Any("result", res))
-		if !res.authed {
+		res.authenticator = string(r.Descriptor.ID)
+
+		logger.Debug("Validation result", zap.String("authenticator", string(r.Descriptor.ID)), zap.Bool("success", res.authed))
+		if !res.authed && firstValidationErr == nil {
 			firstValidationErr = res.error
 			continue
 		}
@@ -146,21 +153,16 @@ func getResult(pool worker.WorkerPool, logger *zap.Logger) (authed *validateAuth
 func validateRootAPIKey(_ context.Context, args interface{}) (interface{}, error) {
 	a := args.(validateAuthTokenArgs)
 
-	if a.rootAPIKey == "" {
+	if a.rootAPIKey == "" || strings2.HasPrefix(a.token, "JWT ") {
 		// not configured to authenticate, but no errors
-		return validateAuthTokenResult{}, nil
-	}
-
-	if strings2.HasPrefix(a.token, "JWT ") {
-		// cannot authenticate, but no errors -- is a JWT token
 		return validateAuthTokenResult{}, nil
 	}
 
 	if a.token != a.rootAPIKey {
 		return validateAuthTokenResult{
 			error: &validationErr{
-				status: http.StatusUnauthorized,
-				error:  errors2.Unauthorizedf("Invalid API key"),
+				Status: http.StatusUnauthorized,
+				Error:  errors2.Unauthorizedf("Invalid API key"),
 			},
 		}, nil
 	}
@@ -171,8 +173,8 @@ func validateRootAPIKey(_ context.Context, args interface{}) (interface{}, error
 		return validateAuthTokenResult{
 			authed: false,
 			error: &validationErr{
-				status: http.StatusUnauthorized,
-				error:  errors2.BadRequestf("x-org-id header not set"),
+				Status: http.StatusUnauthorized,
+				Error:  errors2.BadRequestf("x-org-id header not set"),
 			},
 		}, nil
 	}
@@ -194,8 +196,8 @@ func validateJWT(_ context.Context, args interface{}) (interface{}, error) {
 		// cannot authenticate
 		return validateAuthTokenResult{
 			error: &validationErr{
-				status: http.StatusUnauthorized,
-				error:  errors2.Unauthorizedf("API key must be a JWT token"),
+				Status: http.StatusUnauthorized,
+				Error:  errors2.Unauthorizedf("API key must be a JWT token"),
 			},
 		}, nil
 	}
@@ -204,8 +206,8 @@ func validateJWT(_ context.Context, args interface{}) (interface{}, error) {
 	if err != nil {
 		return validateAuthTokenResult{
 			error: &validationErr{
-				status: http.StatusUnauthorized,
-				error:  errors2.BadRequestf("Invalid JWT: %w", err),
+				Status: http.StatusUnauthorized,
+				Error:  errors2.BadRequestf("Invalid JWT: %w", err),
 			},
 		}, nil
 	}
@@ -214,8 +216,8 @@ func validateJWT(_ context.Context, args interface{}) (interface{}, error) {
 	if !ok || !token.Valid {
 		return validateAuthTokenResult{
 			error: &validationErr{
-				status: http.StatusUnauthorized,
-				error:  errors2.BadRequestf("Invalid JWT"),
+				Status: http.StatusUnauthorized,
+				Error:  errors2.BadRequestf("Invalid JWT"),
 			},
 		}, nil
 	}
@@ -226,8 +228,8 @@ func validateJWT(_ context.Context, args interface{}) (interface{}, error) {
 	if !ok {
 		return validateAuthTokenResult{
 			error: &validationErr{
-				status: http.StatusUnauthorized,
-				error:  errors2.BadRequestf("Invalid JWT: sub missing"),
+				Status: http.StatusUnauthorized,
+				Error:  errors2.BadRequestf("Invalid JWT: sub missing"),
 			},
 		}, nil
 	}
@@ -237,8 +239,8 @@ func validateJWT(_ context.Context, args interface{}) (interface{}, error) {
 	if !ok {
 		return validateAuthTokenResult{
 			error: &validationErr{
-				status: http.StatusUnauthorized,
-				error:  errors2.BadRequestf("Invalid JWT: '%s' missing", ContextUserIDKey),
+				Status: http.StatusUnauthorized,
+				Error:  errors2.BadRequestf("Invalid JWT: '%s' missing", ContextUserIDKey),
 			},
 		}, nil
 	}
@@ -252,9 +254,9 @@ func validateJWT(_ context.Context, args interface{}) (interface{}, error) {
 func validateSpeakeasyJWT(_ context.Context, args interface{}) (interface{}, error) {
 	a := args.(validateAuthTokenArgs)
 
-	if !a.useSpeakeasy && strings2.HasPrefix(a.token, "JWT ") {
-		// cannot authenticate, but no errors -- must be internal JWT
-		return validateAuthTokenResult{authed: false}, nil
+	if !a.useSpeakeasy || !strings2.HasPrefix(a.token, "JWT ") {
+		// cannot authenticate, but no errors -- must be root API key
+		return validateAuthTokenResult{}, nil
 	}
 
 	apiKey, hasPrefix := strings.CutPrefix(a.token, "JWT ")
@@ -263,8 +265,8 @@ func validateSpeakeasyJWT(_ context.Context, args interface{}) (interface{}, err
 		return validateAuthTokenResult{
 			authed: false,
 			error: &validationErr{
-				status: http.StatusUnauthorized,
-				error:  errors2.Unauthorizedf("API key must be a JWT token"),
+				Status: http.StatusUnauthorized,
+				Error:  errors2.Unauthorizedf("API key must be a JWT token"),
 			},
 		}, nil
 	}
@@ -274,8 +276,8 @@ func validateSpeakeasyJWT(_ context.Context, args interface{}) (interface{}, err
 		return validateAuthTokenResult{
 			authed: false,
 			error: &validationErr{
-				status: http.StatusUnauthorized,
-				error:  errors2.NewUnauthorized(err, "Invalid JWT"),
+				Status: http.StatusUnauthorized,
+				Error:  errors2.NewUnauthorized(err, "Invalid JWT"),
 			},
 		}, nil
 	}
@@ -285,8 +287,8 @@ func validateSpeakeasyJWT(_ context.Context, args interface{}) (interface{}, err
 		return validateAuthTokenResult{
 			authed: false,
 			error: &validationErr{
-				status: http.StatusUnauthorized,
-				error:  errors2.Unauthorizedf("Invalid JWT: kid not present"),
+				Status: http.StatusUnauthorized,
+				Error:  errors2.Unauthorizedf("Invalid JWT: kid not present"),
 			},
 		}, nil
 	}
@@ -297,8 +299,8 @@ func validateSpeakeasyJWT(_ context.Context, args interface{}) (interface{}, err
 		return validateAuthTokenResult{
 			authed: false,
 			error: &validationErr{
-				status: http.StatusUnauthorized,
-				error:  errors2.NewUnauthorized(err, "Invalid JWT"),
+				Status: http.StatusUnauthorized,
+				Error:  errors2.NewUnauthorized(err, "Invalid JWT"),
 			},
 		}, nil
 	}
@@ -312,8 +314,8 @@ func validateSpeakeasyJWT(_ context.Context, args interface{}) (interface{}, err
 		return validateAuthTokenResult{
 			authed: false,
 			error: &validationErr{
-				status: http.StatusUnauthorized,
-				error:  errors2.Unauthorizedf("Invalid API key"),
+				Status: http.StatusUnauthorized,
+				Error:  errors2.Unauthorizedf("Invalid API key"),
 			},
 		}, nil
 	}

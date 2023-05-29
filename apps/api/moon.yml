@@ -36,8 +36,8 @@ tasks:
     outputs:
       - dist/
 
-  test:
-    command: hurl integration-tests.hurl
+  loadtest:
+    command: k6 run load.js
     deps:
       - dev
     options:

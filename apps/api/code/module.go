@@ -97,11 +97,7 @@ func hasPrefix(args ...tengo.Object) (ret tengo.Object, err error) {
 	case *tengo.String:
 		prefix = o.Value
 	default:
-		return nil, tengo.ErrInvalidArgumentType{
-			Name:     "prefix",
-			Expected: "string",
-			Found:    o.TypeName(),
-		}
+		prefix = o.String()
 	}
 
 	stringifiedVal := fmt.Sprintf("%v", val)
@@ -125,11 +121,7 @@ func hasSuffix(args ...tengo.Object) (ret tengo.Object, err error) {
 	case *tengo.String:
 		suffix = o.Value
 	default:
-		return nil, tengo.ErrInvalidArgumentType{
-			Name:     "suffix",
-			Expected: "string",
-			Found:    o.TypeName(),
-		}
+		suffix = o.String()
 	}
 
 	stringifiedVal := fmt.Sprintf("%v", val)

@@ -75,8 +75,6 @@ func patchExpression(doc *openapi3.T) {
 }
 
 func patchConditions(doc *openapi3.T) {
-	patchConditionBase(doc)
-	patchConditionParams(doc)
 	doc.Components.Schemas["ConditionType"] = &openapi3.SchemaRef{
 		Value: &openapi3.Schema{
 			Type: "string",
@@ -99,67 +97,7 @@ func patchConditions(doc *openapi3.T) {
 			},
 		},
 	}
-	doc.Components.Schemas["Condition"] = &openapi3.SchemaRef{
-		Value: &openapi3.Schema{
-			Type: "object",
-			Properties: map[string]*openapi3.SchemaRef{
-				"condition": {
-					Value: &openapi3.Schema{
-						Properties: map[string]*openapi3.SchemaRef{
-							"base":      {Ref: "#/components/schemas/ConditionBase"},
-							"type":      {Ref: "#/components/schemas/ConditionType"},
-							"parameter": {Ref: "#/components/schemas/ConditionParameter"},
-						},
-					},
-				},
-			},
-		},
-	}
-}
-
-func patchConditionParams(doc *openapi3.T) {
-	doc.Components.Schemas["ConditionParameterString"] = &openapi3.SchemaRef{
-		Value: &openapi3.Schema{
-			Properties: map[string]*openapi3.SchemaRef{
-				"stringValue": {Value: openapi3.NewStringSchema()},
-			},
-		},
-	}
-	doc.Components.Schemas["ConditionParameterBoolean"] = &openapi3.SchemaRef{
-		Value: &openapi3.Schema{
-			Properties: map[string]*openapi3.SchemaRef{
-				"boolValue": {Value: openapi3.NewBoolSchema()},
-			},
-		},
-	}
-	doc.Components.Schemas["ConditionParameterInt"] = &openapi3.SchemaRef{
-		Value: &openapi3.Schema{
-			Properties: map[string]*openapi3.SchemaRef{
-				"intValue": {Value: openapi3.NewIntegerSchema()},
-			},
-		},
-	}
-	doc.Components.Schemas["ConditionParameterBytes"] = &openapi3.SchemaRef{
-		Value: &openapi3.Schema{
-			Properties: map[string]*openapi3.SchemaRef{
-				"byteValue": {Value: openapi3.NewBytesSchema()},
-			},
-		},
-	}
-	doc.Components.Schemas["ConditionParameter"] = &openapi3.SchemaRef{
-		Value: &openapi3.Schema{
-			OneOf: []*openapi3.SchemaRef{
-				{Ref: "#/components/schemas/ConditionParameterString"},
-				{Ref: "#/components/schemas/ConditionParameterBoolean"},
-				{Ref: "#/components/schemas/ConditionParameterInt"},
-				{Ref: "#/components/schemas/ConditionParameterBytes"},
-			},
-		},
-	}
-}
-
-func patchConditionBase(doc *openapi3.T) {
-	doc.Components.Schemas["ConditionBaseRef"] = &openapi3.SchemaRef{
+	doc.Components.Schemas["DRef"] = &openapi3.SchemaRef{
 		Value: &openapi3.Schema{
 			Type: "object",
 			Properties: map[string]*openapi3.SchemaRef{
@@ -168,19 +106,38 @@ func patchConditionBase(doc *openapi3.T) {
 			},
 		},
 	}
-	doc.Components.Schemas["ConditionBaseKey"] = &openapi3.SchemaRef{
+	doc.Components.Schemas["ConditionRef"] = &openapi3.SchemaRef{
 		Value: &openapi3.Schema{
 			Type: "object",
 			Properties: map[string]*openapi3.SchemaRef{
-				"key": {Value: openapi3.NewStringSchema()},
+				"ref":   {Ref: "#/components/schemas/DRef"},
+				"type":  {Ref: "#/components/schemas/ConditionType"},
+				"value": {Value: openapi3.NewBytesSchema()},
 			},
 		},
 	}
-	doc.Components.Schemas["ConditionBase"] = &openapi3.SchemaRef{
+	doc.Components.Schemas["ConditionKey"] = &openapi3.SchemaRef{
 		Value: &openapi3.Schema{
-			OneOf: []*openapi3.SchemaRef{
-				{Ref: "#/components/schemas/ConditionBaseKey"},
-				{Ref: "#/components/schemas/ConditionBaseRef"},
+			Type: "object",
+			Properties: map[string]*openapi3.SchemaRef{
+				"key":   {Value: openapi3.NewStringSchema()},
+				"type":  {Ref: "#/components/schemas/ConditionType"},
+				"value": {Value: openapi3.NewBytesSchema()},
+			},
+		},
+	}
+	doc.Components.Schemas["Condition"] = &openapi3.SchemaRef{
+		Value: &openapi3.Schema{
+			Type: "object",
+			Properties: map[string]*openapi3.SchemaRef{
+				"condition": {
+					Value: &openapi3.Schema{
+						OneOf: []*openapi3.SchemaRef{
+							{Ref: "#/components/schemas/ConditionKey"},
+							{Ref: "#/components/schemas/ConditionRef"},
+						},
+					},
+				},
 			},
 		},
 	}

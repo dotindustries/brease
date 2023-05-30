@@ -11,7 +11,7 @@ import (
 func ValidateExpression(expression map[string]interface{}) (*pb.Expression, error) {
 	exprBytes, err := json.Marshal(expression)
 	if err != nil {
-		return nil, fmt.Errorf("expression is not base64 encoded: %v", err)
+		return nil, fmt.Errorf("invalid expression: %w", err)
 	}
 	expr := &pb.Expression{}
 	if unmarshalErr := protojson.Unmarshal(exprBytes, expr); err != nil {

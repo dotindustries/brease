@@ -28,16 +28,7 @@ message Condition {
   // The type of this condition, based on the internally defined ConditionType
   string type = 3;
   // A condition parameter holds a target value (right hand side) for a comparison
-  oneof parameter {
-    string stringValue = 4;
-    bool boolValue = 5;
-    int32 intValue = 6;
-    bytes byteValue = 7;
-  };
-}
-
-message Conditions {
-  repeated Condition conditions = 1;
+  bytes value = 4;
 }
 
 message Expression {

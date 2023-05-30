@@ -34,7 +34,7 @@ type EvaluationResult struct {
 	TargetID   string `json:"targetID"`
 	TargetType string `json:"actionTargetType"`
 	Action     string `json:"action"`
-	Value      string `json:"Value"`
+	Value      string `json:"value"`
 }
 
 func (e EvaluationResult) MarshalLogObject(enc zapcore.ObjectEncoder) error {

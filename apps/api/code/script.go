@@ -4,11 +4,8 @@ import (
 	"fmt"
 	"github.com/d5/tengo/v2"
 	"github.com/d5/tengo/v2/stdlib"
-	"github.com/goccy/go-json"
 	"go.dot.industries/brease/models"
 	"go.dot.industries/brease/pb"
-	"reflect"
-	"strconv"
 )
 
 const (
@@ -29,15 +26,9 @@ func moduleMaps(names ...string) *tengo.ModuleMap {
 
 func conditionToScript(condition *pb.Condition) (code string) {
 	jsonPath, ref := extractScriptBase(condition)
-	parameterValue, isParamObj := parameterToScriptValue(condition)
 	isReference := ref != nil
 
-	paramCode := ""
-	if isParamObj {
-		paramCode = fmt.Sprintf("%s", parameterValue)
-	} else {
-		paramCode = fmt.Sprintf("%v", parameterValue)
-	}
+	paramCode := string(condition.Value)
 	fnWithParamLine := func(fnName string) string {
 		if isReference {
 			return fmt.Sprintf(`%s.%s(dref(jsonpath("%s", %s), "%s"), %s)`, tengoModuleName, fnName, ref.Src, objectVariable, ref.Dst, paramCode)
@@ -56,9 +47,9 @@ func conditionToScript(condition *pb.Condition) (code string) {
 		}
 	case models.ConditionEquals:
 		if isReference {
-			code = fmt.Sprintf(`dref(jsonpath("%s", %s), "%s") == %v`, ref.Src, objectVariable, ref.Dst, parameterValue)
+			code = fmt.Sprintf(`dref(jsonpath("%s", %s), "%s") == %s`, ref.Src, objectVariable, ref.Dst, paramCode)
 		} else {
-			code = fmt.Sprintf(`jsonpath("%s", %s) == %v`, jsonPath, objectVariable, parameterValue)
+			code = fmt.Sprintf(`jsonpath("%s", %s) == %s`, jsonPath, objectVariable, paramCode)
 		}
 	case models.ConditionDoesNotEqual:
 		code = fmt.Sprintf(`!%s`, fnWithParamLine("equals"))
@@ -98,32 +89,4 @@ func extractScriptBase(condition *pb.Condition) (string, *pb.ConditionBaseRef) {
 		jsonPath = base.Key
 	}
 	return jsonPath, ref
-}
-
-func parameterToScriptValue(condition *pb.Condition) (parameterValue any, isObj bool) {
-	switch condition.Parameter.(type) {
-	case *pb.Condition_BoolValue:
-		parameterValue = condition.GetBoolValue()
-	case *pb.Condition_IntValue:
-		parameterValue = condition.GetIntValue()
-	case *pb.Condition_StringValue:
-		// return arr/obj in tengo format
-		var v interface{}
-		val := condition.GetStringValue()
-		if err := json.Unmarshal([]byte(val), &v); err == nil {
-			rv := reflect.ValueOf(v)
-			kind := rv.Kind()
-			if kind == reflect.Array || kind == reflect.Slice || kind == reflect.Map {
-				parameterValue = val
-				isObj = true
-				return
-			}
-		}
-		parameterValue = strconv.Quote(condition.GetStringValue())
-	case *pb.Condition_ByteValue:
-		parameterValue = condition.GetByteValue()
-	default:
-		parameterValue = nil
-	}
-	return
 }

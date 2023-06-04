@@ -12,6 +12,8 @@ type Target struct {
 	Value string `json:"value,omitempty"`
 }
 
+func (*Target) TypeName() string { return "Target" }
+
 type Rule struct {
 	ID          string `json:"id" validate:"required"`
 	Description string `json:"description,omitempty"`
@@ -30,12 +32,16 @@ type Rule struct {
 	Expression map[string]interface{} `json:"expression" validate:"required"`
 }
 
+func (*Rule) TypeName() string { return "Rule" }
+
 type EvaluationResult struct {
 	TargetID   string `json:"targetID"`
 	TargetType string `json:"actionTargetType"`
 	Action     string `json:"action"`
 	Value      string `json:"value"`
 }
+
+func (*EvaluationResult) TypeName() string { return "EvaluationResult" }
 
 func (e EvaluationResult) MarshalLogObject(enc zapcore.ObjectEncoder) error {
 	enc.AddString("targetID", e.TargetID)

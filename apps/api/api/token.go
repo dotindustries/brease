@@ -12,7 +12,7 @@ import (
 )
 
 type RefreshTokenPairRequest struct {
-	RefreshToken string `json:"refreshToken"`
+	RefreshToken string `json:"refreshToken" validate:"required"`
 }
 
 func (b *BreaseHandler) generateTokenPair(ownerID string, userID string) (tp models.TokenPair, err error) {

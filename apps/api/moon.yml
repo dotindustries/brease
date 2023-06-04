@@ -8,6 +8,10 @@ project:
   description: Business rules engine service and go package
 
 tasks:
+  build_types:
+    command: noop
+  build_types_watch:
+    command: noop
   clean:
     command: rm -rf ./dist
     platform: system
@@ -42,3 +46,4 @@ tasks:
       - dev
     options:
       cache: false
+    local: true

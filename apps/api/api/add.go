@@ -12,11 +12,11 @@ import (
 
 type AddRuleRequest struct {
 	PathParams
-	Rule models.Rule `json:"rule"`
+	Rule models.Rule `json:"rule" validate:"required"`
 }
 
 type AddRuleResponse struct {
-	Rule models.Rule `json:"rule"`
+	Rule models.Rule `json:"rule" validate:"required"`
 }
 
 func (b *BreaseHandler) AddRule(c *gin.Context, r *AddRuleRequest) (*AddRuleResponse, error) {

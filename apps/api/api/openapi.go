@@ -25,7 +25,7 @@ func OpenAPISpecHandler(f *fizz.Fizz, logger *zap.Logger) func(*gin.Context) {
 		patchExpression(doc)
 
 		// update usage of expression in rule model
-		doc.Components.Schemas["ModelsRule"].Value.Properties["expression"] = &openapi3.SchemaRef{Ref: "#/components/schemas/Expression"}
+		doc.Components.Schemas["Rule"].Value.Properties["expression"] = &openapi3.SchemaRef{Ref: "#/components/schemas/Expression"}
 
 		// FIXME: should we validate the override result?
 

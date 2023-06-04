@@ -21,7 +21,6 @@ type BreaseHandler struct {
 }
 
 func NewHandler(db storage.Database, c cache.Cache, logger *zap.Logger) *BreaseHandler {
-
 	if db == nil {
 		panic("database cannot be nil")
 	}

@@ -3,20 +3,14 @@
   "compilerOptions": {
     "composite": true,
     "rootDir": "./src",
-    "outDir": "../../.moon/cache/types/packages/react-brease-devtools",
+    "outDir": "./build/lib",
     "tsBuildInfoFile": "./build/.tsbuildinfo",
     "paths": {
-      "@brease/react": [
-        "../react-brease/src/index.ts"
-      ],
-      "@brease/react/*": [
-        "../react-brease/src/*"
-      ]
+      "@brease/react": ["../react-brease/src/index.ts"],
+      "@brease/react/*": ["../react-brease/src/*"]
     }
   },
-  "include": [
-    "src"
-  ],
+  "include": ["src"],
   "references": [
     {
       "path": "../brease-core"

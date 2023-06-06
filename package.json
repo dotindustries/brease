@@ -3,25 +3,24 @@
   "repository": "https://github.com/dotindustries/brease.git",
   "scripts": {
     "deps": "npx npm-check-updates --deep --interactive",
-    "moon": "moon --color",
     "clean": "pnpm --filter \"./packages/**\" run clean",
     "preinstall": "node -e \"if(process.env.CI == 'true') {console.log('Skipping preinstall...'); process.exit(1)}\" || npx -y only-allow pnpm",
-    "install:csb": "pnpm install --frozen-lockfile",
-    "test": "pnpm run test_ci",
-    "test_ci": "moon run :test_lib :test_types :test_eslint :test_format --affected",
-    "test_reac_17": "moon run :test_lib --affected",
-    "test_eslint": "moon run :test_eslint --affected",
-    "test_format": "pnpm run prettier --check",
-    "test_lib": "moon run :test_lib --affected",
-    "test_lib_dev": "pnpm --filter \"./packages/**\" run test_lib_dev",
-    "test_build": "moon run :test_build",
-    "test_types": "moon run :test_types --affected",
-    "build": "moon run :build",
-    "build_types": "moon run :build_types --affected",
-    "watch": "concurrently --kill-others \"rollup --config rollup.config.js -w\" \"pnpm run build_types\"",
+    "install:csb": "corepack enable && pnpm install --frozen-lockfile",
+    "test": "pnpm run test:ci",
+    "test:ci": "nx affected --targets=test:lib,test:types,test:eslint,test:format --parallel=5",
+    "test:react:17": "nx affected --target=test:lib --parallel=5",
+    "test:eslint": "nx affected --target=test:eslint --parallel=5",
+    "test:format": "pnpm run prettier --check",
+    "test:lib": "nx affected --target=test:lib --parallel=5",
+    "test:lib:dev": "pnpm --filter \"./packages/**\" run test:lib:dev",
+    "test:build": "nx run-many --target=test:build --projects=root",
+    "test:types": "nx affected --target=test:types --parallel=5",
+    "build": "nx run-many --target=build --projects=root",
+    "build:types": "nx affected --target=build:types --parallel=5",
+    "watch": "concurrently --kill-others \"rollup --config rollup.config.ts --configPlugin typescript -w\" \"pnpm run build:types --watch\"",
     "dev": "pnpm run watch",
     "prettier": "prettier --plugin-search-dir . \"{packages,examples}/**/src/**/*.{md,js,jsx,ts,tsx,json,vue,svelte}\"",
-    "prettier_write": "pnpm run prettier --write",
+    "prettier:write": "pnpm run prettier --write",
     "cipublish": "ts-node scripts/publish.ts",
     "validatePackages": "ts-node scripts/validate-packages.ts"
   },
@@ -30,6 +29,12 @@
     "apps/*",
     "packages/*"
   ],
+  "nx": {
+    "includedScripts": [
+      "test:format",
+      "test:build"
+    ]
+  },
   "devDependencies": {
     "@babel/core": "^7.17.9",
     "@babel/preset-env": "^7.16.11",
@@ -37,11 +42,12 @@
     "@babel/preset-typescript": "^7.16.7",
     "@commitlint/parse": "^16.2.1",
     "@faker-js/faker": "^6.3.1",
-    "@moonrepo/cli": "^1.6.1",
+    "@nx-go/nx-go": "^2.7.0",
     "@rollup/plugin-babel": "^5.3.1",
     "@rollup/plugin-commonjs": "22.0.1",
     "@rollup/plugin-node-resolve": "^13.2.1",
     "@rollup/plugin-replace": "^4.0.0",
+    "@rollup/plugin-typescript": "^11.1.1",
     "@testing-library/jest-dom": "^5.16.4",
     "@testing-library/react": "^13.0.0",
     "@testing-library/react-17": "npm:@testing-library/react@12.1.4",
@@ -84,6 +90,8 @@
     "jest": "^27.5.1",
     "jsonfile": "^6.1.0",
     "luxon": "^2.3.2",
+    "nx": "^16.3.2",
+    "nx-cloud": "^16.0.5",
     "prettier": "^2.6.2",
     "prettier-plugin-svelte": "^2.9.0",
     "react": "^18.2.0",
@@ -102,6 +110,7 @@
     "stream-to-array": "^2.3.0",
     "ts-jest": "^27.1.1",
     "ts-node": "^10.7.0",
+    "tslib": "^2.5.3",
     "typescript": "^4.7.4",
     "vue": "^3.2.33"
   },
@@ -112,7 +121,7 @@
       }
     ]
   },
-  "packageManager": "",
+  "packageManager": "pnpm@8.6.0",
   "engines": {
     "node": "18.0.0"
   }

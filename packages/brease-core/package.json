@@ -33,12 +33,13 @@
   ],
   "scripts": {
     "clean": "rimraf ./build",
-    "test_eslint": "eslint --ext .ts,.tsx ./src",
-    "test_types": "tsc",
-    "test_lib": "jest --config ./jest.config.ts",
-    "test_lib_dev": "pnpm run test:lib --watch"
+    "test:eslint": "eslint --ext .ts,.tsx ./src",
+    "test:types": "tsc",
+    "test:lib": "jest --config ./jest.config.ts",
+    "test:lib:dev": "pnpm run test:lib --watch",
+    "build:types": "tsc --build"
   },
   "dependencies": {
-    "brease-sdk": "^0.3.0"
+    "@dotinc/brease-sdk": "^0.0.3"
   }
 }

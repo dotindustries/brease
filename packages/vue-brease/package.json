@@ -28,10 +28,11 @@
   "sideEffects": false,
   "scripts": {
     "clean": "rimraf ./build",
-    "test_eslint": "eslint --ext .ts ./src",
-    "test_types": "tsc",
-    "test_lib": "jest --config ./jest.config.ts",
-    "test_lib:dev": "pnpm run test_lib --watch"
+    "test:eslint": "eslint --ext .ts ./src",
+    "test:types": "tsc",
+    "test:lib": "jest --config ./jest.config.ts",
+    "test:lib:dev": "pnpm run test:lib --watch",
+    "build:types": "tsc --build"
   },
   "files": [
     "build/lib/*",
@@ -46,7 +47,7 @@
     "@brease/core": "workspace:*",
     "@vue/devtools-api": "^6.4.2",
     "@tanstack/match-sorter-utils": "^8.1.1",
-    "vue-demi": "^0.13.11"
+    "vue-demi": "^0.14.5"
   },
   "peerDependencies": {
     "@vue/composition-api": "^1.1.2",

@@ -1,6 +1,9 @@
 {
-  "extends": "./tsconfig.base.json",
-  "include": ["**/*"],
+  "files": [],
+  "compilerOptions": {
+    "allowSyntheticDefaultImports": true
+  },
+  "include": ["./rollup.config.ts"],
   "references": [
     {
       "path": "packages/brease-core"
@@ -14,8 +17,5 @@
     {
       "path": "packages/vue-brease"
     }
-  ],
-  "compilerOptions": {
-    "outDir": ".moon/cache/types"
-  }
+  ]
 }

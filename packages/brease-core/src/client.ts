@@ -1,7 +1,17 @@
-import { SDK } from "brease-sdk";
+import { BreaseSDK, Environment } from "@dotinc/brease-sdk";
 
-export const newClient = (serverURL?: string) => {
-  const sdk = new SDK({ serverURL: serverURL });
+export type ClientOptions = {
+  accessToken: string;
+  refreshToken?: string;
+  environment?: Environment;
+};
 
-  return sdk.contextID;
+export const newClient = ({
+  environment,
+  accessToken,
+  refreshToken,
+}: ClientOptions) => {
+  const sdk = new BreaseSDK(refreshToken, accessToken);
+  environment && sdk.setEnvironment(environment);
+  return sdk;
 };

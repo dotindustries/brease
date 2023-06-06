@@ -1,5 +1,5 @@
 {
-  "name": "@brease/react-brease-devtools",
+  "name": "@brease/react-devtools",
   "version": "0.0.1",
   "description": "Developer tools to interact with and visualize the brease/react",
   "author": "nadilas",
@@ -7,7 +7,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/dotindustries/brease",
-    "directory": "packages/react-brease-devtools"
+    "directory": "packages/react-devtools"
   },
   "homepage": "https://brease.run",
   "funding": {
@@ -43,10 +43,11 @@
   ],
   "scripts": {
     "clean": "rimraf ./build",
-    "test_eslint": "eslint --ext .ts,.tsx ./src",
-    "test_types": "tsc",
-    "test_lib": "jest --config ./jest.config.ts",
-    "test_lib_dev": "pnpm run test:lib --watch"
+    "test:eslint": "eslint --ext .ts,.tsx ./src",
+    "test:types": "tsc",
+    "test:lib": "jest --config ./jest.config.ts",
+    "test:lib:dev": "pnpm run test:lib --watch",
+    "build:types": "tsc --build && cp build/lib/index.d.ts build/lib/index.prod.d.ts"
   },
   "devDependencies": {
     "@types/react": "^18.0.38",

@@ -1,5 +1,6 @@
 packages:
   - packages/**
+  - examples/next/**
   - examples/react/**
   - examples/solid/**
   - examples/svelte/**

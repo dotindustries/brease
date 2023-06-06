@@ -1,7 +1,4 @@
-
 # moon
-.moon/cache
-.moon/docker
 .idea
 .env
 .DS_Store
@@ -11,3 +8,4 @@ packages/react-brease/build
 packages/react-brease/coverage
 packages/react-brease-devtools/build
 packages/vue-brease/build
+nx-cloud.env

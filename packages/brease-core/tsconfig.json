@@ -3,10 +3,8 @@
   "compilerOptions": {
     "composite": true,
     "rootDir": "./src",
-    "outDir": "../../.moon/cache/types/packages/brease-core",
+    "outDir": "./build/lib",
     "tsBuildInfoFile": "./build/.tsbuildinfo"
   },
-  "include": [
-    "src"
-  ]
+  "include": ["src"]
 }

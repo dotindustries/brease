@@ -7,11 +7,11 @@ project:
   name: api
   description: Business rules engine service and go package
 
+workspace:
+  inheritedTasks:
+    exclude: ["build_types", "build_types_watch"]
+
 tasks:
-  build_types:
-    command: noop
-  build_types_watch:
-    command: noop
   clean:
     command: rm -rf ./dist
     platform: system

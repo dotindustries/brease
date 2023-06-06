@@ -2,6 +2,7 @@ import type { OutputOptions, RollupOptions } from "rollup";
 import babel from "@rollup/plugin-babel";
 import { terser } from "rollup-plugin-terser";
 // TODO: error TS7016: Could not find a declaration file for module 'rollup-plugin-size'.
+// @ts-ignore
 import size from "rollup-plugin-size";
 import visualizer from "rollup-plugin-visualizer";
 import replace from "@rollup/plugin-replace";
@@ -35,7 +36,7 @@ const babelPlugin = babel({
   extensions: [".ts", ".tsx", ".native.ts"],
 });
 
-export default function rollup(options: RollupOptions): RollupOptions[] {
+export default function rollup(_options: RollupOptions): RollupOptions[] {
   return [
     ...buildConfigs({
       name: "brease-core",
@@ -77,7 +78,7 @@ export default function rollup(options: RollupOptions): RollupOptions[] {
       ],
     }),
     ...buildConfigs({
-      name: "react-brease-devtools",
+      name: "react-devtools",
       packageDir: "packages/react-brease-devtools",
       jsName: "ReactBreaseDevtools",
       outputFile: "index",
@@ -97,7 +98,7 @@ export default function rollup(options: RollupOptions): RollupOptions[] {
       ],
     }),
     ...buildConfigs({
-      name: "react-brease-devtools-prod",
+      name: "react-devtools-prod",
       packageDir: "packages/react-brease-devtools",
       jsName: "ReactBreaseDevtools",
       outputFile: "index.prod",
@@ -202,6 +203,8 @@ function buildConfigs(opts: {
     ]);
   }
 
+  if (opts.jsName === "BreaseCore")
+    console.log(`prepped build config: ${opts.jsName}`, builds);
   return builds;
 }
 

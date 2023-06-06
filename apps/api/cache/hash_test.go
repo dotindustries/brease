@@ -2,6 +2,7 @@ package cache
 
 import (
 	"fmt"
+	"github.com/goccy/go-json"
 	"testing"
 
 	"go.dot.industries/brease/models"
@@ -10,6 +11,8 @@ import (
 
 var (
 	things   = []string{"a", "b", "c"}
+	v2, _    = json.Marshal(2)
+	v4, _    = json.Marshal(4)
 	ruleset1 = []models.Rule{
 		{
 			ID:          "asdf",
@@ -20,28 +23,25 @@ var (
 				Target: "$.property2",
 				Value:  "newValue",
 			},
+
 			Expression: map[string]interface{}{
 				"and": pb.And{
 					Expression: []*pb.Expression{
 						{
 							Expr: &pb.Expression_Condition{
 								Condition: &pb.Condition{
-									Base: &pb.Condition_Key{Key: "$.property3"},
-									Type: "lt",
-									Parameter: &pb.Condition_IntValue{
-										IntValue: 2,
-									},
+									Base:  &pb.Condition_Key{Key: "$.property3"},
+									Type:  "lt",
+									Value: v2,
 								},
 							},
 						},
 						{
 							Expr: &pb.Expression_Condition{
 								Condition: &pb.Condition{
-									Base: &pb.Condition_Key{Key: "$.property"},
-									Type: "gt",
-									Parameter: &pb.Condition_IntValue{
-										IntValue: 4,
-									},
+									Base:  &pb.Condition_Key{Key: "$.property"},
+									Type:  "gt",
+									Value: v4,
 								},
 							},
 						},

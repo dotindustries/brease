@@ -3,18 +3,9 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "./",
   "targets": {
-    "rollup": {
-      "command": "rollup --config rollup.config.ts --configPlugin typescript",
-      "outputs": [
-        "{workspaceRoot}/packages/*/build/**/*(.cjs|.mjs|.js)*",
-        "{workspaceRoot}/packages/*/build/stats*",
-        "{workspaceRoot}/packages/*/build/**/*.svelte"
-      ],
-      "inputs": ["default"]
-    },
     "build": {
       "command": "echo \"  @brease/core > All packages built! 📦\"",
-      "dependsOn": ["rollup", "^build:types", "^build"]
+      "dependsOn": ["^build:types", "^build"]
     },
     "test:build": {
       "executor": "nx:run-commands",

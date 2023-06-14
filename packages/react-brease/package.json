@@ -14,14 +14,12 @@
     "type": "github",
     "url": "https://github.com/sponsors/dotindustries"
   },
-  "types": "build/lib/index.d.ts",
-  "main": "build/lib/index.js",
-  "module": "build/lib/index.esm.js",
+  "types": "build/index.d.ts",
+  "main": "build/index.mjs",
   "exports": {
     ".": {
-      "types": "./build/lib/index.d.ts",
-      "import": "./build/lib/index.mjs",
-      "default": "./build/lib/index.js"
+      "types": "./build/index.d.ts",
+      "import": "./build/index.mjs"
     },
     "./package.json": "./package.json"
   },
@@ -34,11 +32,11 @@
     "test:types": "tsc",
     "test:lib": "jest --config ./jest.config.ts",
     "test:lib:dev": "pnpm run test:lib --watch",
-    "build:types": "tsc --build"
+    "build:types": "tsc --build",
+    "build": "npx unbuild"
   },
   "files": [
-    "build/lib/*",
-    "build/umd/*",
+    "build/*",
     "src",
     "codemods",
     "!codemods/jest.config.js",
@@ -49,12 +47,13 @@
     "@types/react": "^18.0.14",
     "@types/react-dom": "^18.0.5",
     "@types/use-sync-external-store": "^0.0.3",
+    "magicast": "^0.2.3",
     "react": "^18.2.0",
     "react-17": "npm:react@^17.0.2",
     "react-dom": "^18.2.0",
     "react-dom-17": "npm:react-dom@^17.0.2",
-    "magicast": "^0.2.3",
-    "react-error-boundary": "^3.1.4"
+    "react-error-boundary": "^3.1.4",
+    "unbuild": "^1.2.1"
   },
   "dependencies": {
     "@brease/core": "workspace:*",

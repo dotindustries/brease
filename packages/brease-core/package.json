@@ -14,21 +14,18 @@
     "type": "github",
     "url": "https://github.com/sponsors/dotindustries"
   },
-  "types": "build/lib/index.d.ts",
-  "main": "build/lib/index.js",
-  "module": "build/lib/index.esm.js",
+  "types": "build/index.d.ts",
+  "main": "build/index.mjs",
   "exports": {
     ".": {
-      "types": "./build/lib/index.d.ts",
-      "import": "./build/lib/index.mjs",
-      "default": "./build/lib/index.js"
+      "types": "./build/index.d.ts",
+      "import": "./build/index.mjs"
     },
     "./package.json": "./package.json"
   },
   "sideEffects": false,
   "files": [
-    "build/lib/*",
-    "build/umd/*",
+    "build/*",
     "src"
   ],
   "scripts": {
@@ -37,9 +34,12 @@
     "test:types": "tsc",
     "test:lib": "jest --config ./jest.config.ts",
     "test:lib:dev": "pnpm run test:lib --watch",
-    "build:types": "tsc --build"
+    "build": "npx unbuild"
   },
   "dependencies": {
     "@dotinc/brease-sdk": "^0.0.3"
+  },
+  "devDependencies": {
+    "unbuild": "^1.2.1"
   }
 }

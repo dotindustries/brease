@@ -1,7 +1,7 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "composite": true,
+    "incremental": true,
     "rootDir": "./src",
     "outDir": "./build/lib",
     "tsBuildInfoFile": "./build/.tsbuildinfo",
@@ -10,13 +10,5 @@
       "@brease/react/*": ["../react-brease/src/*"]
     }
   },
-  "include": ["src"],
-  "references": [
-    {
-      "path": "../brease-core"
-    },
-    {
-      "path": "../react-brease"
-    }
-  ]
+  "include": ["src"]
 }

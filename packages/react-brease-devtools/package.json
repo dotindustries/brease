@@ -14,31 +14,18 @@
     "type": "github",
     "url": "https://github.com/sponsors/dotindustries"
   },
-  "types": "build/lib/index.d.ts",
-  "main": "build/lib/index.js",
-  "module": "build/lib/index.esm.js",
+  "types": "build/index.d.ts",
+  "main": "build/index.mjs",
   "exports": {
     ".": {
-      "types": "./build/lib/index.d.ts",
-      "import": "./build/lib/index.mjs",
-      "default": "./build/lib/index.js"
-    },
-    "./production": {
-      "types": "./build/lib/index.d.ts",
-      "import": "./build/lib/index.prod.mjs",
-      "default": "./build/lib/index.prod.js"
-    },
-    "./build/lib/index.prod.js": {
-      "types": "./build/lib/index.d.ts",
-      "import": "./build/lib/index.prod.mjs",
-      "default": "./build/lib/index.prod.js"
+      "types": "./build/index.d.ts",
+      "import": "./build/index.mjs"
     },
     "./package.json": "./package.json"
   },
   "sideEffects": false,
   "files": [
-    "build/lib/*",
-    "build/umd/*",
+    "build/*",
     "src"
   ],
   "scripts": {
@@ -47,9 +34,11 @@
     "test:types": "tsc",
     "test:lib": "jest --config ./jest.config.ts",
     "test:lib:dev": "pnpm run test:lib --watch",
-    "build:types": "tsc --build && cp build/lib/index.d.ts build/lib/index.prod.d.ts"
+    "build:types": "tsc --build",
+    "build": "npx unbuild && cp build/index.d.ts build/index.prod.d.ts"
   },
   "devDependencies": {
+    "@brease/react": "workspace:*",
     "@types/react": "^18.0.38",
     "@types/react-dom": "^18.0.11",
     "@types/use-sync-external-store": "^0.0.3",
@@ -58,7 +47,7 @@
     "react-dom": "^18.2.0",
     "react-dom-17": "npm:react-dom@^17.0.2",
     "react-error-boundary": "^4.0.4",
-    "@brease/react": "workspace:*"
+    "unbuild": "^1.2.1"
   },
   "dependencies": {
     "@tanstack/match-sorter-utils": "^8.8.4",
@@ -66,8 +55,8 @@
     "use-sync-external-store": "^1.2.0"
   },
   "peerDependencies": {
+    "@brease/react": "workspace:*",
     "react": "^16.8.0 || ^17.0.0 || ^18.0.0",
-    "react-dom": "^16.8.0 || ^17.0.0 || ^18.0.0",
-    "@brease/react": "workspace:*"
+    "react-dom": "^16.8.0 || ^17.0.0 || ^18.0.0"
   }
 }

@@ -14,14 +14,12 @@
     "type": "github",
     "url": "https://github.com/sponsors/dotindustries"
   },
-  "types": "build/lib/index.d.ts",
-  "main": "build/lib/index.js",
-  "module": "build/lib/index.esm.js",
+  "types": "build/index.d.ts",
+  "main": "build/index.mjs",
   "exports": {
     ".": {
-      "types": "./build/lib/index.d.ts",
-      "import": "./build/lib/index.mjs",
-      "default": "./build/lib/index.js"
+      "types": "./build/index.d.ts",
+      "import": "./build/index.mjs"
     },
     "./package.json": "./package.json"
   },
@@ -32,21 +30,22 @@
     "test:types": "tsc",
     "test:lib": "jest --config ./jest.config.ts",
     "test:lib:dev": "pnpm run test:lib --watch",
-    "build:types": "tsc --build"
+    "build:types": "tsc --build",
+    "build": "npx unbuild"
   },
   "files": [
-    "build/lib/*",
-    "build/umd/*"
+    "build/*"
   ],
   "devDependencies": {
     "@vue/composition-api": "1.7.1",
+    "unbuild": "^1.2.1",
     "vue": "^3.2.40",
     "vue2": "npm:vue@2"
   },
   "dependencies": {
     "@brease/core": "workspace:*",
-    "@vue/devtools-api": "^6.4.2",
     "@tanstack/match-sorter-utils": "^8.1.1",
+    "@vue/devtools-api": "^6.4.2",
     "vue-demi": "^0.14.5"
   },
   "peerDependencies": {

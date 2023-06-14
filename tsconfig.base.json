@@ -8,6 +8,9 @@
     },
     {
       "path": "packages/react-brease-devtools"
+    },
+    {
+      "path": "packages/vue-brease"
     }
   ],
   "compilerOptions": {

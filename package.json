@@ -5,6 +5,7 @@
   "repository": "https://github.com/dotindustries/brease.git",
   "main": "index.js",
   "scripts": {
+    "dev": "turbo dev",
     "build": "turbo build",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

@@ -29,16 +29,13 @@
     "src"
   ],
   "scripts": {
-    "clean": "rimraf ./build",
-    "test:eslint": "eslint --ext .ts,.tsx ./src",
-    "test:types": "tsc",
-    "test:lib": "jest --config ./jest.config.ts",
-    "test:lib:dev": "pnpm run test:lib --watch",
-    "build:types": "tsc --build",
-    "build": "npx unbuild && cp build/index.d.ts build/index.prod.d.ts"
+    "build": "tsup src/index.ts --config tsup.config.ts",
+    "lint": "TIMING=1 eslint src/**/*.ts* --fix",
+    "clean": "rm -rf dist"
   },
   "devDependencies": {
     "@brease/react": "workspace:*",
+    "@types/node": "^18.16.0",
     "@types/react": "^18.0.38",
     "@types/react-dom": "^18.0.11",
     "@types/use-sync-external-store": "^0.0.3",
@@ -47,7 +44,7 @@
     "react-dom": "^18.2.0",
     "react-dom-17": "npm:react-dom@^17.0.2",
     "react-error-boundary": "^4.0.4",
-    "unbuild": "^1.2.1"
+    "tsup": "6.7.0"
   },
   "dependencies": {
     "@tanstack/match-sorter-utils": "^8.8.4",

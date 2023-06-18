@@ -1,0 +1,11 @@
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+      "jsx": "react-jsx",
+      "baseUrl": "./src",
+      "paths": {
+        "@brease/core": ["../../core/src/index.ts"]
+      }
+    },
+    "include": ["./src"]
+  }

@@ -1,9 +1,3 @@
 packages:
-  - packages/**
-  - examples/next/**
-  - examples/react/**
-  - examples/solid/**
-  - examples/svelte/**
-  - examples/vue/**
-  - "!examples/vue/2*"
-  - "!examples/vue/nuxt*"
+  - "examples/*"
+  - "packages/*"

@@ -1,0 +1,46 @@
+{
+  "name": "@brease/core",
+  "description": "The framework agnostic core that powers Brease",
+  "version": "0.0.1",
+  "author": "nadilas",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dotindustries/brease",
+    "directory": "packages/core"
+  },
+  "homepage": "https://brease.run",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/dotindustries"
+  },
+  "exports": {
+    ".": {
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs"
+    },
+    "./src": {
+      "default": "./src/index.ts"
+    }
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --config tsup.config.ts",
+    "lint": "TIMING=1 eslint src/**/*.ts* --fix",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@brease/sdk": "^0.0.1",
+    "zustand": "^4.3.8"
+  },
+  "devDependencies": {
+    "tsup": "6.7.0"
+  }
+}

@@ -1,20 +1,9 @@
 {
-  "references": [
-    {
-      "path": "packages/brease-core"
-    },
-    {
-      "path": "packages/react-brease"
-    },
-    {
-      "path": "packages/react-brease-devtools"
-    }
-  ],
   "compilerOptions": {
     "lib": ["DOM", "DOM.Iterable", "ES2020"],
     "target": "ES2020",
     "module": "ES2020",
-    "moduleResolution": "node",
+    "moduleResolution": "nodenext",
     "allowSyntheticDefaultImports": true,
     "strict": true,
     "noImplicitAny": true,
@@ -28,13 +17,6 @@
     "declaration": true,
     "emitDeclarationOnly": true,
     "esModuleInterop": true,
-    "skipLibCheck": true,
-    "baseUrl": ".",
-    "paths": {
-      "@brease/core": ["packages/brease-core/src"],
-      "@brease/react": ["packages/react-brease/src"],
-      "@brease/solid": ["packages/solid-brease/src"],
-      "@brease/vue": ["packages/vue-brease/src"]
-    }
+    "skipLibCheck": true
   }
 }

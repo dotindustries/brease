@@ -1,13 +1,12 @@
-
 # moon
-.moon/cache
-.moon/docker
 .idea
 .env
 .DS_Store
 node_modules
-packages/brease-core/build
-packages/react-brease/build
-packages/react-brease/coverage
-packages/react-brease-devtools/build
-packages/vue-brease/build
+build
+coverage
+
+# Next.js
+.next
+.turbo
+dist

@@ -4,7 +4,7 @@
  */
 await import("./src/env.mjs");
 
-import withTM from 'next-transpile-modules';
+import withTM from "next-transpile-modules";
 
 /** @type {import("next").NextConfig} */
 const config = {
@@ -21,4 +21,4 @@ const config = {
     defaultLocale: "en",
   },
 };
-export default withTM(['@brease/react'])(config)
+export default withTM(["@brease/core", "@brease/react"])(config);

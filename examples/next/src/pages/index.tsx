@@ -68,9 +68,11 @@ const SimpleExample = () => {
     objectID: user.user_id,
     userDefinedActions: {
       async $set(action, o) {
-        const result: CheckoutValues = {
-          shipping: "$ 8.00",
-        };
+        const result: CheckoutValues = action.targetID
+          ? {
+              [action.targetID]: action.value,
+            }
+          : {};
         return { ...o, ...result };
       },
     },

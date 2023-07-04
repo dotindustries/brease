@@ -4,7 +4,7 @@ import { api } from "~/utils/api";
 import { useState } from "react";
 import { BreaseProvider, useRules } from "@brease/react";
 import { PropsWithChildren } from "react";
-import { createActionHelper } from "@brease/core";
+import { ApplyFunction, createActionHelper } from "@brease/core";
 
 const products = [
   {
@@ -66,13 +66,14 @@ const SimpleExample = () => {
 
   const { result: order } = useRules("checkout", user, {
     objectID: user.user_id,
-    userDefinedActions: [
-      createActionHelper("$set", async (action, obj) => {
-        if (!action.targetID) return obj;
-        obj[action.targetID] = action.value;
-        return obj;
-      }),
-    ],
+    userDefinedActions: {
+      async $set(action, o) {
+        const result: CheckoutValues = {
+          shipping: "$ 8.00",
+        };
+        return { ...o, ...result };
+      },
+    },
   });
 
   if (!order) {

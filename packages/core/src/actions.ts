@@ -1,26 +1,26 @@
 import { EvaluationResult } from "@brease/sdk";
 
-export type ApplyFunction<T> = (
+export type ApplyFunction<T extends object, R extends object> = (
   action: EvaluationResult.Model,
   obj: T,
-) => Promise<T>;
+) => Promise<T | (T & R)>;
 
-export interface Action<T extends object> {
+export interface Action<T extends object, R extends object> {
   kind: string;
-  apply: ApplyFunction<T>;
+  apply: ApplyFunction<T, R>;
 }
 
-export const $setAction: Action<any> = {
-  kind: "$set",
-  apply: async (action, obj) => {
-    if (action.action !== "$set") return;
+export const $setAction = async <T extends object, R extends object>(
+  action: T,
+  obj: R,
+) => {
+  if (action.action !== "$set") return;
 
-    if (action.targetID) {
-      obj[action.targetID] = action.value;
-    }
+  if (action.targetID) {
+    obj[action.targetID] = action.value;
+  }
 
-    return obj;
-  },
+  return obj as T & R;
 };
 
 /**
@@ -29,12 +29,8 @@ export const $setAction: Action<any> = {
  * @param apply The function to execute when an action in the rule evaluation results is found
  * @returns
  */
-export const createActionHelper = <T extends object, R>(
-  kind: string,
-  apply: ApplyFunction<T>,
-) => ({
-  kind,
-  apply,
-});
+export const createActionHelper = <T extends object, R extends object>(
+  apply: ApplyFunction<T, R>,
+) => apply;
 
 export const builtinActions = [$setAction];

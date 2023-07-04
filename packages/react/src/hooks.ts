@@ -7,19 +7,20 @@ import type {
   ApiReplaceRuleResponse,
   ApiEvaluateRulesResponse,
   ApiAllRulesResponse,
-  Action,
   RuleStoreOptions,
   EvaluationResult,
+  FunctionMap,
+  UnionToIntersection,
 } from "@brease/core";
 import { useContext, useEffect, useMemo } from "react";
 import { BreaseContext } from "./provider.js";
 import { useStore } from "zustand";
 
-const useRuleStore = <T extends object>(
+const useRuleStore = <T extends object, F extends FunctionMap<T>>(
   contextID: string,
-  options: RuleStoreOptions,
+  options: RuleStoreOptions<T, F>,
 ) => {
-  return useStore(getStore<T>(contextID, options));
+  return useStore(getStore<T, F>(contextID, options));
 };
 
 export default useRuleStore;
@@ -28,10 +29,10 @@ export const useRulesClient = () => {
   return useContext(BreaseContext)?.sdk;
 };
 
-export type UseRuleOptions<T extends object> = {
+export type UseRuleOptions<T extends object, F extends FunctionMap<T>> = {
   objectID?: string;
   cacheTtl?: number;
-  userDefinedActions?: Action<T>[];
+  userDefinedActions?: F;
   overrideCode?: string;
   overrideRules?: EvaluateRulesInput.OverrideRules;
 };
@@ -41,28 +42,26 @@ export type ExecuteRulesOptions = Pick<
   "overrideCode" | "overrideRules"
 >;
 
-export type UseRulesOutput<T extends any> = {
+export type UseRulesOutput<T extends object, F extends FunctionMap<T>> = {
   isLoading: boolean;
   rawActions: EvaluationResult.Model[];
-  unknownActions: EvaluationResult.Model[] | undefined;
   executeRules: (object: T, opts?: ExecuteRulesOptions) => void;
-  result: T | undefined;
+  result: Awaited<T & UnionToIntersection<ReturnType<F[keyof F]>>> | undefined;
 };
 
-export const useRules = <T extends object>(
+export const useRules = <T extends object, F extends FunctionMap<T>>(
   contextID: string,
   object: T,
-  opts: UseRuleOptions<T>,
-): UseRulesOutput<T> => {
+  opts: UseRuleOptions<T, F>,
+): UseRulesOutput<T, F> => {
   const { evaluateRules } = useRuleContext(contextID, opts.cacheTtl);
   const storeID = opts.objectID ? `${contextID}_${opts.objectID}` : contextID;
   const {
     executeRules,
     isExecuting: isLoading,
     rawActions,
-    unknownActions,
     result,
-  } = useRuleStore<T>(storeID, {
+  } = useRuleStore<T, F>(storeID, {
     evaluateRulesFn: evaluateRules,
     userDefinedActions: opts.userDefinedActions,
     overrideCode: opts.overrideCode,
@@ -76,7 +75,6 @@ export const useRules = <T extends object>(
   return {
     isLoading,
     rawActions,
-    unknownActions,
     result,
     executeRules,
   };

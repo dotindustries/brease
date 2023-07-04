@@ -4,22 +4,7 @@ import { immer } from "zustand/middleware/immer";
 import { clone } from "lodash-es";
 import { EvaluationResult } from "@brease/sdk";
 import { ApiEvaluateRulesResponse, EvaluateRulesInput } from "@brease/core";
-import { Action, builtinActions } from "./actions.js";
-
-export interface RulesStore<T> {
-  isExecuting: boolean;
-  lastHash?: string;
-  rawActions: EvaluationResult.Model[];
-  unknownActions: EvaluationResult.Model[] | undefined;
-  executeRules: (object: T) => void;
-  result: T | undefined;
-}
-
-const hasActionFilter = (
-  a: EvaluationResult.Model,
-): a is EvaluationResult.Model & {
-  action: string;
-} => Boolean(a.action);
+import { $setAction, ApplyFunction } from "./actions.js";
 
 export type EvaluateInput<T> = Pick<
   EvaluateRulesInput.Model,
@@ -28,26 +13,44 @@ export type EvaluateInput<T> = Pick<
   object: T;
 };
 
-export type RuleStoreOptions<T extends object> = {
+export type FunctionMap<T extends object> = {
+  [key: "$set" | string]: ApplyFunction<T, any>;
+};
+
+// Helper type to convert union types to intersection types
+export type UnionToIntersection<U> = (
+  U extends any ? (k: U) => void : never
+) extends (k: infer I) => void
+  ? I
+  : never;
+
+export type RuleStoreOptions<T extends object, F extends FunctionMap<T>> = {
   evaluateRulesFn: (
     input: EvaluateRulesInput.Model,
   ) => Promise<ApiEvaluateRulesResponse.Results | undefined>;
-  userDefinedActions?: Action<T>[];
+  userDefinedActions?: F;
   overrideCode?: string;
   overrideRules?: EvaluateRulesInput.OverrideRules;
 };
 
-const createRulesStore = <T extends object>({
+export interface RulesStore<T extends object, F extends FunctionMap<T>> {
+  isExecuting: boolean;
+  lastHash?: string;
+  rawActions: EvaluationResult.Model[];
+  executeRules: (object: T) => void;
+  result: Awaited<T & UnionToIntersection<ReturnType<F[keyof F]>>> | undefined;
+}
+
+const createRulesStore = <T extends object, F extends FunctionMap<T>>({
   evaluateRulesFn,
   overrideCode,
   overrideRules,
   userDefinedActions,
-}: RuleStoreOptions<T>) => {
+}: RuleStoreOptions<T, F>) => {
   return createStore(
-    immer<RulesStore<T>>((set, get) => ({
+    immer<RulesStore<T, F>>((set, get) => ({
       isExecuting: false,
       rawActions: [],
-      unknownActions: undefined,
       result: undefined,
       executeRules: async (object) => {
         if (get().isExecuting) {
@@ -74,19 +77,28 @@ const createRulesStore = <T extends object>({
           overrideRules,
         });
 
+        // nothing to execute
+        if (!rawActions) {
+          set({
+            rawActions,
+            isExecuting: false,
+            result: undefined,
+          });
+          return;
+        }
+
         // extract and apply builtIn actions
-        const { knownActions, unknownActions } = findActions(
-          rawActions,
-          userDefinedActions,
-        );
+        const actions: F = {
+          $set: $setAction,
+          ...userDefinedActions,
+        };
 
         // apply recognized rules
-        const result = await applyActions(object, knownActions);
+        const result = await applyActions(object, rawActions, actions);
 
         set({
           rawActions,
           isExecuting: false,
-          unknownActions,
           result,
         });
       },
@@ -94,95 +106,34 @@ const createRulesStore = <T extends object>({
   );
 };
 
-export const findActions = <T extends object>(
-  rawActions: EvaluationResult.Model[] | undefined,
-  userDefinedActions?: Action<T>[],
-) => {
-  if (!rawActions) return { knownActions: [], unknownActions: undefined };
-
-  const builtInActionKinds = builtinActions.map((a) => a.kind);
-  const customActionKinds = userDefinedActions?.map((a) => a.kind) ?? [];
-
-  // allow the user defined actions to override the builtin functions
-  // such as $set to provide increase type-safe on the results
-  const notOverridenBuiltInActionKinds = builtInActionKinds.filter(
-    (k) => !customActionKinds.includes(k),
-  );
-
-  const knownBuiltInActions = rawActions
-    .filter(hasActionFilter)
-    .filter((a) => notOverridenBuiltInActionKinds.includes(a.action))
-    .map((a) => ({
-      ...a,
-      apply: builtinActions.find((ba) => ba.kind === a.action)!.apply,
-      //                                                      ^ we already pre-filtered...
-    }));
-  const knownCustomActions =
-    (userDefinedActions &&
-      rawActions
-        .filter(hasActionFilter)
-        .filter((a) => customActionKinds.includes(a.action))
-        .map((a) => ({
-          ...a,
-          apply: userDefinedActions.find((ba) => ba.kind === a.action)!.apply,
-          //                                                          ^ we already pre-filtered...
-        }))) ??
-    [];
-
-  const knownActions = knownBuiltInActions.concat(knownCustomActions);
-
-  const unknownActions = rawActions
-    ?.filter(hasActionFilter)
-    .filter(
-      (a) =>
-        !notOverridenBuiltInActionKinds.includes(a.action) &&
-        !customActionKinds.includes(a.action),
-    );
-
-  return { knownActions, unknownActions };
-};
-
-export type EvaluationResultWithAction<T extends object> =
-  EvaluationResult.Model &
-    Pick<Action<T>, "apply"> & {
-      action: string;
-    };
-
-export type ApplyActionsResult<
-  T extends object,
-  R extends EvaluationResultWithAction<T>[],
-> = T & UnionToIntersection<ReturnType<R[number]["apply"]>>;
-
-type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
-  k: infer I,
-) => void
-  ? I
-  : never;
-
-export const applyActions = async <T extends object>(
+export const applyActions = async <T extends object, F extends FunctionMap<T>>(
   obj: T,
-  results: EvaluationResultWithAction<T>[],
+  rawActions: EvaluationResult.Model[],
+  fns: F,
 ) => {
   let copy = clone(obj);
-  for (const r of results) {
+  for (const action of rawActions) {
+    if (!action.action) continue;
+    const fn = fns[action.action];
+    if (!fn) continue;
     // apply might modify the object itself
     // instead of returning a copy,
-    // but just in case...
-    copy = await r.apply(r, copy);
+    // but for tranform cases:
+    copy = await fn(action, copy);
   }
-  return copy;
+  return copy as T & UnionToIntersection<ReturnType<F[keyof F]>>;
 };
 
-const stores: Map<string, StoreApi<RulesStore<any>>> = new Map();
+const stores: Map<string, StoreApi<RulesStore<any, any>>> = new Map();
 
-export const getStore = <T extends object>(
+export const getStore = <T extends object, F extends FunctionMap<T>>(
   contextID: string,
-  opts: RuleStoreOptions<T>,
+  opts: RuleStoreOptions<T, F>,
 ) => {
   let store = stores.get(contextID);
   if (!store) {
-    store = createRulesStore<T>(opts);
+    store = createRulesStore<T, F>(opts);
     stores.set(contextID, store);
   }
-  return store as StoreApi<RulesStore<T>>;
+  return store as StoreApi<RulesStore<T, F>>;
 };

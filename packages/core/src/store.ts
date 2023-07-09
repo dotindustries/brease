@@ -13,8 +13,10 @@ export type EvaluateInput<T> = Pick<
   object: T;
 };
 
+export type FunctionKeys = "$set" | string;
+
 export type FunctionMap<T extends object> = {
-  [key: "$set" | string]: ApplyFunction<T, any>;
+  [key: FunctionKeys]: ApplyFunction<T, any>;
 };
 
 // Helper type to convert union types to intersection types
@@ -116,10 +118,8 @@ export const applyActions = async <T extends object, F extends FunctionMap<T>>(
     if (!action.action) continue;
     const fn = fns[action.action];
     if (!fn) continue;
-    // apply might modify the object itself
-    // instead of returning a copy,
-    // but for tranform cases:
-    copy = await fn(action, copy);
+    const extension = await fn(action, copy);
+    Object.assign(copy, extension);
   }
   return copy as T & UnionToIntersection<ReturnType<F[keyof F]>>;
 };

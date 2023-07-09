@@ -51,7 +51,7 @@ export type UseRulesOutput<T extends object, F extends FunctionMap<T>> = {
 
 export const useRules = <T extends object, F extends FunctionMap<T>>(
   contextID: string,
-  object: T,
+  obj: T,
   opts: UseRuleOptions<T, F>,
 ): UseRulesOutput<T, F> => {
   const { evaluateRules } = useRuleContext(contextID, opts.cacheTtl);
@@ -69,8 +69,8 @@ export const useRules = <T extends object, F extends FunctionMap<T>>(
   });
 
   useEffect(() => {
-    executeRules(object);
-  }, [object]);
+    executeRules(obj);
+  }, [obj]);
 
   return {
     isLoading,

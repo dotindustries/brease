@@ -1,9 +1,10 @@
 import { EvaluationResult } from "@brease/sdk";
+import { isJsonPath, setValue } from "./jsonpath.js";
 
 export type ApplyFunction<T extends object, R extends object> = (
   action: EvaluationResult.Model,
   obj: T,
-) => Promise<T | (T & R)>;
+) => Promise<T & R>;
 
 export interface Action<T extends object, R extends object> {
   kind: string;
@@ -11,26 +12,27 @@ export interface Action<T extends object, R extends object> {
 }
 
 export const $setAction = async <T extends object, R extends object>(
-  action: T,
-  obj: R,
+  action: EvaluationResult.Model,
+  obj: T,
 ) => {
   if (action.action !== "$set") return;
+  const a: { [k: string]: any } = {};
 
-  if (action.targetID) {
-    obj[action.targetID] = action.value;
+  if (action.targetID && isJsonPath(action.targetID)) {
+    setValue(a, action.targetID, action.value);
+  } else if (action.targetID) {
+    a[action.targetID] = action.value;
   }
 
-  return obj as T & R;
+  return a as R;
 };
 
 /**
- * A helper function to create a type-safe business rule action
- * @param kind The action kind to look for in the rule evaluation results
- * @param apply The function to execute when an action in the rule evaluation results is found
+ * A helper function to create a type-safe business rule $set action
  * @returns
  */
-export const createActionHelper = <T extends object, R extends object>(
-  apply: ApplyFunction<T, R>,
-) => apply;
+export const createTypedSetAction = <R extends object>() => {
+  return $setAction<any, R>;
+};
 
 export const builtinActions = [$setAction];

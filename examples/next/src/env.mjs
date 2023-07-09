@@ -9,6 +9,7 @@ export const env = createEnv({
   server: {
     NODE_ENV: z.enum(["development", "test", "production"]),
     BREASE_TOKEN: z.string().min(1),
+    DEBUG: z.any().optional(),
   },
 
   /**
@@ -25,6 +26,7 @@ export const env = createEnv({
    * middlewares) or client-side so we need to destruct manually.
    */
   runtimeEnv: {
+    DEBUG: process.env.DEBUG,
     NODE_ENV: process.env.NODE_ENV,
     BREASE_TOKEN: process.env.BREASE_TOKEN,
     // NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,

@@ -1,3 +1,11 @@
+import {
+  ZodSchema,
+  ZodTypeDef,
+  ZodTypeAny,
+  ZodRawShape,
+  ZodType,
+  ZodTypeWithoutNonValues,
+} from "zod";
 // Using from https://github.com/temporalio/sdk-typescript/blob/main/packages/common/src/encoding.ts
 // Pasted with modifications from: https://raw.githubusercontent.com/anonyco/FastestSmallestTextEncoderDecoder/master/EncoderDecoderTogether.src.js
 /* eslint no-fallthrough: 0 */
@@ -341,14 +349,14 @@ export class TextEncoder {
 /**
  * Encode a UTF-8 string into a Uint8Array
  */
-export function encode(s: string): Uint8Array {
+export function encodeToUint8Array(s: string): Uint8Array {
   return TextEncoder.prototype.encode(s);
 }
 
 /**
  * Decode a Uint8Array into a UTF-8 string
  */
-export function decode(a: Uint8Array): string {
+export function decodeFromUint8Array(a: Uint8Array): string {
   return TextDecoder.prototype.decode(a);
 }
 
@@ -558,24 +566,37 @@ export function base64decode(
   return decoder.decode(base64ToBytes(str));
 }
 
-// PARAMETERS usage
-
-const enc = (a: any) => {
+/**
+ * Encode a any object into a base64 string
+ */
+export function encode(a: any): string {
   return base64encode(JSON.stringify(a));
+}
+
+/**
+ * @internal
+ */
+type Schema<TData> = {
+  parse: (data: unknown) => TData;
 };
 
-console.log(`9: ${enc(9)}`);
-console.log(`".gov": ${enc(".gov")}`);
-console.log(`"Livefish": ${enc("Livefish")}`);
-console.log(`"[Ukraine]": ${enc(["Ukraine"])}`);
-console.log(`"[red]": ${enc(["red"])}`);
-console.log(`"[blue]": ${enc(["blue"])}`);
-console.log(`"[red, green]": ${enc(["red", "green"])}`);
-console.log(`\d{2}\/\d{2}\/20\d{2}: ${enc("\\d{2}/\\d{2}/20\\d{2}")}`);
+/**
+ * Decode a base64 string into a any
+ */
+export function decode(s: string): any;
+export function decode<T>(s: string, schema: Schema<T>): T;
+export function decode<T>(s: string, schema?: Schema<T>): any {
+  const objStr = base64decode(s);
+  let obj: unknown;
+  try {
+    obj = JSON.parse(objStr);
+  } catch (error) {
+    obj = objStr;
+  }
 
-console.log(`ZXhhbXBsZQ==: ${base64decode("ZXhhbXBsZQ==")}`);
-console.log(
-  `eyJhIjoiYiJ9: ${base64decode("eyJhIjoiYiJ9")}`,
-  JSON.parse(base64decode("eyJhIjoiYiJ9")),
-);
-console.log(`{a: "b"}: ${enc({ a: "b" })}`);
+  if (schema) {
+    return schema.parse(obj);
+  }
+
+  return obj;
+}

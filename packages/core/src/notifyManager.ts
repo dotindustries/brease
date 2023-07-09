@@ -1,4 +1,4 @@
-import { scheduleMicrotask } from "./utils";
+import { scheduleMicrotask } from "./utils.js";
 
 // TYPES
 

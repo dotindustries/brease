@@ -21,6 +21,12 @@ const products = [
   },
 ];
 
+type CheckoutValues = {
+  discount?: { code: string; amount: string };
+  taxes?: string;
+  shipping?: string;
+};
+
 export interface User {
   user_id: string;
   first_name: string;
@@ -58,12 +64,10 @@ const SimpleExample = () => {
     birthdate: "11/12/2021",
   });
 
-  type CheckoutValues = {
-    discount?: { code: string; amount: string };
-    taxes?: string;
-    shipping?: string;
-  };
-
+  // new fields after rule execution:
+  //   discount: { code: "CHEAPSKATE", amount: "$16.00" },
+  //   taxes: "$9.92",
+  //   shipping: "$8.00",
   const { result: order, isLoading } = useRules("checkout", user, {
     objectID: user.user_id,
     userDefinedActions: {
@@ -74,26 +78,6 @@ const SimpleExample = () => {
   if (!order || isLoading) {
     return null;
   }
-
-  order;
-
-  // order now has the shape of
-  // {
-  //   user_id: 1,
-  //   first_name: "Gusella",
-  //   last_name: "Dakers",
-  //   age: 98,
-  //   address: "248 Parkside Hill",
-  //   city: "Komysh-Zorya",
-  //   country: "Ukraine",
-  //   favorite_color: ["green", "red"],
-  //   birthdate: "11/12/2021",
-
-  //   // and new fields after rule execution:
-  //   discount: { code: "CHEAPSKATE", amount: "$16.00" },
-  //   taxes: "$9.92",
-  //   shipping: "$8.00",
-  // }
 
   return (
     <div className="bg-white">
@@ -162,10 +146,10 @@ const SimpleExample = () => {
                 <dt className="flex">
                   Discount
                   <span className="ml-2 rounded-full bg-gray-200 px-2 py-0.5 text-xs tracking-wide text-gray-600">
-                    {order.discount.code}
+                    {order.discount?.code}
                   </span>
                 </dt>
-                <dd className="text-gray-900">-{order.discount.amount}</dd>
+                <dd className="text-gray-900">-{order.discount?.amount}</dd>
               </div>
               <div className="flex justify-between">
                 <dt>Taxes</dt>

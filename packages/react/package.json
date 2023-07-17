@@ -27,11 +27,13 @@
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
+  "type": "module",
   "files": [
     "dist",
     "src"
   ],
   "scripts": {
+    "dev": "tsup src/index.ts --config tsup.config.ts --watch",
     "build": "tsup src/index.ts --config tsup.config.ts",
     "lint": "TIMING=1 eslint src/**/*.ts* --fix",
     "clean": "rm -rf dist"

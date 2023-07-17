@@ -1,46 +1,126 @@
+import { encodeClientRule, getStore } from "@brease/core";
 import type {
-  AddRuleInput,
   EvaluateRulesInput,
-  ReplaceRuleInput,
   ApiAddRuleResponse,
   ApiReplaceRuleResponse,
   ApiEvaluateRulesResponse,
   ApiAllRulesResponse,
+  RuleStoreOptions,
+  EvaluationResult,
+  FunctionMap,
+  UnionToIntersection,
+  Resolve,
+  ClientRule,
 } from "@brease/core";
-import { useContext, useMemo } from "react";
-import { BreaseContext } from "./provider";
+import { useContext, useEffect, useMemo } from "react";
+import { BreaseContext } from "./provider.js";
+import { useStore } from "zustand";
 
-export const useRulesClient = () => {
-  return useContext(BreaseContext);
+const useRuleStore = <T extends object, F extends FunctionMap<T>>(
+  contextID: string,
+  options: RuleStoreOptions<T, F>,
+) => {
+  return useStore(getStore<T, F>(contextID, options));
 };
 
-export const useRuleContext = (
-  contextID: string
-): {
+export default useRuleStore;
+
+export const useRulesClient = () => {
+  return useContext(BreaseContext)?.sdk;
+};
+
+export type UseRuleOptions<T extends object, F extends FunctionMap<T>> = {
+  objectID?: string;
+  cacheTtl?: number;
+  userDefinedActions?: F;
+  overrideCode?: string;
+  overrideRules?: EvaluateRulesInput.OverrideRules;
+};
+
+export type ExecuteRulesOptions = Pick<
+  EvaluateRulesInput.Model,
+  "overrideCode" | "overrideRules"
+>;
+
+export type UseRulesOutput<T extends object, F extends FunctionMap<T>> = {
+  isLoading: boolean;
+  rawActions: EvaluationResult.Model[];
+  executeRules: (object: T, opts?: ExecuteRulesOptions) => void;
+  result:
+    | Resolve<T & UnionToIntersection<Awaited<ReturnType<F[keyof F]>>>>
+    | undefined;
+};
+
+export const useRules = <T extends object, F extends FunctionMap<T>>(
+  contextID: string,
+  obj: T,
+  opts: UseRuleOptions<T, F>,
+): UseRulesOutput<T, F> => {
+  const { evaluateRules } = useRuleContext(contextID, opts.cacheTtl);
+  const storeID = opts.objectID ? `${contextID}_${opts.objectID}` : contextID;
+  const {
+    executeRules,
+    isExecuting: isLoading,
+    rawActions,
+    result,
+  } = useRuleStore<T, F>(storeID, {
+    evaluateRulesFn: evaluateRules,
+    userDefinedActions: opts.userDefinedActions,
+    overrideCode: opts.overrideCode,
+    overrideRules: opts.overrideRules,
+  });
+
+  useEffect(() => {
+    executeRules(obj);
+  }, [obj]);
+
+  return {
+    isLoading,
+    rawActions,
+    result,
+    executeRules,
+  };
+};
+
+export type RuleContext = {
   evaluateRules: (
-    input: EvaluateRulesInput.Model
-  ) => Promise<ApiEvaluateRulesResponse.Model>;
-  addRule: (input: AddRuleInput.Model) => Promise<ApiAddRuleResponse.Model>;
+    input: EvaluateRulesInput.Model,
+  ) => Promise<ApiEvaluateRulesResponse.Results | undefined>;
+  addRule: (input: ClientRule) => Promise<ApiAddRuleResponse.Model>;
   getAllRules: (
-    compileCode?: boolean | undefined
+    compileCode?: boolean | undefined,
   ) => Promise<ApiAllRulesResponse.Model>;
   removeRule: (ruleID: string) => Promise<any>;
-  replaceRule: (
-    input: ReplaceRuleInput.Model
-  ) => Promise<ApiReplaceRuleResponse.Model>;
-} => {
-  const client = useRulesClient();
+  replaceRule: (input: ClientRule) => Promise<ApiReplaceRuleResponse.Model>;
+};
+
+/**
+ * Creates context scoped functions ready for execution.
+ *
+ * @param contextID the domain context of the ruleset
+ * @param cacheTtl the number of milliseconds to cache the rule run results for. Defaults to Infinity
+ * @returns
+ */
+export const useRuleContext = (
+  contextID: string,
+  cacheTtl?: number,
+): RuleContext => {
+  const { sdk: client, createEvaluateRules } = useContext(BreaseContext);
 
   const operations = useMemo(() => {
-    const evaluateRules = (input: EvaluateRulesInput.Model) => {
-      return client.Context.evaluateRules(input, contextID);
-    };
+    const evaluateRules = createEvaluateRules(contextID, cacheTtl);
 
-    const addRule = (input: AddRuleInput.Model) => {
-      return client.Context.addRule(input, contextID);
+    const addRule = (rule: ClientRule) => {
+      return client.Context.addRule(
+        {
+          rule: encodeClientRule(rule),
+        },
+        contextID,
+      );
     };
 
     const getAllRules = (compileCode?: boolean | undefined) => {
+      // TODO: decode rules instead of raw output?
       return client.Context.getAllRules(contextID, {
         compileCode,
       });
@@ -50,8 +130,12 @@ export const useRuleContext = (
       return client.Context.removeRule(contextID, ruleID);
     };
 
-    const replaceRule = (input: ReplaceRuleInput.Model) => {
-      return client.Context.replaceRule(input, contextID, input.rule.id);
+    const replaceRule = (rule: ClientRule) => {
+      return client.Context.replaceRule(
+        { rule: encodeClientRule(rule) },
+        contextID,
+        rule.id,
+      );
     };
 
     return {

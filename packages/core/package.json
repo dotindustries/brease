@@ -14,6 +14,7 @@
     "type": "github",
     "url": "https://github.com/sponsors/dotindustries"
   },
+  "type": "module",
   "exports": {
     ".": {
       "require": "./dist/index.js",
@@ -32,15 +33,25 @@
     "src"
   ],
   "scripts": {
+    "dev": "tsup src/index.ts --config tsup.config.ts --watch",
     "build": "tsup src/index.ts --config tsup.config.ts",
     "lint": "TIMING=1 eslint src/**/*.ts* --fix",
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@brease/sdk": "^0.0.1",
+    "@brease/sdk": "^0.0.3",
+    "cachified": "^3.5.4",
+    "jsonpath": "^1.1.1",
+    "lodash-es": "^4.17.21",
+    "lru-cache": "^10.0.0",
+    "object-hash": "^3.0.0",
+    "zod": "^3.21.4",
     "zustand": "^4.3.8"
   },
   "devDependencies": {
+    "@types/jsonpath": "^0.2.0",
+    "@types/lodash-es": "^4.17.7",
+    "@types/object-hash": "^3.0.2",
     "tsup": "6.7.0"
   }
 }

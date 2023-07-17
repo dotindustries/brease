@@ -120,17 +120,11 @@ export const applyActions = async <T extends object, F extends FunctionMap<T>>(
   rawActions: EvaluationResult.Model[],
   fns: F,
 ): Promise<Resolve<T & UnionToIntersection<ReturnType<F[keyof F]>>>> => {
-  let copy = clone(obj);
-  for (const action of rawActions) {
-    if (!action.action) continue;
-    const fn = fns[action.action];
-    if (!fn) continue;
-    const extension = await fn(action, copy);
-    copy = Object.assign(copy, extension) as never;
-  }
-  // const parts = Promise.all(Object.values(fns).map((fn) => fn(obj)));
-  // return Object.assign({}, obj, ...parts) as never;
-  return copy as Resolve<T & UnionToIntersection<ReturnType<F[keyof F]>>>;
+  const copy = clone(obj);
+  const parts = await Promise.all(
+    Object.values(fns).flatMap((fn) => rawActions.map((a) => fn(a, obj))),
+  );
+  return Object.assign({}, copy, ...parts) as never;
 };
 
 const stores: Map<string, StoreApi<RulesStore<any, any>>> = new Map();

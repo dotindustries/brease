@@ -1,8 +1,6 @@
-import { createTypedSetAction, getStore } from "@brease/core";
+import { encodeClientRule, getStore } from "@brease/core";
 import type {
-  AddRuleInput,
   EvaluateRulesInput,
-  ReplaceRuleInput,
   ApiAddRuleResponse,
   ApiReplaceRuleResponse,
   ApiEvaluateRulesResponse,
@@ -12,6 +10,7 @@ import type {
   FunctionMap,
   UnionToIntersection,
   Resolve,
+  ClientRule,
 } from "@brease/core";
 import { useContext, useEffect, useMemo } from "react";
 import { BreaseContext } from "./provider.js";
@@ -87,14 +86,12 @@ export type RuleContext = {
   evaluateRules: (
     input: EvaluateRulesInput.Model,
   ) => Promise<ApiEvaluateRulesResponse.Results | undefined>;
-  addRule: (input: AddRuleInput.Model) => Promise<ApiAddRuleResponse.Model>;
+  addRule: (input: ClientRule) => Promise<ApiAddRuleResponse.Model>;
   getAllRules: (
     compileCode?: boolean | undefined,
   ) => Promise<ApiAllRulesResponse.Model>;
   removeRule: (ruleID: string) => Promise<any>;
-  replaceRule: (
-    input: ReplaceRuleInput.Model,
-  ) => Promise<ApiReplaceRuleResponse.Model>;
+  replaceRule: (input: ClientRule) => Promise<ApiReplaceRuleResponse.Model>;
 };
 
 /**
@@ -113,11 +110,17 @@ export const useRuleContext = (
   const operations = useMemo(() => {
     const evaluateRules = createEvaluateRules(contextID, cacheTtl);
 
-    const addRule = (input: AddRuleInput.Model) => {
-      return client.Context.addRule(input, contextID);
+    const addRule = (rule: ClientRule) => {
+      return client.Context.addRule(
+        {
+          rule: encodeClientRule(rule),
+        },
+        contextID,
+      );
     };
 
     const getAllRules = (compileCode?: boolean | undefined) => {
+      // TODO: decode rules instead of raw output?
       return client.Context.getAllRules(contextID, {
         compileCode,
       });
@@ -127,8 +130,12 @@ export const useRuleContext = (
       return client.Context.removeRule(contextID, ruleID);
     };
 
-    const replaceRule = (input: ReplaceRuleInput.Model) => {
-      return client.Context.replaceRule(input, contextID, input.rule.id);
+    const replaceRule = (rule: ClientRule) => {
+      return client.Context.replaceRule(
+        { rule: encodeClientRule(rule) },
+        contextID,
+        rule.id,
+      );
     };
 
     return {

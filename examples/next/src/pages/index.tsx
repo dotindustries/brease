@@ -58,22 +58,24 @@ const SimpleExample = () => {
     birthdate: "11/12/2021",
   });
 
-  type CheckoutValues = Partial<{
-    discount: { code: string; amount: string };
-    taxes: string;
-    shipping: string;
-  }>;
+  type CheckoutValues = {
+    discount?: { code: string; amount: string };
+    taxes?: string;
+    shipping?: string;
+  };
 
-  const { result: order } = useRules("checkout", user, {
+  const { result: order, isLoading } = useRules("checkout", user, {
     objectID: user.user_id,
     userDefinedActions: {
       $set: createTypedSetAction<CheckoutValues>(),
     },
   });
 
-  if (!order) {
+  if (!order || isLoading) {
     return null;
   }
+
+  order;
 
   // order now has the shape of
   // {

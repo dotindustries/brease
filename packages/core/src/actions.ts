@@ -4,7 +4,7 @@ import { isJsonPath, setValue } from "./jsonpath.js";
 export type ApplyFunction<T extends object, R extends object> = (
   action: EvaluationResult.Model,
   obj: T,
-) => Promise<T & R>;
+) => Promise<R>;
 
 export interface Action<T extends object, R extends object> {
   kind: string;
@@ -15,7 +15,7 @@ export const $setAction = async <T extends object, R extends object>(
   action: EvaluationResult.Model,
   obj: T,
 ) => {
-  if (action.action !== "$set") return;
+  if (action.action !== "$set") return {} as R;
   const a: { [k: string]: any } = {};
 
   if (action.targetID && isJsonPath(action.targetID)) {

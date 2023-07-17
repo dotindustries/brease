@@ -19,12 +19,17 @@ export type FunctionMap<T extends object> = {
   [key: FunctionKeys]: ApplyFunction<T, any>;
 };
 
-// Helper type to convert union types to intersection types
+// Hack to convert union types to intersection types
 export type UnionToIntersection<U> = (
   U extends any ? (k: U) => void : never
 ) extends (k: infer I) => void
   ? I
   : never;
+
+// Hack type to simplify resolved TS types
+export type Resolve<T> = {
+  [K in keyof T]: T[K];
+};
 
 export type RuleStoreOptions<T extends object, F extends FunctionMap<T>> = {
   evaluateRulesFn: (
@@ -40,7 +45,9 @@ export interface RulesStore<T extends object, F extends FunctionMap<T>> {
   lastHash?: string;
   rawActions: EvaluationResult.Model[];
   executeRules: (object: T) => void;
-  result: Awaited<T & UnionToIntersection<ReturnType<F[keyof F]>>> | undefined;
+  result:
+    | Resolve<T & UnionToIntersection<Awaited<ReturnType<F[keyof F]>>>>
+    | undefined;
 }
 
 const createRulesStore = <T extends object, F extends FunctionMap<T>>({
@@ -89,14 +96,14 @@ const createRulesStore = <T extends object, F extends FunctionMap<T>>({
           return;
         }
 
-        // extract and apply builtIn actions
-        const actions: F = {
+        // apply builtIn actions
+        const functions: F = {
           $set: $setAction,
           ...userDefinedActions,
         };
 
         // apply recognized rules
-        const result = await applyActions(object, rawActions, actions);
+        const result = await applyActions(object, rawActions, functions);
 
         set({
           rawActions,
@@ -112,16 +119,18 @@ export const applyActions = async <T extends object, F extends FunctionMap<T>>(
   obj: T,
   rawActions: EvaluationResult.Model[],
   fns: F,
-) => {
+): Promise<Resolve<T & UnionToIntersection<ReturnType<F[keyof F]>>>> => {
   let copy = clone(obj);
   for (const action of rawActions) {
     if (!action.action) continue;
     const fn = fns[action.action];
     if (!fn) continue;
     const extension = await fn(action, copy);
-    Object.assign(copy, extension);
+    copy = Object.assign(copy, extension) as never;
   }
-  return copy as T & UnionToIntersection<ReturnType<F[keyof F]>>;
+  // const parts = Promise.all(Object.values(fns).map((fn) => fn(obj)));
+  // return Object.assign({}, obj, ...parts) as never;
+  return copy as Resolve<T & UnionToIntersection<ReturnType<F[keyof F]>>>;
 };
 
 const stores: Map<string, StoreApi<RulesStore<any, any>>> = new Map();

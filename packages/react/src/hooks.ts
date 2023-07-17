@@ -1,4 +1,4 @@
-import { getStore } from "@brease/core";
+import { createTypedSetAction, getStore } from "@brease/core";
 import type {
   AddRuleInput,
   EvaluateRulesInput,
@@ -11,6 +11,7 @@ import type {
   EvaluationResult,
   FunctionMap,
   UnionToIntersection,
+  Resolve,
 } from "@brease/core";
 import { useContext, useEffect, useMemo } from "react";
 import { BreaseContext } from "./provider.js";
@@ -46,7 +47,9 @@ export type UseRulesOutput<T extends object, F extends FunctionMap<T>> = {
   isLoading: boolean;
   rawActions: EvaluationResult.Model[];
   executeRules: (object: T, opts?: ExecuteRulesOptions) => void;
-  result: Awaited<T & UnionToIntersection<ReturnType<F[keyof F]>>> | undefined;
+  result:
+    | Resolve<T & UnionToIntersection<Awaited<ReturnType<F[keyof F]>>>>
+    | undefined;
 };
 
 export const useRules = <T extends object, F extends FunctionMap<T>>(

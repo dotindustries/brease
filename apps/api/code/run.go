@@ -76,10 +76,13 @@ func (r *Run) parseResults(result *tengo.Variable) (results []models.EvaluationR
 		// if result structure changes to dynamic value types, use
 		//   github.com/mitchellh/mapstructure
 		results = append(results, models.EvaluationResult{
-			Action:     res["action"].(string),
-			TargetID:   res["targetID"].(string),
-			TargetType: res["targetType"].(string),
-			Value:      res["value"].(string),
+			Action: res["action"].(string),
+			Target: models.Target{
+				Kind:   res["kind"].(string),
+				Target: res["target"].(string),
+				Value:  res["value"].(string),
+			},
+			By: res["by"].(string),
 		})
 	}
 	return

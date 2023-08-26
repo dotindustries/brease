@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"go.dot.industries/brease/auditlog"
+	"go.dot.industries/brease/auditlog/auditlogstore"
 	"io"
 	"log"
 	"net/http"
+	"regexp"
 	"time"
 
 	"go.dot.industries/brease/storage/redis"
@@ -102,6 +105,21 @@ func newApp(db storage.Database, logger *zap.Logger) *fizz.Fizz {
 	r.Use(requestid.New())
 	r.Use(stats.RequestStats())
 	r.Use(ginzap.GinzapWithConfig(logger, ginLoggerConfig()))
+
+	r.Use(auditlog.Middleware(
+		getAuditLogStore(logger),
+		auditlog.WithSensitivePaths([]*regexp.Regexp{regexp.MustCompile("^/(token|refreshToken)$")}),
+		auditlog.WithIDExtractor(func(c *gin.Context) (contextID, ownerID, userID string) {
+			ownerID = c.GetString(auth.ContextOrgKey)
+			// TODO: we don't have access to the contextID yet
+			contextID = ""
+			userID = c.GetString(auth.ContextUserIDKey)
+			if userID == "" {
+				userID = "root:" + ownerID
+			}
+			return
+		}),
+	))
 	r.Use(gin.Recovery())
 
 	speakeasyAPIKey := env.Getenv("SPEAKEASY_API_KEY", "")
@@ -179,6 +197,22 @@ func newApp(db storage.Database, logger *zap.Logger) *fizz.Fizz {
 	}, tonic.Handler(bh.EvaluateRules, 200))
 
 	return f
+}
+
+func getAuditLogStore(logger *zap.Logger) auditlog.Store {
+	stores := auditlog.Stores{auditlogstore.NewLog(auditlogstore.LogConfig{Verbosity: 5}, logger)}
+	if redisURL := env.Getenv("REDIS_URL", ""); redisURL != "" {
+		redisStore, err := auditlogstore.NewRedis(auditlogstore.Options{
+			URL:    redisURL,
+			Logger: logger,
+		})
+		if err != nil {
+			panic(err)
+		}
+		return append(stores, redisStore)
+	}
+
+	return stores
 }
 
 func ginLoggerConfig() *ginzap.Config {

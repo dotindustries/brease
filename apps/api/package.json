@@ -1,0 +1,11 @@
+{
+  "name": "api-server",
+  "description": "Business rules engine service and go package",
+  "scripts": {
+    "clean": "rm -rf ./dist",
+    "proto": "protoc --go_out=paths=source_relative:./pb *.proto",
+    "dev": "gow run .",
+    "release": "goreleaser release --snapshot --clean",
+    "test": "dev && k6 run load.js"
+  }
+}

@@ -24,7 +24,7 @@ func OpenAPISpecHandler(f *fizz.Fizz, logger *zap.Logger) func(*gin.Context) {
 		patchConditions(doc)
 		patchExpression(doc)
 
-		// update usage of expression in rule model
+		// point rule model to the newly added expression schema
 		doc.Components.Schemas["Rule"].Value.Properties["expression"] = &openapi3.SchemaRef{Ref: "#/components/schemas/Expression"}
 
 		// FIXME: should we validate the override result?
@@ -33,6 +33,7 @@ func OpenAPISpecHandler(f *fizz.Fizz, logger *zap.Logger) func(*gin.Context) {
 	}
 }
 
+// patchExpression is required because we use protobuf conversion for pass-through of expression value
 func patchExpression(doc *openapi3.T) {
 	exprArray := &openapi3.Schema{
 		Properties: map[string]*openapi3.SchemaRef{
@@ -74,6 +75,7 @@ func patchExpression(doc *openapi3.T) {
 	}
 }
 
+// patchConditions is required, because fizz cannot translate a string constant type to an enum
 func patchConditions(doc *openapi3.T) {
 	doc.Components.Schemas["ConditionType"] = &openapi3.SchemaRef{
 		Value: &openapi3.Schema{

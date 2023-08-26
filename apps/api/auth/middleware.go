@@ -55,7 +55,10 @@ func APIKeyAuthMiddleware(logger *zap.Logger) gin.HandlerFunc {
 	}
 
 	return func(c *gin.Context) {
-		authHeader := c.Request.Header.Get("Authorization")
+		authHeader := c.Request.Header.Get("X-API-KEY")
+		if authHeader == "" {
+			authHeader = c.Request.Header.Get("Authorization")
+		}
 		if authHeader == "" {
 			_ = c.AbortWithError(http.StatusUnauthorized, errors2.Unauthorizedf("API key not set"))
 			return

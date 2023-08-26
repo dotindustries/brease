@@ -20,8 +20,8 @@ dref := brease.dref
 
 results := []
 
-action := func(action, targetType, targetID, value) {
-	results = append(results, { targetID: targetID, targetType: targetType, action: action, value: value })
+action := func(action, kind, target, value, by) {
+	results = append(results, { target: { target: target, kind: kind, value: value }, action: action, by: by })
 }
 
 `

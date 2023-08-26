@@ -26,9 +26,9 @@ func (a *Assembler) parseRules(ctx context.Context, rules []models.Rule) (string
 	pool := worker.New(len(rules))
 	mux := sync.Mutex{}
 
-	appendFn := func(section, ID string) {
+	appendFn := func(section, summary string) {
 		mux.Lock()
-		code.WriteString("// Rule: " + ID + "\n" + section + "\n\n")
+		code.WriteString("// Rule: " + summary + "\n" + section + "\n\n")
 		mux.Unlock()
 	}
 
@@ -66,9 +66,12 @@ func generateCodeForRule(ctx context.Context, args interface{}) (interface{}, er
 	}
 	expression := parseExpression(ctx, expr)
 
-	codeSection := fmt.Sprintf(`if %s {
-	action("%s", "%s", "%s", "%s")
-}`, expression, rule.Action, rule.Target.Type, rule.Target.Target, rule.Target.Value)
+	actions := ""
+	for _, action := range rule.Actions {
+		actions += fmt.Sprintf(`\naction("%s", "%s", "%s", "%s", "%s")\n`, action.Action, action.Target.Kind, action.Target.Target, action.Target.Value, rule.ID)
+
+	}
+	codeSection := fmt.Sprintf(`if %s {%s}`, expression, actions)
 
 	pArgs.appendFn(codeSection, fmt.Sprintf("%s: %s", rule.ID, rule.Description))
 

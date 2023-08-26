@@ -19,7 +19,7 @@ var (
 			Description: "first rule",
 			Action:      "setValue",
 			Target: models.Target{
-				Type:   "jsonpath",
+				Kind:   "jsonpath",
 				Target: "$.property2",
 				Value:  "newValue",
 			},

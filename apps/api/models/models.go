@@ -5,22 +5,31 @@ import (
 )
 
 type Target struct {
-	Type   string `json:"type" validate:"required"`
-	Target string `json:"target" validate:"required"`
+	Kind   string `json:"kind" validate:"required" example:"customTargetKind"`
+	Target string `json:"target" validate:"required" example:"$.prop" example:"propKey" example:"target_01h89qgxe5e7wregw6gb94d5p6"`
 	// TODO: Should be anything
 	// The target value to be set (it is the json serialized representation of the value
-	Value string `json:"value,omitempty"`
+	Value string `json:"value,omitempty" example:"ZXhhbXBsZQ=="`
 }
 
-func (*Target) TypeName() string { return "Target" }
+func (Target) TypeName() string { return "Target" }
+
+func (e Target) MarshalLogObject(enc zapcore.ObjectEncoder) error {
+	enc.AddString("target", e.Target)
+	enc.AddString("kind", e.Kind)
+	enc.AddString("value", e.Value)
+	return nil
+}
+
+type Action struct {
+	Action string `json:"action" validate:"required" example:"$set"`
+	Target Target `json:"target" validate:"required"`
+}
 
 type Rule struct {
-	ID          string `json:"id" validate:"required"`
-	Description string `json:"description,omitempty"`
-	// The action to be reported for the Target
-	Action string `json:"action" validate:"required"`
-	Target Target `json:"target" validate:"required"`
-
+	ID          string   `json:"id" validate:"required" example:"rule_01h89qfdhbejtb3jwqq1gazbm5"`
+	Description string   `json:"description,omitempty" example:"Rule short description"`
+	Actions     []Action `json:"actions" validate:"required"`
 	// Ugly workaround as base64 protobuf until https://github.com/wI2L/fizz/issues/80 is resolved
 	// A variadic condition expression in a binary format.
 	//  Expression:
@@ -29,26 +38,23 @@ type Rule struct {
 	//      - $ref: '#/components/schemas/And'
 	//      - $ref: '#/components/schemas/Or'
 	//      - $ref: '#/components/schemas/Condition'
-	Expression map[string]interface{} `json:"expression" validate:"required"`
+	Expression map[string]interface{} `json:"expression" validate:"required" example:""`
 }
 
 func (*Rule) TypeName() string { return "Rule" }
 
 type EvaluationResult struct {
-	TargetID   string `json:"targetID"`
-	TargetType string `json:"actionTargetType"`
-	Action     string `json:"action"`
-	Value      string `json:"value"`
+	Action string `json:"action" validate:"required" example:"$set"`
+	Target Target `json:"target" validate:"required"`
+	By     string `json:"by" example:"rule_01h89qfdhbejtb3jwqq1gazbm5"`
 }
 
-func (*EvaluationResult) TypeName() string { return "EvaluationResult" }
+func (EvaluationResult) TypeName() string { return "EvaluationResult" }
 
 func (e EvaluationResult) MarshalLogObject(enc zapcore.ObjectEncoder) error {
-	enc.AddString("targetID", e.TargetID)
-	enc.AddString("targetType", e.TargetType)
+	_ = enc.AddObject("target", e.Target)
 	enc.AddString("action", e.Action)
-	enc.AddString("value", e.Value)
-
+	enc.AddString("by", e.By)
 	return nil
 }
 

@@ -36,7 +36,7 @@ func conditionToScript(condition *pb.Condition) (code string) {
 		return fmt.Sprintf(`%s.%s(jsonpath("%s", %s), %s)`, tengoModuleName, fnName, jsonPath, objectVariable, paramCode)
 	}
 
-	switch condition.Type {
+	switch condition.Kind {
 	case models.ConditionEmpty:
 		return // nothind to do
 	case models.ConditionHasValue:

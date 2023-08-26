@@ -26,7 +26,7 @@ message Condition {
     ConditionBaseRef ref = 2;
   }
   // The type of this condition, based on the internally defined ConditionType
-  string type = 3;
+  string kind = 3;
   // A condition parameter holds a target value (right hand side) for a comparison
   bytes value = 4;
 }

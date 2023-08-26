@@ -17,13 +17,16 @@ var (
 		{
 			ID:          "asdf",
 			Description: "first rule",
-			Action:      "setValue",
-			Target: models.Target{
-				Kind:   "jsonpath",
-				Target: "$.property2",
-				Value:  "newValue",
+			Actions: []models.Action{
+				{
+					Action: "setValue",
+					Target: models.Target{
+						Kind:   "jsonpath",
+						Target: "$.property2",
+						Value:  "newValue",
+					},
+				},
 			},
-
 			Expression: map[string]interface{}{
 				"and": pb.And{
 					Expression: []*pb.Expression{
@@ -31,7 +34,7 @@ var (
 							Expr: &pb.Expression_Condition{
 								Condition: &pb.Condition{
 									Base:  &pb.Condition_Key{Key: "$.property3"},
-									Type:  "lt",
+									Kind:  "lt",
 									Value: v2,
 								},
 							},
@@ -40,7 +43,7 @@ var (
 							Expr: &pb.Expression_Condition{
 								Condition: &pb.Condition{
 									Base:  &pb.Condition_Key{Key: "$.property"},
-									Type:  "gt",
+									Kind:  "gt",
 									Value: v4,
 								},
 							},

@@ -13,11 +13,11 @@ import (
 )
 
 type parserArgs struct {
-	rule     models.Rule
+	rule     models.VersionedRule
 	appendFn func(section string, ID string)
 }
 
-func (a *Assembler) parseRules(ctx context.Context, rules []models.Rule) (string, error) {
+func (a *Assembler) parseRules(ctx context.Context, rules []models.VersionedRule) (string, error) {
 	ctx, span := trace.Tracer.Start(ctx, "parse")
 	defer span.End()
 
@@ -68,12 +68,12 @@ func generateCodeForRule(ctx context.Context, args interface{}) (interface{}, er
 
 	actions := ""
 	for _, action := range rule.Actions {
-		actions += fmt.Sprintf(`\naction("%s", "%s", "%s", "%s", "%s")\n`, action.Action, action.Target.Kind, action.Target.Target, action.Target.Value, rule.ID)
+		actions += fmt.Sprintf("\naction(\"%s\", \"%s\", \"%s\", \"%s\", \"%s\")\n", action.Action, action.Target.Kind, action.Target.Target, action.Target.Value, rule.ID)
 
 	}
 	codeSection := fmt.Sprintf(`if %s {%s}`, expression, actions)
 
-	pArgs.appendFn(codeSection, fmt.Sprintf("%s: %s", rule.ID, rule.Description))
+	pArgs.appendFn(codeSection, fmt.Sprintf("%s@v%d: %s", rule.ID, rule.Version, rule.Description))
 
 	return nil, nil
 }

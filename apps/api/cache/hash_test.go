@@ -13,7 +13,7 @@ var (
 	things   = []string{"a", "b", "c"}
 	v2, _    = json.Marshal(2)
 	v4, _    = json.Marshal(4)
-	ruleset1 = []models.Rule{
+	ruleset1 = []models.VersionedRule{
 		{
 			ID:          "asdf",
 			Description: "first rule",

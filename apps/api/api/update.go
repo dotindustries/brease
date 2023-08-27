@@ -15,17 +15,17 @@ type ReplaceRuleRequest struct {
 }
 
 type ReplaceRuleResponse struct {
-	Rule models.Rule `json:"rule"`
+	Rule models.VersionedRule `json:"rule"`
 }
 
 func (b *BreaseHandler) ReplaceRule(c *gin.Context, r *ReplaceRuleRequest) (*ReplaceRuleResponse, error) {
 	orgID := c.GetString(auth.ContextOrgKey)
 
-	err := b.db.ReplaceRule(c.Request.Context(), orgID, r.ContextID, r.Rule)
+	updatedRule, err := b.db.ReplaceRule(c.Request.Context(), orgID, r.ContextID, r.Rule)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update rule: %v", err)
 	}
 	return &ReplaceRuleResponse{
-		Rule: r.Rule,
+		Rule: updatedRule,
 	}, nil
 }

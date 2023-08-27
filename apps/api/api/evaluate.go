@@ -69,9 +69,16 @@ func (b *BreaseHandler) findCode(ctx context.Context, r *EvaluateRulesRequest, o
 }
 
 // Override rules take precedence
-func (b *BreaseHandler) findRules(ctx context.Context, r *EvaluateRulesRequest, orgID string) ([]models.Rule, error) {
+func (b *BreaseHandler) findRules(ctx context.Context, r *EvaluateRulesRequest, orgID string) ([]models.VersionedRule, error) {
 	if r.OverrideRules != nil {
-		return r.OverrideRules, nil
+		vRs := make([]models.VersionedRule, len(r.OverrideRules))
+		for i, rule := range r.OverrideRules {
+			vRs[i] = models.VersionedRule{
+				Rule:    rule,
+				Version: 0, // override rules don't have versioning
+			}
+		}
+		return vRs, nil
 	}
 
 	rules, err := b.db.Rules(ctx, orgID, r.ContextID)

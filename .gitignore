@@ -10,3 +10,5 @@ coverage
 .next
 .turbo
 dist
+.aider*
+apps/api/.env.local

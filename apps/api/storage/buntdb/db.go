@@ -32,7 +32,7 @@ func NewDatabase(opts Options) (storage.Database, error) {
 		logger: opts.Logger,
 		rulePool: sync.Pool{
 			New: func() interface{} {
-				return new(models.Rule)
+				return new(models.VersionedRule)
 			},
 		},
 	}
@@ -52,78 +52,172 @@ func (b *buntdbContainer) Close() error {
 	return b.db.Close()
 }
 
-func (b *buntdbContainer) AddRule(_ context.Context, orgID string, contextID string, rule models.Rule) error {
-	rk := ruleKey(orgID, contextID, rule.ID)
-	ruleJSON, err := json.Marshal(rule)
+func (b *buntdbContainer) AddRule(_ context.Context, ownerID string, contextID string, rule models.Rule) (models.VersionedRule, error) {
+	vRule := models.VersionedRule{
+		Rule:    rule,
+		Version: 1,
+	}
+	rk := storage.RuleKey(ownerID, contextID, vRule.ID)
+	vk := storage.VersionKey(ownerID, contextID, vRule.ID, vRule.Version)
+
+	ruleJSON, err := json.Marshal(vRule)
 	if err != nil {
-		return err
+		return models.VersionedRule{}, err
 	}
 	err = b.db.Update(func(tx *buntdb.Tx) error {
-		_, _, txErr := tx.Set(rk, string(ruleJSON), nil)
+		_, _, txErr := tx.Set(rk, vk, nil)
+		if txErr != nil {
+			return txErr
+		}
+		_, _, txErr = tx.Set(vk, string(ruleJSON), nil)
 		if txErr != nil {
 			return txErr
 		}
 		return nil
 	})
 
-	return err
+	return vRule, err
 }
 
-func (b *buntdbContainer) Rules(_ context.Context, orgID string, contextID string) (rules []models.Rule, err error) {
-	rk := ruleKey(orgID, contextID, "*")
+func (b *buntdbContainer) Rules(_ context.Context, ownerID string, contextID string) (rules []models.VersionedRule, err error) {
+	rkSearch := storage.RuleKey(ownerID, contextID, "*")
 
-	var rawRules []string
+	var ruleKeys []string
 	err = b.db.View(func(tx *buntdb.Tx) error {
-		return tx.AscendKeys(rk, func(key, val string) bool {
-			rawRules = append(rawRules, val)
+		return tx.AscendKeys(rkSearch, func(key, val string) bool {
+			if storage.IsVersionKey(val) {
+				ruleKeys = append(ruleKeys, val)
+			}
+
 			return true
 		})
 	})
 
-	for _, r := range rawRules {
-		rule := b.rulePool.Get().(*models.Rule)
-		umErr := json.Unmarshal([]byte(r), rule)
-		if umErr != nil {
-			return nil, umErr
+	err = b.db.View(func(tx *buntdb.Tx) error {
+		for _, vk := range ruleKeys {
+			latestVersionData, vErr := tx.Get(vk)
+			if vErr != nil {
+				return vErr
+			}
+
+			rule := b.rulePool.Get().(*models.VersionedRule)
+			umErr := json.Unmarshal([]byte(latestVersionData), rule)
+			if umErr != nil {
+				return umErr
+			}
+			rules = append(rules, *rule)
+			b.rulePool.Put(rule)
 		}
-		b.rulePool.Put(rule)
-		rules = append(rules, *rule)
-	}
+		return nil
+	})
 
 	return
 }
 
-func (b *buntdbContainer) RemoveRule(_ context.Context, orgID string, contextID string, ruleID string) error {
-	rk := ruleKey(orgID, contextID, ruleID)
+func (b *buntdbContainer) RuleVersions(_ context.Context, ownerID string, contextID string, ruleID string) (rules []models.VersionedRule, err error) {
+	vkSearch := storage.RuleKey(ownerID, contextID, ruleID) + ":v*"
+	var ruleVersions []string
+	err = b.db.View(func(tx *buntdb.Tx) error {
+		return tx.AscendKeys(vkSearch, func(key, val string) bool {
+			ruleVersions = append(ruleVersions, val)
+			return true
+		})
+	})
+
+	err = b.db.View(func(tx *buntdb.Tx) error {
+		for _, versionData := range ruleVersions {
+			rule := b.rulePool.Get().(*models.VersionedRule)
+			umErr := json.Unmarshal([]byte(versionData), rule)
+			if umErr != nil {
+				return umErr
+			}
+			rules = append(rules, *rule)
+			b.rulePool.Put(rule)
+		}
+		return nil
+	})
+
+	return
+}
+
+func (b *buntdbContainer) RemoveRule(_ context.Context, ownerID string, contextID string, ruleID string) error {
+	rk := storage.RuleKey(ownerID, contextID, ruleID)
+	vkSearch := storage.RuleKey(ownerID, contextID, ruleID) + ":v*"
+	var ruleVersions []string
+	err := b.db.View(func(tx *buntdb.Tx) error {
+		return tx.AscendKeys(vkSearch, func(key, val string) bool {
+			ruleVersions = append(ruleVersions, key)
+			return true
+		})
+	})
+	if err != nil {
+		return err
+	}
+
 	return b.db.Update(func(tx *buntdb.Tx) error {
-		oldVal, err := tx.Delete(rk)
-		if err == nil {
+		// all versions
+		for _, vk := range ruleVersions {
+			oldVal, e := tx.Delete(vk)
+			if e == nil {
+				b.logger.Info("Successfully removed rule from context.", zap.String("key", vk), zap.String("value", oldVal))
+			}
+		}
+		// latest pointer
+		oldVal, e := tx.Delete(rk)
+		if e == nil {
 			b.logger.Info("Successfully removed rule from context.", zap.String("key", rk), zap.String("value", oldVal))
 		}
 		return err
 	})
 }
 
-func (b *buntdbContainer) ReplaceRule(_ context.Context, orgID string, contextID string, rule models.Rule) error {
-	rk := ruleKey(orgID, contextID, rule.ID)
-	ruleJSON, jsonErr := json.Marshal(rule)
-	if jsonErr != nil {
-		return jsonErr
-	}
-	return b.db.Update(func(tx *buntdb.Tx) error {
-		if oldVal, replaced, err := tx.Set(rk, string(ruleJSON), nil); replaced {
-			b.logger.Info("Successfully updated rule in context.", zap.String("key", rk), zap.String("old", oldVal), zap.String("new", string(ruleJSON)))
-		} else {
-			return err
+func (b *buntdbContainer) ruleLatestVersion(ruleKey string) (version int64, err error) {
+	version = -1
+	err = b.db.View(func(tx *buntdb.Tx) error {
+		vk, gErr := tx.Get(ruleKey)
+		if gErr != nil {
+			return gErr
 		}
-
+		version = storage.VersionFromVersionKey(vk)
 		return nil
 	})
+	return
 }
 
-func (b *buntdbContainer) Exists(_ context.Context, orgID string, contextID string, ruleID string) (exists bool, err error) {
+func (b *buntdbContainer) ReplaceRule(_ context.Context, ownerID string, contextID string, rule models.Rule) (models.VersionedRule, error) {
+	rk := storage.RuleKey(ownerID, contextID, rule.ID)
+	currentVersion, err := b.ruleLatestVersion(rk)
+	if err != nil {
+		return models.VersionedRule{}, err
+	}
+	vRule := models.VersionedRule{
+		Rule:    rule,
+		Version: currentVersion + 1,
+	}
+	vk := storage.VersionKey(ownerID, contextID, vRule.ID, vRule.Version)
+	ruleJSON, jsonErr := json.Marshal(vRule)
+	if jsonErr != nil {
+		return models.VersionedRule{}, jsonErr
+	}
+
+	err = b.db.Update(func(tx *buntdb.Tx) error {
+		_, _, sErr := tx.Set(rk, vk, nil)
+		if sErr != nil {
+			return sErr
+		}
+		_, _, vErr := tx.Set(vk, string(ruleJSON), nil)
+		if vErr != nil {
+			return vErr
+		}
+		return nil
+	})
+
+	return vRule, err
+}
+
+func (b *buntdbContainer) Exists(_ context.Context, ownerID string, contextID string, ruleID string) (exists bool, err error) {
 	err = b.db.View(func(tx *buntdb.Tx) error {
-		_, ierr := tx.Get(ruleKey(orgID, contextID, ruleID), true)
+		_, ierr := tx.Get(storage.RuleKey(ownerID, contextID, ruleID), true)
 		switch {
 		case errors.Is(ierr, buntdb.ErrNotFound):
 			exists = false
@@ -137,10 +231,10 @@ func (b *buntdbContainer) Exists(_ context.Context, orgID string, contextID stri
 	return
 }
 
-func (b *buntdbContainer) SaveAccessToken(c context.Context, orgID string, tokenPair models.TokenPair) error {
-	atKey := fmt.Sprintf("access:%s", orgID)
+func (b *buntdbContainer) SaveAccessToken(c context.Context, ownerID string, tokenPair models.TokenPair) error {
+	atKey := fmt.Sprintf("access:%s", ownerID)
 
-	tokens, err := b.GetAccessTokens(c, orgID)
+	tokens, err := b.GetAccessTokens(c, ownerID)
 	if err != nil && !errors.Is(err, buntdb.ErrNotFound) {
 		return err
 	}
@@ -157,8 +251,8 @@ func (b *buntdbContainer) SaveAccessToken(c context.Context, orgID string, token
 	})
 }
 
-func (b *buntdbContainer) GetAccessTokens(_ context.Context, orgID string) (tp []models.TokenPair, err error) {
-	atKey := fmt.Sprintf("access:%s", orgID)
+func (b *buntdbContainer) GetAccessTokens(_ context.Context, ownerID string) (tp []models.TokenPair, err error) {
+	atKey := fmt.Sprintf("access:%s", ownerID)
 
 	val := ""
 	err = b.db.View(func(tx *buntdb.Tx) error {
@@ -185,21 +279,13 @@ func (b *buntdbContainer) GetAccessTokens(_ context.Context, orgID string) (tp [
 }
 
 func (b *buntdbContainer) createIndices() {
-	err := b.db.CreateIndex("contexts", contextKey("*", "*"))
+	err := b.db.CreateIndex("contexts", storage.ContextKey("*", "*"))
 	if err != nil {
 		panic(err)
 	}
 
-	err = b.db.CreateIndex("rules", ruleKey("*", "*", "*"), buntdb.IndexJSONCaseSensitive("id"))
+	err = b.db.CreateIndex("rules", storage.RuleKey("*", "*", "*"), buntdb.IndexJSONCaseSensitive("id"))
 	if err != nil {
 		panic(err)
 	}
-}
-
-func contextKey(orgID string, contextID string) string {
-	return fmt.Sprintf("org:%s:context:%s", orgID, contextID)
-}
-
-func ruleKey(orgID string, contextID, ruleID string) string {
-	return fmt.Sprintf("org:%s:context:%s:rule:%s", orgID, contextID, ruleID)
 }

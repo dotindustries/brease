@@ -175,6 +175,11 @@ func newApp(db storage.Database, logger *zap.Logger) *fizz.Fizz {
 		fizz.Description("Returns all rules with the context"),
 		fizz.Security(security),
 	}, tonic.Handler(bh.AllRules, 200))
+	grp.GET("/rules/:id/versions", []fizz.OperationOption{
+		fizz.ID("getRuleVersions"),
+		fizz.Description("Returns all versions of a rule"),
+		fizz.Security(security),
+	}, tonic.Handler(bh.GetRuleVersions, 200))
 	grp.POST("/rules/add", []fizz.OperationOption{
 		fizz.ID("addRule"),
 		fizz.Description("Adds a new rule to the context"),

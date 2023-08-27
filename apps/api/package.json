@@ -7,5 +7,8 @@
     "dev": "gow run .",
     "release": "goreleaser release --snapshot --clean",
     "test": "dev && k6 run load.js"
+  },
+  "dependencies": {
+    "chai": "^4.3.8"
   }
 }

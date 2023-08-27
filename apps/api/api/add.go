@@ -16,7 +16,7 @@ type AddRuleRequest struct {
 }
 
 type AddRuleResponse struct {
-	Rule models.Rule `json:"rule" validate:"required"`
+	Rule models.VersionedRule `json:"rule" validate:"required"`
 }
 
 func (b *BreaseHandler) AddRule(c *gin.Context, r *AddRuleRequest) (*AddRuleResponse, error) {
@@ -37,11 +37,11 @@ func (b *BreaseHandler) AddRule(c *gin.Context, r *AddRuleRequest) (*AddRuleResp
 	}
 	b.logger.Debug("Valid expression", zap.Any("expression", rule.Expression))
 
-	err = b.db.AddRule(c.Request.Context(), orgID, r.ContextID, rule)
+	newRule, err := b.db.AddRule(c.Request.Context(), orgID, r.ContextID, rule)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add rule: %v", err)
 	}
 	return &AddRuleResponse{
-		Rule: rule,
+		Rule: newRule,
 	}, nil
 }

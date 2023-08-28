@@ -162,14 +162,14 @@ func newApp(db storage.Database, logger *zap.Logger) *fizz.Fizz {
 		fizz.ID("getToken"),
 		fizz.Description("Generate a short lived access token for web access"),
 		fizz.Security(security),
-	}, auth.APIKeyAuthMiddleware(logger), tonic.Handler(bh.GenerateTokenPair, 200))
+	}, auth.AuthMiddleware(logger), tonic.Handler(bh.GenerateTokenPair, 200))
 	authGrp.POST("/refreshToken", []fizz.OperationOption{
 		fizz.ID("refreshToken"),
 		fizz.Description("Refresh the short lived access token for web access"),
 	}, tonic.Handler(bh.RefreshTokenPair, 200))
 
 	grp := f.Group("/:contextID", "context", "Ruleset domain context")
-	grp.Use(auth.APIKeyAuthMiddleware(logger))
+	grp.Use(auth.AuthMiddleware(logger))
 
 	grp.GET("/rules", []fizz.OperationOption{
 		fizz.ID("getAllRules"),

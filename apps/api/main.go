@@ -153,7 +153,8 @@ func newApp(db storage.Database, logger *zap.Logger) *fizz.Fizz {
 	tonic.SetErrorHook(jujerr.ErrHook)
 
 	security := &openapi.SecurityRequirement{
-		"JWTAuth": []string{},
+		"JWTAuth":    []string{},
+		"ApiKeyAuth": []string{},
 	}
 
 	authGrp := f.Group("/", "auth", "Authentication")

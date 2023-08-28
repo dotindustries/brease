@@ -28,6 +28,21 @@ func OpenAPISpecHandler(f *fizz.Fizz, logger *zap.Logger) func(*gin.Context) {
 		doc.Components.Schemas["VersionedRule"].Value.Properties["expression"] = &openapi3.SchemaRef{Ref: "#/components/schemas/Expression"}
 		doc.Components.Schemas["Rule"].Value.Properties["expression"] = &openapi3.SchemaRef{Ref: "#/components/schemas/Expression"}
 
+		// Define the security scheme with additional headers
+		doc.Components.SecuritySchemes = openapi3.SecuritySchemes{
+			"JWTAuth": &openapi3.SecuritySchemeRef{
+				Value: openapi3.NewJWTSecurityScheme().WithBearerFormat("JWT"),
+			},
+			"ApiKeyAuth": &openapi3.SecuritySchemeRef{
+				Value: &openapi3.SecurityScheme{
+					Type:        "apiKey",
+					In:          "header",
+					Name:        "X-API-KEY",
+					Description: "Make sure to include the X-ORG-ID header when using this API key.",
+				},
+			},
+		}
+
 		// FIXME: should we validate the override result?
 
 		c.JSON(200, doc)

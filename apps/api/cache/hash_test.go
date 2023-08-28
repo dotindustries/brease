@@ -15,36 +15,38 @@ var (
 	v4, _    = json.Marshal(4)
 	ruleset1 = []models.VersionedRule{
 		{
-			ID:          "asdf",
-			Description: "first rule",
-			Actions: []models.Action{
-				{
-					Action: "setValue",
-					Target: models.Target{
-						Kind:   "jsonpath",
-						Target: "$.property2",
-						Value:  "newValue",
+			Rule: models.Rule{
+				ID:          "asdf",
+				Description: "first rule",
+				Actions: []models.Action{
+					{
+						Action: "setValue",
+						Target: models.Target{
+							Kind:   "jsonpath",
+							Target: "$.property2",
+							Value:  "newValue",
+						},
 					},
 				},
-			},
-			Expression: map[string]interface{}{
-				"and": pb.And{
-					Expression: []*pb.Expression{
-						{
-							Expr: &pb.Expression_Condition{
-								Condition: &pb.Condition{
-									Base:  &pb.Condition_Key{Key: "$.property3"},
-									Kind:  "lt",
-									Value: v2,
+				Expression: map[string]interface{}{
+					"and": pb.And{
+						Expression: []*pb.Expression{
+							{
+								Expr: &pb.Expression_Condition{
+									Condition: &pb.Condition{
+										Base:  &pb.Condition_Key{Key: "$.property3"},
+										Kind:  "lt",
+										Value: v2,
+									},
 								},
 							},
-						},
-						{
-							Expr: &pb.Expression_Condition{
-								Condition: &pb.Condition{
-									Base:  &pb.Condition_Key{Key: "$.property"},
-									Kind:  "gt",
-									Value: v4,
+							{
+								Expr: &pb.Expression_Condition{
+									Condition: &pb.Condition{
+										Base:  &pb.Condition_Key{Key: "$.property"},
+										Kind:  "gt",
+										Value: v4,
+									},
 								},
 							},
 						},

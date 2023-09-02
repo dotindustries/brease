@@ -22,8 +22,8 @@ x-org-id: {{orgID}}
 
 HTTP/1.1 200  - OK
 content-type: application/json; charset=utf-8
-x-request-id: 188f22c7-df1e-4468-a873-d6619043dac4
-date: Sun, 27 Aug 2023 18:46:25 GMT
+x-request-id: 347fbc84-733b-4c17-90c8-2c92e1b0f234
+date: Sat, 02 Sep 2023 10:21:00 GMT
 content-length: 37
 connection: close
 ###
@@ -123,8 +123,8 @@ x-org-id: {{orgID}}
 
 HTTP/1.1 200  - OK
 content-type: application/json; charset=utf-8
-x-request-id: 03d2afd1-2d74-4cac-b04c-aaa8d2caf8c3
-date: Sun, 27 Aug 2023 18:46:25 GMT
+x-request-id: 0bb9b917-07fc-4b2d-908c-8c8746edbd5a
+date: Sat, 02 Sep 2023 10:21:02 GMT
 connection: close
 transfer-encoding: chunked
 ###
@@ -147,8 +147,8 @@ x-org-id: {{orgID}}
 
 HTTP/1.1 200  - OK
 content-type: application/json; charset=utf-8
-x-request-id: 67b6c3e2-b76d-4625-b701-b6bc755651dd
-date: Sun, 27 Aug 2023 18:46:25 GMT
+x-request-id: 4c9a5b7c-432b-45cc-adbb-ca05b93c484a
+date: Sat, 02 Sep 2023 10:31:35 GMT
 connection: close
 transfer-encoding: chunked
 ###
@@ -248,8 +248,8 @@ x-org-id: {{orgID}}
 
 HTTP/1.1 200  - OK
 content-type: application/json; charset=utf-8
-x-request-id: 1ba00cd4-c4d7-4542-aee6-ef64c7458e65
-date: Sun, 27 Aug 2023 18:46:25 GMT
+x-request-id: eeb45bbe-97ee-4ef0-b562-49682e0d2e36
+date: Sat, 02 Sep 2023 10:31:39 GMT
 connection: close
 transfer-encoding: chunked
 ###
@@ -272,8 +272,8 @@ x-org-id: {{orgID}}
 
 HTTP/1.1 200  - OK
 content-type: application/json; charset=utf-8
-x-request-id: 952e55b3-4e77-4f02-81c3-82ebc5e91b6f
-date: Sun, 27 Aug 2023 18:46:25 GMT
+x-request-id: abcbd69f-19bf-4ebd-a8cb-b7752ac5df6c
+date: Sat, 02 Sep 2023 10:31:49 GMT
 connection: close
 transfer-encoding: chunked
 ###
@@ -324,8 +324,8 @@ x-org-id: {{orgID}}
 
 HTTP/1.1 200  - OK
 content-type: application/json; charset=utf-8
-x-request-id: 7bfc9617-b3b7-4160-b507-92af2d0e2bd3
-date: Sun, 27 Aug 2023 18:46:25 GMT
+x-request-id: 52a3fa07-8331-46d3-ab53-5353ad85bd65
+date: Sat, 02 Sep 2023 11:12:30 GMT
 content-length: 260
 connection: close
 ###
@@ -340,8 +340,8 @@ x-org-id: {{orgID}}
 
 HTTP/1.1 200  - OK
 content-type: text/plain; charset=utf-8
-x-request-id: efb89880-edeb-49c8-9768-0a209d03cd91
-date: Sun, 27 Aug 2023 18:46:25 GMT
+x-request-id: c4d9120b-6f31-45ac-a2e3-5fb0327b6a8d
+date: Sat, 02 Sep 2023 11:12:40 GMT
 content-length: 0
 connection: close
 ###
@@ -358,14 +358,14 @@ x-org-id: {{orgID}}
   test('no versions for rule', () => {
     const body = response.parsedBody
     expect(body).to.be.an('object');
-    expect(body.versions.length).to.equal(null);
+    expect(body.versions).to.equal(null);
   });
 }}
 
 HTTP/1.1 200  - OK
 content-type: application/json; charset=utf-8
-x-request-id: 516d8498-1d66-48c1-a99c-9f997302051b
-date: Sun, 27 Aug 2023 18:46:53 GMT
+x-request-id: aba6dce9-be29-416d-9bf0-047bccd4208f
+date: Sat, 02 Sep 2023 11:12:53 GMT
 content-length: 24
 connection: close
 ###
@@ -387,7 +387,7 @@ x-org-id: {{orgID}}
 
 HTTP/1.1 200  - OK
 content-type: application/json; charset=utf-8
-x-request-id: 24c55a00-3afe-4403-921c-c2b0a866d9ba
-date: Sun, 27 Aug 2023 18:46:25 GMT
+x-request-id: 01c494d1-6fff-4343-bae9-163d77d231f5
+date: Sat, 02 Sep 2023 11:13:00 GMT
 content-length: 37
 connection: close

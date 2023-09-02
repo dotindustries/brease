@@ -22,6 +22,9 @@ func NewDatabase(opts Options) (storage.Database, error) {
 	if opts.Path == "" {
 		opts.Path = ":memory:"
 	}
+	if opts.Logger != nil {
+		opts.Logger.Debug("Using buntdb for database", zap.String("dsn", opts.Path))
+	}
 	db, err := buntdb.Open(opts.Path)
 	if err != nil {
 		return nil, err

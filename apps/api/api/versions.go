@@ -20,7 +20,7 @@ func (b *BreaseHandler) GetRuleVersions(c *gin.Context, r *RuleVersionsRequest) 
 	orgID := c.GetString(auth.ContextOrgKey)
 	rules, err := b.db.RuleVersions(c.Request.Context(), orgID, r.ContextID, r.ID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch rules: %v", err)
+		return nil, fmt.Errorf("failed to fetch rule versions: %v", err)
 	}
 	return &RuleVersionsResponse{
 		Versions: rules,

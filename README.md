@@ -69,6 +69,8 @@ For more detailed instructions, please refer to the individual package directori
 
 For comprehensive documentation on how to use the brease business rules engine, refer to the [official documentation](https://docs.brease.run). It provides detailed explanations, tutorials, and examples to help you integrate and leverage the engine's features effectively.
 
+The [API docs](https://api.docs.brease.run) provide an overview of the current endpoints and changelog of the OpenAPI specification.
+
 ## Examples
 
 The `examples` directory contains several demo applications showcasing the usage of brease with different front-end frameworks. Explore these examples to gain a better understanding of how to implement the business rules engine within your own projects.

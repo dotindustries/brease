@@ -43,6 +43,13 @@ type Rule struct {
 
 func (*Rule) TypeName() string { return "Rule" }
 
+type VersionedRule struct {
+	Rule
+	Version int64 `json:"version" validate:"required" example:"1"`
+}
+
+func (*VersionedRule) TypeName() string { return "VersionedRule" }
+
 type EvaluationResult struct {
 	Action string `json:"action" validate:"required" example:"$set"`
 	Target Target `json:"target" validate:"required"`

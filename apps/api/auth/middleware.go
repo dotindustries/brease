@@ -42,7 +42,7 @@ type validateAuthTokenResult struct {
 	authenticator string
 }
 
-func APIKeyAuthMiddleware(logger *zap.Logger) gin.HandlerFunc {
+func AuthMiddleware(logger *zap.Logger) gin.HandlerFunc {
 	rootAPIKey := env.Getenv("ROOT_API_KEY", "")
 	useSpeakeasy := env.Getenv("SPEAKEASY_API_KEY", "") != ""
 	canUseRootAPIKey := rootAPIKey != ""

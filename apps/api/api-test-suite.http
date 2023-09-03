@@ -1,0 +1,393 @@
+/*
+# brease API Test Suite
+---
+This test suite uses [httpyac](https://httpyac.github.io) and [anweber.httpbook](https://marketplace.visualstudio.com/items?itemName=anweber.httpbook).
+Authentication is done by root api key for simplicity.
+*/
+# @name allRules
+# @description read all rules to make sure context is empty
+GET {{host}}/{{contextID}}/rules
+x-api-key: {{apiKey}}
+x-org-id: {{orgID}}
+
+?? status == 200
+?? duration < 200
+{{
+  const { expect } = require('chai');
+  test('no rules exist', () => {
+    expect(response.parsedBody).to.be.an('object');
+    expect(response.parsedBody.rules).to.equal(null);
+  });
+}}
+
+HTTP/1.1 200  - OK
+content-type: application/json; charset=utf-8
+x-request-id: 347fbc84-733b-4c17-90c8-2c92e1b0f234
+date: Sat, 02 Sep 2023 10:21:00 GMT
+content-length: 37
+connection: close
+###
+# @name addRule
+# @description create first rule
+POST {{host}}/{{contextID}}/rules/add
+x-api-key: {{apiKey}}
+x-org-id: {{orgID}}
+{
+	"rule": {
+		"actions": [
+			{
+				"action": "$set",
+				"target": {
+					"target": "targetIDString",
+					"kind": "targetTypeString",
+					"value": "ZXhhbXBsZQ=="
+				}
+			}
+		],
+		"action": "actionString",
+		"description": "descriptionString",
+		"expression": {
+			"and": {
+				"expression": [
+					{
+						"condition": {
+							"key": "$.first_name",
+							"kind": "hv"
+						}
+					},
+					{
+						"condition": {
+							"key": "$.birthdate",
+							"kind": "rgx",
+							"value": "IlxcZHsyfS9cXGR7Mn0vMjBcXGR7Mn0i"
+						}
+					},
+					{
+						"condition": {
+							"key": "$.email",
+							"kind": "sx",
+							"value": "Ii5nb3Yi"
+						}
+					},
+					{
+						"condition": {
+							"key": "$.age",
+							"kind": "px",
+							"value": "OQ=="
+						}
+					},
+					{
+						"condition": {
+							"key": "$.company_name",
+							"kind": "eq",
+							"value": "IkxpdmVmaXNoIg=="
+						}
+					},
+					{
+						"condition": {
+							"key": "$.country",
+							"kind": "in",
+							"value": "WyJVa3JhaW5lIl0="
+						}
+					},
+					{
+						"condition": {
+							"key": "$.favorite_color",
+							"kind": "some",
+							"value": "WyJyZWQiXQ=="
+						}
+					},
+					{
+						"condition": {
+							"key": "$.favorite_color",
+							"kind": "none",
+							"value": "WyJibHVlIl0="
+						}
+					},
+					{
+						"condition": {
+							"key": "$.favorite_color",
+							"kind": "all",
+							"value": "WyJyZWQiLCJncmVlbiJd"
+						}
+					}
+				]
+			}
+		},
+		"id": "asdf"
+	}
+}
+
+?? status == 200
+?? duration < 200
+
+HTTP/1.1 200  - OK
+content-type: application/json; charset=utf-8
+x-request-id: 0bb9b917-07fc-4b2d-908c-8c8746edbd5a
+date: Sat, 02 Sep 2023 10:21:02 GMT
+connection: close
+transfer-encoding: chunked
+###
+# @name oneVersionOnly
+# @description ensure only 1 version exists
+GET {{host}}/{{contextID}}/rules/{{ruleID}}/versions
+x-api-key: {{apiKey}}
+x-org-id: {{orgID}}
+
+?? status == 200
+?? duration < 50
+{{
+  const { expect } = require('chai');
+  test('only one version exists', () => {
+    const body = response.parsedBody
+    expect(body).to.be.an('object');
+    expect(body.versions.length).to.equal(1);
+  });
+}}
+
+HTTP/1.1 200  - OK
+content-type: application/json; charset=utf-8
+x-request-id: 4c9a5b7c-432b-45cc-adbb-ca05b93c484a
+date: Sat, 02 Sep 2023 10:31:35 GMT
+connection: close
+transfer-encoding: chunked
+###
+# @name updateRule
+# @description update existing rule
+PUT {{host}}/{{contextID}}/rules/{{ruleID}}
+x-api-key: {{apiKey}}
+x-org-id: {{orgID}}
+{
+	"rule": {
+		"actions": [
+			{
+				"action": "$set",
+				"target": {
+					"target": "$.prop",
+					"kind": "customTargetKind",
+					"value": "ZXhhbXBsZQ=="
+				}
+			}
+		],
+		"action": "actionString",
+		"description": "descriptionString",
+		"expression": {
+			"and": {
+				"expression": [
+					{
+						"condition": {
+							"key": "$.first_name",
+							"kind": "hv"
+						}
+					},
+					{
+						"condition": {
+							"key": "$.birthdate",
+							"kind": "rgx",
+							"value": "IlxcZHsyfS9cXGR7Mn0vMjBcXGR7Mn0i"
+						}
+					},
+					{
+						"condition": {
+							"key": "$.email",
+							"kind": "sx",
+							"value": "Ii5nb3Yi"
+						}
+					},
+					{
+						"condition": {
+							"key": "$.age",
+							"kind": "px",
+							"value": "OQ=="
+						}
+					},
+					{
+						"condition": {
+							"key": "$.company_name",
+							"kind": "eq",
+							"value": "IkxpdmVmaXNoIg=="
+						}
+					},
+					{
+						"condition": {
+							"key": "$.country",
+							"kind": "in",
+							"value": "WyJVa3JhaW5lIl0="
+						}
+					},
+					{
+						"condition": {
+							"key": "$.favorite_color",
+							"kind": "some",
+							"value": "WyJyZWQiXQ=="
+						}
+					},
+					{
+						"condition": {
+							"key": "$.favorite_color",
+							"kind": "none",
+							"value": "WyJibHVlIl0="
+						}
+					},
+					{
+						"condition": {
+							"key": "$.favorite_color",
+							"kind": "all",
+							"value": "WyJyZWQiLCJncmVlbiJd"
+						}
+					}
+				]
+			}
+		},
+		"id": "asdf"
+	}
+}
+
+?? status == 200
+?? duration < 100
+
+HTTP/1.1 200  - OK
+content-type: application/json; charset=utf-8
+x-request-id: eeb45bbe-97ee-4ef0-b562-49682e0d2e36
+date: Sat, 02 Sep 2023 10:31:39 GMT
+connection: close
+transfer-encoding: chunked
+###
+# @name twoVersions
+# @description ensure 2 versions of rule exist
+GET {{host}}/{{contextID}}/rules/{{ruleID}}/versions
+x-api-key: {{apiKey}}
+x-org-id: {{orgID}}
+
+?? status == 200
+?? duration < 50
+{{
+  const { expect } = require('chai');
+  test('two versions available', () => {
+    const body = response.parsedBody
+    expect(body).to.be.an('object');
+    expect(body.versions.length).to.equal(2);
+  });
+}}
+
+HTTP/1.1 200  - OK
+content-type: application/json; charset=utf-8
+x-request-id: abcbd69f-19bf-4ebd-a8cb-b7752ac5df6c
+date: Sat, 02 Sep 2023 10:31:49 GMT
+connection: close
+transfer-encoding: chunked
+###
+# @name evaluate
+# @description evaluation on sample object
+POST {{host}}/{{contextID}}/evaluate
+x-api-key: {{apiKey}}
+x-org-id: {{orgID}}
+{
+	"object": {
+		"user_id": 1,
+		"first_name": "Gusella",
+		"last_name": "Dakers",
+		"email": "gdakers0@va.gov",
+		"age": 98,
+		"gender": "Female",
+		"address": "248 Parkside Hill",
+		"city": "Komysh-Zorya",
+		"state": null,
+		"country": "Ukraine",
+		"phone_number": "419-767-5757",
+		"job_title": "Financial Advisor",
+		"company_name": "Livefish",
+		"favorite_color": [
+			"green",
+			"red"
+		],
+		"birthdate": "11/12/2021"
+	}
+}
+
+?? status == 200
+?? duration < 50
+{{
+  const { expect } = require('chai');
+  test('expected result', () => {
+    const body = response.parsedBody
+    expect(body).to.be.an('object');
+	
+    expect(body.results.length).to.equal(1);
+    expect(body.results[0].action).to.equal("$set");
+    expect(body.results[0].target.kind).to.equal("customTargetKind");
+    expect(body.results[0].target.target).to.equal("$.prop");
+    expect(body.results[0].target.value).to.equal("ZXhhbXBsZQ==");
+
+  });
+}}
+
+HTTP/1.1 200  - OK
+content-type: application/json; charset=utf-8
+x-request-id: 52a3fa07-8331-46d3-ab53-5353ad85bd65
+date: Sat, 02 Sep 2023 11:12:30 GMT
+content-length: 260
+connection: close
+###
+# @name removeRule
+# @description can remove rule
+DELETE {{host}}/{{contextID}}/rules/{{ruleID}}
+x-api-key: {{apiKey}}
+x-org-id: {{orgID}}
+
+?? status == 200
+?? duration < 50
+
+HTTP/1.1 200  - OK
+content-type: text/plain; charset=utf-8
+x-request-id: c4d9120b-6f31-45ac-a2e3-5fb0327b6a8d
+date: Sat, 02 Sep 2023 11:12:40 GMT
+content-length: 0
+connection: close
+###
+# @name noVersions
+# @description Ensure there are no versions of rule
+GET {{host}}/{{contextID}}/rules/{{ruleID}}/versions
+x-api-key: {{apiKey}}
+x-org-id: {{orgID}}
+
+?? status == 200
+?? duration < 50
+{{
+  const { expect } = require('chai');
+  test('no versions for rule', () => {
+    const body = response.parsedBody
+    expect(body).to.be.an('object');
+    expect(body.versions).to.equal(null);
+  });
+}}
+
+HTTP/1.1 200  - OK
+content-type: application/json; charset=utf-8
+x-request-id: aba6dce9-be29-416d-9bf0-047bccd4208f
+date: Sat, 02 Sep 2023 11:12:53 GMT
+content-length: 24
+connection: close
+###
+# @name emptyContext
+# @description make sure there are no rules left in context
+GET {{host}}/{{contextID}}/rules
+x-api-key: {{apiKey}}
+x-org-id: {{orgID}}
+
+?? status == 200
+?? duration < 200
+{{
+  const { expect } = require('chai');
+  test('no rules in context', () => {
+    expect(response.parsedBody).to.be.an('object');
+    expect(response.parsedBody.rules).to.equal(null);
+  });
+}}
+
+HTTP/1.1 200  - OK
+content-type: application/json; charset=utf-8
+x-request-id: 01c494d1-6fff-4343-bae9-163d77d231f5
+date: Sat, 02 Sep 2023 11:13:00 GMT
+content-length: 37
+connection: close

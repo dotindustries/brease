@@ -2,6 +2,8 @@
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/dotindustries/brease/blob/master/LICENSE)
 ![Discord Shield](https://discordapp.com/api/guilds/1010058789812195408/widget.png?style=shield)
+[![Documentation](https://img.shields.io/badge/Docs-openAPI-blue)](https://openapi.docs.brease.run)
+[![Documentation](https://img.shields.io/badge/Docs-gRPC-blue)](https://grpc.docs.brease.run)
 
 brease is an open-source monorepo that provides a robust and extensible business rules engine for various applications. It offers a comprehensive API backend server written in Go, along with TypeScript libraries for core functionality and integrations with popular front-end frameworks.
 
@@ -69,6 +71,8 @@ For more detailed instructions, please refer to the individual package directori
 
 For comprehensive documentation on how to use the brease business rules engine, refer to the [official documentation](https://docs.brease.run). It provides detailed explanations, tutorials, and examples to help you integrate and leverage the engine's features effectively.
 
+The [API docs](https://api.docs.brease.run) provide an overview of the current endpoints and changelog of the OpenAPI specification.
+
 ## Examples
 
 The `examples` directory contains several demo applications showcasing the usage of brease with different front-end frameworks. Explore these examples to gain a better understanding of how to implement the business rules engine within your own projects.
@@ -99,9 +103,9 @@ We are excited to announce that we are actively developing a cloud-hosted versio
 
 Stay tuned for updates as we finalize the development and launch of the cloud-hosted version. We are committed to delivering a powerful and efficient solution for businesses of all sizes.
 
-## Sign up for Updates
+### Sign up for Updates
 
-To receive the latest news and updates about the cloud-hosted version of Brease, sign up for our mailing list [here](https://brease.run/signup). We'll keep you informed about the release date, beta testing opportunities, and other important announcements.
+To receive the latest news and updates about the cloud-hosted version of Brease, sign up for our beta program [here](https://wzxsuckvz0r.typeform.com/to/wg5XIMOb). We'll keep you informed about the release date, changes and other important announcements.
 
 ## Feedback and Suggestions
 

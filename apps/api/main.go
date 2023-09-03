@@ -153,7 +153,8 @@ func newApp(db storage.Database, logger *zap.Logger) *fizz.Fizz {
 	tonic.SetErrorHook(jujerr.ErrHook)
 
 	security := &openapi.SecurityRequirement{
-		"JWTAuth": []string{},
+		"JWTAuth":    []string{},
+		"ApiKeyAuth": []string{},
 	}
 
 	authGrp := f.Group("/", "auth", "Authentication")
@@ -161,20 +162,25 @@ func newApp(db storage.Database, logger *zap.Logger) *fizz.Fizz {
 		fizz.ID("getToken"),
 		fizz.Description("Generate a short lived access token for web access"),
 		fizz.Security(security),
-	}, auth.APIKeyAuthMiddleware(logger), tonic.Handler(bh.GenerateTokenPair, 200))
+	}, auth.AuthMiddleware(logger), tonic.Handler(bh.GenerateTokenPair, 200))
 	authGrp.POST("/refreshToken", []fizz.OperationOption{
 		fizz.ID("refreshToken"),
 		fizz.Description("Refresh the short lived access token for web access"),
 	}, tonic.Handler(bh.RefreshTokenPair, 200))
 
 	grp := f.Group("/:contextID", "context", "Ruleset domain context")
-	grp.Use(auth.APIKeyAuthMiddleware(logger))
+	grp.Use(auth.AuthMiddleware(logger))
 
 	grp.GET("/rules", []fizz.OperationOption{
 		fizz.ID("getAllRules"),
 		fizz.Description("Returns all rules with the context"),
 		fizz.Security(security),
 	}, tonic.Handler(bh.AllRules, 200))
+	grp.GET("/rules/:id/versions", []fizz.OperationOption{
+		fizz.ID("getRuleVersions"),
+		fizz.Description("Returns all versions of a rule"),
+		fizz.Security(security),
+	}, tonic.Handler(bh.GetRuleVersions, 200))
 	grp.POST("/rules/add", []fizz.OperationOption{
 		fizz.ID("addRule"),
 		fizz.Description("Adds a new rule to the context"),

@@ -7,12 +7,19 @@ import (
 	"github.com/go-redis/redis/extra/redisotel/v8"
 	"github.com/go-redis/redis/v8"
 	"github.com/goccy/go-json"
+	errors2 "github.com/pkg/errors"
 	"go.dot.industries/brease/models"
 	"go.dot.industries/brease/storage"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"go.uber.org/zap"
+	"golang.org/x/exp/slices"
 	"sync"
 )
+
+const kLatestVersionField = "latest_version"
+const kIndexField = "index"
+
+var ruleFields = []string{kLatestVersionField, kIndexField}
 
 type Options struct {
 	URL    string
@@ -21,7 +28,10 @@ type Options struct {
 
 func NewDatabase(opts Options) (storage.Database, error) {
 	if opts.URL == "" {
-		opts.URL = "rediss://default@localhost:6379"
+		opts.URL = "redis://default@localhost:6379"
+	}
+	if opts.Logger != nil {
+		opts.Logger.Debug("Using redis for database", zap.String("dsn", opts.URL))
 	}
 	opt, err := redis.ParseURL(opts.URL)
 	if err != nil {
@@ -35,7 +45,7 @@ func NewDatabase(opts Options) (storage.Database, error) {
 		logger: opts.Logger,
 		rulePool: sync.Pool{
 			New: func() interface{} {
-				return new(models.Rule)
+				return new(models.VersionedRule)
 			},
 		},
 	}
@@ -53,44 +63,108 @@ func (r *redisContainer) Close() error {
 	return r.db.Close()
 }
 
-func (r *redisContainer) AddRule(ctx context.Context, ownerID string, contextID string, rule models.Rule) error {
-	ck := contextKey(ownerID, contextID)
-	rk := ruleKey(ownerID, contextID, rule.ID)
-	bts, err := json.Marshal(rule)
-	if err != nil {
-		return err
+// AddRule persists a rule to redis by using 3 keys
+// array of all rules within a context - RPUSH org:${orgID}:context:${contextID} = [org:${orgID}:context:${contextID}:rule:${ruleID}]
+// key for rule index within the context - HSET org:${orgID}:context:${contextID}:rule:${ruleID}[index] = 0
+// key for rule version data - HSET org:${orgID}:context:${contextID}:rule:${ruleID}:v${version}[json_data] = ruleDATA
+// hash key for rule latest version - HSET  org:${orgID}:context:${contextID}:rule:${ruleID}[latest_version] = org:${orgID}:context:${contextID}:rule:${ruleID}:v${version}
+func (r *redisContainer) AddRule(ctx context.Context, ownerID string, contextID string, rule models.Rule) (models.VersionedRule, error) {
+	vRule := models.VersionedRule{
+		Rule:    rule,
+		Version: 1,
 	}
-	length, err := r.db.RPush(ctx, ck, bts).Result()
+	ck := storage.ContextKey(ownerID, contextID)
+	rk := storage.RuleKey(ownerID, contextID, vRule.ID)
+	vk := storage.VersionKey(ownerID, contextID, vRule.ID, vRule.Version)
+
+	data, err := json.Marshal(vRule)
 	if err != nil {
-		return err
+		return models.VersionedRule{}, errors2.Wrap(err, "failed to marshal rule")
 	}
-	return r.db.Set(ctx, rk, length-1, 0).Err()
+
+	// rule in context array
+	length, err := r.db.RPush(ctx, ck, rk).Result()
+	if err != nil {
+		return models.VersionedRule{}, errors2.Wrap(err, "failed to save rule to context array")
+	}
+
+	// index of rule in context
+	err = r.db.HSet(ctx, rk, kIndexField, length-1).Err()
+	if err != nil {
+		return models.VersionedRule{}, errors2.Wrap(err, "failed save index of rule within context")
+	}
+
+	// object versions
+	err = r.db.HSet(ctx, rk, vk, string(data)).Err()
+	if err != nil {
+		return models.VersionedRule{}, errors2.Wrap(err, "failed to save object version")
+	}
+
+	// Update rule key to point to the latest version key
+	err = r.db.HSet(ctx, rk, kLatestVersionField, vk).Err()
+	if err != nil {
+		return models.VersionedRule{}, errors2.Wrap(err, "failed to update latest version pointer")
+	}
+
+	return vRule, nil
 }
 
-func (r *redisContainer) Rules(ctx context.Context, ownerID string, contextID string) (rules []models.Rule, err error) {
-	ck := contextKey(ownerID, contextID)
-	rawRules, err := r.db.LRange(ctx, ck, 0, 100).Result()
+func (r *redisContainer) Rules(ctx context.Context, ownerID string, contextID string) (rules []models.VersionedRule, err error) {
+	ck := storage.ContextKey(ownerID, contextID)
+	ruleKeys, err := r.db.LRange(ctx, ck, 0, -1).Result()
 	if err != nil {
 		return nil, err
 	}
 
-	for _, rr := range rawRules {
-		rule := r.rulePool.Get().(*models.Rule)
-		umErr := json.Unmarshal([]byte(rr), rule)
+	latestVersionKeys, err := r.getLatestVersionKeys(ctx, ruleKeys)
+	if err != nil {
+		return nil, err
+	}
+	latestVersionData, err := r.getLatestVersionData(ctx, latestVersionKeys)
+	if err != nil {
+		return nil, err
+	}
+
+	for vk, versionData := range latestVersionData {
+		rule := r.rulePool.Get().(*models.VersionedRule)
+		umErr := json.Unmarshal([]byte(versionData), rule)
+		if umErr != nil {
+			return nil, errors2.Wrapf(umErr, "couldn't unmarshal versionData for %s", vk)
+		}
+		rules = append(rules, *rule)
+		r.rulePool.Put(rule)
+	}
+
+	return
+}
+
+func (r *redisContainer) RuleVersions(ctx context.Context, ownerID string, contextID string, ruleID string) (rules []models.VersionedRule, err error) {
+	rk := storage.RuleKey(ownerID, contextID, ruleID)
+	ruleVersionKeys, err := r.db.HGetAll(ctx, rk).Result()
+	if err != nil {
+		return nil, err
+	}
+
+	for key, jsonData := range ruleVersionKeys {
+		if slices.Contains(ruleFields, key) {
+			continue
+		}
+		rule := r.rulePool.Get().(*models.VersionedRule)
+		umErr := json.Unmarshal([]byte(jsonData), rule)
 		if umErr != nil {
 			return nil, umErr
 		}
-		r.rulePool.Put(rule)
 		rules = append(rules, *rule)
+		r.rulePool.Put(rule)
 	}
 
 	return
 }
 
 func (r *redisContainer) RemoveRule(ctx context.Context, ownerID string, contextID string, ruleID string) error {
-	ck := contextKey(ownerID, contextID)
-	rk := ruleKey(ownerID, contextID, ruleID)
-	idx, err := r.db.Get(ctx, rk).Int64()
+	ck := storage.ContextKey(ownerID, contextID)
+	rk := storage.RuleKey(ownerID, contextID, ruleID)
+	idx, err := r.db.HGet(ctx, rk, kIndexField).Int64()
 	if err != nil {
 		r.logger.Warn("Couldn't find rule to delete", zap.String("rule", rk))
 		// swallow not found error
@@ -107,6 +181,14 @@ func (r *redisContainer) RemoveRule(ctx context.Context, ownerID string, context
 	if err != nil {
 		return err
 	}
+
+	// delete version tracking, but not versions?
+	err = r.db.HDel(ctx, rk, kLatestVersionField).Err()
+	if err != nil {
+		return err
+	}
+
+	// delete stored index
 	err = r.db.Del(ctx, rk).Err()
 	if err != nil {
 		return err
@@ -115,36 +197,47 @@ func (r *redisContainer) RemoveRule(ctx context.Context, ownerID string, context
 	return nil
 }
 
-func (r *redisContainer) ReplaceRule(ctx context.Context, ownerID string, contextID string, rule models.Rule) error {
-	ck := contextKey(ownerID, contextID)
-	rk := ruleKey(ownerID, contextID, rule.ID)
-	idx, err := r.db.Get(ctx, rk).Int64()
+func (r *redisContainer) ruleLatestVersion(ctx context.Context, ruleKey string) (int64, error) {
+	vk, err := r.db.HGet(ctx, ruleKey, kLatestVersionField).Result()
 	if err != nil {
-		r.logger.Warn("Couldn't find rule to delete", zap.String("rule", rk))
-		// swallow not found error
-		return nil
+		return -1, err
 	}
-	ruleJSON, jsonErr := json.Marshal(rule)
-	if jsonErr != nil {
-		return jsonErr
-	}
-	err = r.db.LSet(ctx, ck, idx, ruleJSON).Err()
+	version := storage.VersionFromVersionKey(vk)
+	return version, nil
+}
+
+func (r *redisContainer) ReplaceRule(ctx context.Context, ownerID string, contextID string, rule models.Rule) (models.VersionedRule, error) {
+	rk := storage.RuleKey(ownerID, contextID, rule.ID)
+	currentVersion, err := r.ruleLatestVersion(ctx, rk)
 	if err != nil {
-		return err
+		return models.VersionedRule{}, err
+	}
+	vRule := models.VersionedRule{
+		Rule:    rule,
+		Version: currentVersion + 1,
+	}
+	vk := storage.VersionKey(ownerID, contextID, vRule.ID, vRule.Version)
+
+	ruleJSON, err := json.Marshal(vRule)
+	if err != nil {
+		return models.VersionedRule{}, err
+	}
+
+	err = r.db.HSet(ctx, rk, vk, ruleJSON).Err()
+	if err != nil {
+		return models.VersionedRule{}, err
+	}
+	err = r.db.HSet(ctx, rk, kLatestVersionField, vk).Err()
+	if err != nil {
+		return models.VersionedRule{}, err
 	}
 	r.logger.Info("Successfully updated rule in context.", zap.String("key", rk), zap.String("new", string(ruleJSON)))
-	return nil
+	return vRule, nil
 }
 
 func (r *redisContainer) Exists(ctx context.Context, ownerID string, contextID string, ruleID string) (exists bool, err error) {
-	rk := ruleKey(ownerID, contextID, ruleID)
-	err = r.db.Get(ctx, rk).Err()
-	if errors.Is(err, redis.Nil) {
-		return false, nil
-	} else if err != nil {
-		return false, err
-	}
-	return true, nil
+	rk := storage.RuleKey(ownerID, contextID, ruleID)
+	return r.db.HExists(ctx, rk, kLatestVersionField).Result()
 }
 
 func (r *redisContainer) SaveAccessToken(ctx context.Context, ownerID string, tokenPair models.TokenPair) error {
@@ -179,10 +272,56 @@ func (r *redisContainer) GetAccessTokens(ctx context.Context, ownerID string) (t
 	return tp, nil
 }
 
-func contextKey(orgID string, contextID string) string {
-	return fmt.Sprintf("org:%s:context:%s", orgID, contextID)
+func (r *redisContainer) getLatestVersionKeys(ctx context.Context, ruleKeys []string) (latestVersionKeys map[string]string, err error) {
+	pipe := r.db.Pipeline()
+	returnMap := make(map[int]string)
+	latestVersionKeys = make(map[string]string)
+	i := 0
+	for _, rk := range ruleKeys {
+		pipe.HGet(ctx, rk, kLatestVersionField)
+		returnMap[i] = rk
+		i++
+	}
+	res, err := pipe.Exec(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for idx, cmd := range res {
+		rk := returnMap[idx]
+		vk, vkErr := cmd.(*redis.StringCmd).Result()
+		if vkErr != nil {
+			return nil, errors2.Wrapf(vkErr, "latest version not found for %s", rk)
+		}
+		latestVersionKeys[rk] = vk
+	}
+	return
 }
 
-func ruleKey(orgID string, contextID, ruleID string) string {
-	return fmt.Sprintf("org:%s:context:%s:rule:%s", orgID, contextID, ruleID)
+func (r *redisContainer) getLatestVersionData(ctx context.Context, latestVersionKeys map[string]string) (latestVersionData map[string]string, err error) {
+	pipe := r.db.Pipeline()
+	returnMap := make(map[int]string)
+	latestVersionData = make(map[string]string)
+	i := 0
+
+	for rk, vk := range latestVersionKeys {
+		pipe.HGet(ctx, rk, vk)
+		returnMap[i] = vk
+		i++
+	}
+	res, err := pipe.Exec(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for idx, cmd := range res {
+		vk := returnMap[idx]
+		versionData, vdErr := cmd.(*redis.StringCmd).Result()
+		if vdErr != nil {
+			return nil, errors2.Wrapf(vdErr, "version data not found for %s", vk)
+		}
+		latestVersionData[vk] = versionData
+	}
+
+	return
 }

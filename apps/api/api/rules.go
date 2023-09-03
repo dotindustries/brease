@@ -15,8 +15,8 @@ type AllRulesRequest struct {
 }
 
 type AllRulesResponse struct {
-	Rules []models.Rule `json:"rules"`
-	Code  string        `json:"code"`
+	Rules []models.VersionedRule `json:"rules" validate:"required"`
+	Code  string                 `json:"code"`
 }
 
 func (b *BreaseHandler) AllRules(c *gin.Context, r *AllRulesRequest) (*AllRulesResponse, error) {

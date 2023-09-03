@@ -25,7 +25,23 @@ func OpenAPISpecHandler(f *fizz.Fizz, logger *zap.Logger) func(*gin.Context) {
 		patchExpression(doc)
 
 		// point rule model to the newly added expression schema
+		doc.Components.Schemas["VersionedRule"].Value.Properties["expression"] = &openapi3.SchemaRef{Ref: "#/components/schemas/Expression"}
 		doc.Components.Schemas["Rule"].Value.Properties["expression"] = &openapi3.SchemaRef{Ref: "#/components/schemas/Expression"}
+
+		// Define the security scheme with additional headers
+		doc.Components.SecuritySchemes = openapi3.SecuritySchemes{
+			"JWTAuth": &openapi3.SecuritySchemeRef{
+				Value: openapi3.NewJWTSecurityScheme().WithBearerFormat("JWT"),
+			},
+			"ApiKeyAuth": &openapi3.SecuritySchemeRef{
+				Value: &openapi3.SecurityScheme{
+					Type:        "apiKey",
+					In:          "header",
+					Name:        "X-API-KEY",
+					Description: "Make sure to include the X-ORG-ID header when using this API key.",
+				},
+			},
+		}
 
 		// FIXME: should we validate the override result?
 
@@ -113,7 +129,7 @@ func patchConditions(doc *openapi3.T) {
 			Type: "object",
 			Properties: map[string]*openapi3.SchemaRef{
 				"ref":   {Ref: "#/components/schemas/DRef"},
-				"type":  {Ref: "#/components/schemas/ConditionType"},
+				"kind":  {Ref: "#/components/schemas/ConditionType"},
 				"value": {Value: openapi3.NewBytesSchema()},
 			},
 		},
@@ -123,7 +139,7 @@ func patchConditions(doc *openapi3.T) {
 			Type: "object",
 			Properties: map[string]*openapi3.SchemaRef{
 				"key":   {Value: openapi3.NewStringSchema()},
-				"type":  {Ref: "#/components/schemas/ConditionType"},
+				"kind":  {Ref: "#/components/schemas/ConditionType"},
 				"value": {Value: openapi3.NewBytesSchema()},
 			},
 		},

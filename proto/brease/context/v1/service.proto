@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "brease/context/v1/models.proto";
+import "brease/rule/v1/model.proto";
+
+package brease.context.v1;
+
+service ContextService {
+  // Returns all rules within the context
+  rpc ListRules(ListRulesRequest) returns (ListRulesResponse) {
+    option (google.api.http) = {
+      get: "/v1/{context_id}/rules"
+    };
+  }
+
+  // Returns a selected rule from the context
+  rpc GetRule(GetRuleRequest) returns (rule.v1.VersionedRule) {
+    option (google.api.http) = {
+      get: "/v1/{context_id}/rules/{rule_id}"
+    };
+  }
+
+  // Returns all versions of a rule
+  rpc GetRuleVersions(ListRuleVersionsRequest) returns (ListRuleVersionsResponse) {
+    option (google.api.http) = {
+      get: "/v1/{context_id}/rules/{rule_id}/versions"
+    };
+  }
+
+  // Adds a new rule to the context
+  rpc CreateRule(CreateRuleRequest) returns (rule.v1.VersionedRule) {
+    option (google.api.http) = {
+      post: "/v1/{context_id}/rules"
+      body: "rule"
+    };
+  }
+
+  // Replaces or updates an existing rule within the context
+  rpc UpdateRule(UpdateRuleRequest) returns (rule.v1.VersionedRule) {
+    option (google.api.http) = {
+      patch: "/v1/{context_id}/rules/add"
+      body: "rule"
+    };
+  }
+
+  // Removes a rule from the context
+  rpc DeleteRule(DeleteRuleRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/v1/{context_id}/rules/{rule_id}"
+    };
+  }
+
+  // Evaluate rules within a context on the provided object
+  rpc Evaluate(EvaluateRequest) returns (EvaluateResponse) {
+    option (google.api.http) = {
+      post: "/v1/{context_id}/evaluate"
+      body: "rule"
+    };
+  }
+
+}

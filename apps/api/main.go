@@ -1,7 +1,10 @@
 package main
 
 import (
+	"buf.build/gen/go/dot/brease/connectrpc/go/brease/auth/v1/authv1connect"
+	"buf.build/gen/go/dot/brease/connectrpc/go/brease/context/v1/contextv1connect"
 	"bytes"
+	"connectrpc.com/connect"
 	"context"
 	"fmt"
 	"go.dot.industries/brease/auditlog"
@@ -21,8 +24,6 @@ import (
 	"github.com/gin-contrib/requestid"
 	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
-	"github.com/loopfz/gadgeto/tonic"
-	"github.com/loopfz/gadgeto/tonic/utils/jujerr"
 	stats "github.com/semihalev/gin-stats"
 	"github.com/speakeasy-api/speakeasy-go-sdk"
 	"github.com/wI2L/fizz"
@@ -92,12 +93,14 @@ func setupStorage(logger *zap.Logger) (db storage.Database, err error) {
 	return buntdb.NewDatabase(buntdb.Options{Logger: logger})
 }
 
-func newApp(db storage.Database, logger *zap.Logger) *fizz.Fizz {
+func newApp(db storage.Database, logger *zap.Logger) *gin.Engine {
 	if !env.IsDebug() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
 	r := gin.Default()
+	r.UseH2C = true
+
 	// https://github.com/gin-gonic/gin/blob/master/docs/doc.md#dont-trust-all-proxies
 	_ = r.SetTrustedProxies(nil)
 
@@ -136,73 +139,38 @@ func newApp(db storage.Database, logger *zap.Logger) *fizz.Fizz {
 		logger.Info("Configured Speakeasy API layer")
 	}
 
-	r.GET("/", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"client": c.ClientIP(),
-			"status": "ready to rumble!",
-		})
-	})
+	//r.GET("/", func(c *gin.Context) {
+	//	c.JSON(http.StatusOK, gin.H{
+	//		"client": c.ClientIP(),
+	//		"status": "ready to rumble!",
+	//	})
+	//})
 	r.GET("/stats", func(c *gin.Context) {
 		c.IndentedJSON(http.StatusOK, stats.Report())
 	})
 
-	f := newOpenapi(r)
-	f.GET("/openapi.json", nil, api.OpenAPISpecHandler(f, logger))
-
 	bh := api.NewHandler(db, memory.New(), logger)
-	tonic.SetErrorHook(jujerr.ErrHook)
 
-	security := &openapi.SecurityRequirement{
-		"JWTAuth":    []string{},
-		"ApiKeyAuth": []string{},
-	}
+	interceptors := connect.WithInterceptors(auth.NewAuthInterceptor(logger))
 
-	authGrp := f.Group("/", "auth", "Authentication")
-	authGrp.POST("/token", []fizz.OperationOption{
-		fizz.ID("getToken"),
-		fizz.Description("Generate a short lived access token for web access"),
-		fizz.Security(security),
-	}, auth.AuthMiddleware(logger), tonic.Handler(bh.GenerateTokenPair, 200))
-	authGrp.POST("/refreshToken", []fizz.OperationOption{
-		fizz.ID("refreshToken"),
-		fizz.Description("Refresh the short lived access token for web access"),
-	}, tonic.Handler(bh.RefreshTokenPair, 200))
+	// TODO: do i need an auth interceptor here as well?
+	authPath, authHandler := authv1connect.NewAuthServiceHandler(bh)
+	r.Any(authPath, func(c *gin.Context) {
+		authHandler.ServeHTTP(c.Writer, c.Request)
+	})
 
-	grp := f.Group("/:contextID", "context", "Ruleset domain context")
-	grp.Use(auth.AuthMiddleware(logger))
+	path, handler := contextv1connect.NewContextServiceHandler(bh, interceptors)
+	r.Any(path, func(c *gin.Context) {
+		handler.ServeHTTP(c.Writer, c.Request)
+	})
 
-	grp.GET("/rules", []fizz.OperationOption{
-		fizz.ID("getAllRules"),
-		fizz.Description("Returns all rules with the context"),
-		fizz.Security(security),
-	}, tonic.Handler(bh.AllRules, 200))
-	grp.GET("/rules/:id/versions", []fizz.OperationOption{
-		fizz.ID("getRuleVersions"),
-		fizz.Description("Returns all versions of a rule"),
-		fizz.Security(security),
-	}, tonic.Handler(bh.GetRuleVersions, 200))
-	grp.POST("/rules/add", []fizz.OperationOption{
-		fizz.ID("addRule"),
-		fizz.Description("Adds a new rule to the context"),
-		fizz.Security(security),
-	}, tonic.Handler(bh.AddRule, 200))
-	grp.PUT("/rules/:id", []fizz.OperationOption{
-		fizz.ID("replaceRule"),
-		fizz.Description("Replaces an existing rule within the context"),
-		fizz.Security(security),
-	}, tonic.Handler(bh.ReplaceRule, 200))
-	grp.DELETE("/rules/:id", []fizz.OperationOption{
-		fizz.ID("removeRule"),
-		fizz.Description("Removes a rule from the context"),
-		fizz.Security(security),
-	}, tonic.Handler(bh.RemoveRule, 200))
-	grp.POST("/evaluate", []fizz.OperationOption{
-		fizz.ID("evaluateRules"),
-		fizz.Description("Evaluate rules within a context on the provided object"),
-		fizz.Security(security),
-	}, tonic.Handler(bh.EvaluateRules, 200))
+	// TODO: move this to the grpc openapi spec
+	//security := &openapi.SecurityRequirement{
+	//	"JWTAuth":    []string{},
+	//	"ApiKeyAuth": []string{},
+	//}
 
-	return f
+	return r
 }
 
 func getAuditLogStore(logger *zap.Logger) auditlog.Store {

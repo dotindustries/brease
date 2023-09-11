@@ -1,19 +1,16 @@
 package api
 
 import (
-	"github.com/gin-gonic/gin"
+	contextv1 "buf.build/gen/go/dot/brease/protocolbuffers/go/brease/context/v1"
+	"connectrpc.com/connect"
+	"context"
 	"go.dot.industries/brease/auth"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-type RemoveRuleRequest struct {
-	PathParams
-	ID string `json:"-" validate:"required" path:"id"`
-}
-
-func (b *BreaseHandler) RemoveRule(c *gin.Context, r *RemoveRuleRequest) error {
-	orgID := c.GetString(auth.ContextOrgKey)
-
-	_ = b.db.RemoveRule(c.Request.Context(), orgID, r.ContextID, r.ID)
+func (b *BreaseHandler) DeleteRule(ctx context.Context, c *connect.Request[contextv1.DeleteRuleRequest]) (*connect.Response[emptypb.Empty], error) {
+	orgID := CtxString(ctx, auth.ContextOrgKey)
+	_ = b.db.RemoveRule(ctx, orgID, c.Msg.ContextId, c.Msg.RuleId)
 	// we don't expose whether we succeeded
-	return nil
+	return connect.NewResponse(&emptypb.Empty{}), nil
 }

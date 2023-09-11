@@ -1,28 +1,28 @@
 package api
 
 import (
+	contextv1 "buf.build/gen/go/dot/brease/protocolbuffers/go/brease/context/v1"
+	"connectrpc.com/connect"
+	"context"
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"go.dot.industries/brease/auth"
-	"go.dot.industries/brease/models"
 )
 
-type RuleVersionsRequest struct {
-	PathParams
-	ID string `json:"-" validate:"required" path:"id"`
-}
+func (b *BreaseHandler) GetRuleVersions(ctx context.Context, c *connect.Request[contextv1.ListRuleVersionsRequest]) (*connect.Response[contextv1.ListRuleVersionsResponse], error) {
+	orgID := CtxString(ctx, auth.ContextOrgKey)
 
-type RuleVersionsResponse struct {
-	Versions []models.VersionedRule `json:"versions" validate:"required"`
-}
-
-func (b *BreaseHandler) GetRuleVersions(c *gin.Context, r *RuleVersionsRequest) (*RuleVersionsResponse, error) {
-	orgID := c.GetString(auth.ContextOrgKey)
-	rules, err := b.db.RuleVersions(c.Request.Context(), orgID, r.ContextID, r.ID)
+	ctxID := c.Msg.ContextId
+	ruleID := c.Msg.RuleId
+	pageSize := c.Msg.PageSize
+	pageToken := c.Msg.PageToken
+	rules, err := b.db.RuleVersions(ctx, orgID, ctxID, ruleID, int(pageSize), pageToken)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch rule versions: %v", err)
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to fetch rule versions: %v", err))
 	}
-	return &RuleVersionsResponse{
-		Versions: rules,
+	return &connect.Response[contextv1.ListRuleVersionsResponse]{
+		Msg: &contextv1.ListRuleVersionsResponse{
+			Rules:         rules,
+			NextPageToken: "", // TODO: there's no pagination yet
+		},
 	}, nil
 }

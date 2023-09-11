@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+package brease.rule.v1;
+
+import "brease/expression/v1/model.proto";
+
+message Action {
+  // The name of the action
+  // example:"$set"
+  string kind = 1;
+
+  // The target the action applies to
+  Target target = 2;
+}
+
+message Rule {
+  // example:"rule_01h89qfdhbejtb3jwqq1gazbm5"
+  string id = 1;
+
+  string description = 2;
+
+  repeated Action actions = 3;
+
+  // A variadic condition expression
+  //  Expression:
+  //    type: object
+  //    oneOf:
+  //      - $ref: '#/components/schemas/And'
+  //      - $ref: '#/components/schemas/Or'
+  //      - $ref: '#/components/schemas/Condition'
+  expression.v1.Expression expression = 4;
+}
+
+message VersionedRule {
+  // example:"rule_01h89qfdhbejtb3jwqq1gazbm5"
+  string id = 1;
+  uint64 version = 5;
+
+  string description = 2;
+
+  repeated Action actions = 3;
+
+  // A variadic condition expression
+  //  Expression:
+  //    type: object
+  //    oneOf:
+  //      - $ref: '#/components/schemas/And'
+  //      - $ref: '#/components/schemas/Or'
+  //      - $ref: '#/components/schemas/Condition'
+  expression.v1.Expression expression = 4;
+}
+
+message Target {
+  // This is what determines the type of the id field's value
+  // example:"jsonpath" example:"myTargetKind"
+  string kind = 1;
+
+  // The identifier for the target.
+  // It can be a jsonpath a simple property name or an arbitrary third party id
+  // example:"$.prop" example:"propKey" example:"target_01h89qgxe5e7wregw6gb94d5p6"
+  string id = 2;
+
+  // The target value to be set (it is the json serialized representation of the value)
+  bytes value = 3;
+}
+
+message EvaluationResult {
+  // The action to be applied
+  string action = 1;
+
+  // The target the action needs to be applied to
+  Target target = 2;
+
+  // The truthy rule ID responsible for this result
+  // This field is used by the frontend devtools packages.
+  string by = 3;
+}

@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "brease/auth/v1/models.proto";
+
+package brease.auth.v1;
+
+service AuthService {
+  // Generate a short lived access token for web access
+  rpc GetToken(google.protobuf.Empty) returns (TokenPair) {
+    option (google.api.http) = {
+      post: "/v1/auth/token"
+      body: "*"
+    };
+  }
+  // Refresh the short lived access token for web access
+  rpc RefreshToken(RefreshTokenRequest) returns (TokenPair) {
+    option (google.api.http) = {
+      post: "/v1/auth/refreshToken"
+      body: "*"
+    };
+  }
+}

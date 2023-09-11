@@ -1,0 +1,79 @@
+syntax = "proto3";
+
+package brease.expression.v1;
+
+// A reference to point to third party data to be used as the value for the condition.
+//
+// Data retrieval requires dalí integration.
+// Uses a dref format based on the dalí project.
+// Stringified format: `$/map[0]/prop=>/~/datasource/table/searchExpr/selectExpr`
+// Object format: { src: `$/map[0]/prop`, dst: `/~/datasource/table/searchExpr/selectExpr` }
+message ConditionBaseRef {
+  string src = 1;
+  string dst = 2;
+  bytes value = 3;
+}
+
+enum ConditionKind {
+  // Golang: ConditionEmpty
+  e = 0;
+  // Golang: ConditionHasValue
+  hv = 1;
+  // Golang: ConditionEquals
+  eq = 2;
+  // Golang: ConditionDoesNotEqual
+  neq = 3;
+  // Golang: ConditionHasPrefix
+  px = 4;
+  // Golang: ConditionDoesNotHavePrefix
+  npx = 5;
+  // Golang: ConditionHasSuffix
+  sx = 6;
+  // Golang: ConditionDoesNotHaveSuffix
+  nsx = 7;
+  // Golang: ConditionInList
+  in = 8;
+  // Golang: ConditionNotInList
+  nin = 9;
+  // Golang: ConditionSome
+  some = 10;
+  // Golang: ConditionAll
+  all = 11;
+  // Golang: ConditionNone
+  none = 12;
+  // Golang: ConditionRegex
+  rgx = 13;
+  // Golang: ConditionNotRegex
+  nrgx = 14;
+}
+
+// A condition expression
+message Condition {
+  oneof base {
+    // Holds a direct object key to be used the value extraction
+    string key = 1;
+
+    // Holds a dref reference (see dalí project for details)
+    ConditionBaseRef ref = 2;
+  }
+  // The type of this condition, based on the internally defined ConditionType
+  ConditionKind kind = 3;
+  // A condition parameter holds a target value (right hand side) for a comparison
+  bytes value = 4;
+}
+
+message Expression {
+  oneof expr {
+    And and = 1;
+    Or or = 2;
+    Condition condition = 3;
+  };
+}
+
+message And {
+  repeated Expression expression = 1;
+}
+
+message Or {
+  repeated Expression expression = 1;
+}

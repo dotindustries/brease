@@ -1,6 +1,6 @@
 module go.dot.industries/brease
 
-go 1.18
+go 1.20
 
 require (
 	github.com/axiomhq/axiom-go v0.15.0
@@ -32,10 +32,13 @@ require (
 	go.opentelemetry.io/otel/trace v1.14.0
 	go.uber.org/zap v1.24.0
 	google.golang.org/grpc v1.54.0
-	google.golang.org/protobuf v1.30.0
+	google.golang.org/protobuf v1.31.0
 )
 
 require (
+	buf.build/gen/go/dot/brease/connectrpc/go v1.11.1-20230910184952-1f6dd8db120b.1 // indirect
+	buf.build/gen/go/dot/brease/protocolbuffers/go v1.31.0-20230910184952-1f6dd8db120b.1 // indirect
+	connectrpc.com/connect v1.11.1 // indirect
 	github.com/PaesslerAG/gval v1.2.2 // indirect
 	github.com/PaesslerAG/jsonpath v0.1.2-0.20230323094847-3484786d6f97 // indirect
 	github.com/bytedance/sonic v1.9.1 // indirect
@@ -60,6 +63,7 @@ require (
 	github.com/go-playground/validator/v10 v10.14.0 // indirect
 	github.com/go-redis/redis/extra/rediscmd/v8 v8.11.5 // indirect
 	github.com/gofrs/uuid v3.2.0+incompatible // indirect
+	github.com/gofrs/uuid/v5 v5.0.0 // indirect
 	github.com/golang/glog v1.0.0 // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
@@ -100,6 +104,7 @@ require (
 	github.com/ugorji/go/codec v1.2.11 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.1 // indirect
+	go.jetpack.io/typeid v0.1.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/httptrace/otelhttptrace v0.40.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.40.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.14.0 // indirect

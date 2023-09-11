@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package brease.auth.v1;
+
+message TokenPair {
+  string accessToken = 1;
+  string refreshToken = 2;
+}
+
+message RefreshTokenRequest {
+  string refreshToken = 1;
+}

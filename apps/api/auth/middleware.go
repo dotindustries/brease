@@ -1,7 +1,9 @@
 package auth
 
 import (
+	"connectrpc.com/connect"
 	"context"
+	"fmt"
 	"go.dot.industries/brease/worker"
 	"net/http"
 	strings2 "strings"
@@ -15,6 +17,7 @@ import (
 )
 
 const (
+	ApiKeyHeader     = "X-API-KEY"
 	ContextJwtKey    = "jwt"
 	ContextUserIDKey = "userId"
 	ContextOrgKey    = "orgId"
@@ -40,6 +43,92 @@ type validateAuthTokenResult struct {
 	userID        string
 	orgID         string
 	authenticator string
+}
+
+func NewAuthInterceptor(logger *zap.Logger) connect.UnaryInterceptorFunc {
+	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
+		return func(
+			ctx context.Context,
+			req connect.AnyRequest,
+		) (connect.AnyResponse, error) {
+			isClient := req.Spec().IsClient
+			if isClient {
+				// TODO: client side auth interceptor
+				// Send a token with client requests.
+				// req.Header().Set(tokenHeader, "sample")
+			} else if !strings2.Contains(req.Spec().Procedure, "RefreshToken") {
+				// server only
+				rootAPIKey := env.Getenv("ROOT_API_KEY", "")
+				useSpeakeasy := env.Getenv("SPEAKEASY_API_KEY", "") != ""
+				canUseRootAPIKey := rootAPIKey != ""
+
+				if !canUseRootAPIKey && !useSpeakeasy {
+					logger.Fatal("🔥 Neither ROOT_API_KEY nor SPEAKEASY_API_KEY are specified. You have to choose one.")
+				}
+				if useSpeakeasy && jwksClient == nil {
+					logger.Fatal("🔥 JWKS client is not configured. Make sure SPEAKEASY_WORKSPACE_ID is set.")
+				}
+
+				authHeader := req.Header().Get(ApiKeyHeader)
+				if authHeader == "" {
+					authHeader = req.Header().Get("Authorization")
+				}
+				if authHeader == "" {
+					return nil, connect.NewError(
+						connect.CodeUnauthenticated,
+						fmt.Errorf("API key not set"),
+					)
+				}
+
+				args := validateAuthTokenArgs{
+					logger:       logger,
+					useSpeakeasy: useSpeakeasy,
+					rootAPIKey:   rootAPIKey,
+					token:        authHeader,
+					headers:      req.Header(),
+				}
+
+				pool := authPool(args)
+				pool.Run(ctx)
+				authed, valErr, err := getResult(pool, logger)
+
+				if authed == nil {
+					logger.Warn("All authenticators failed for request.", zap.Any("validationErr", valErr), zap.Error(err))
+					if valErr != nil {
+						return nil, connect.NewError(
+							connect.CodeUnauthenticated,
+							valErr.Error,
+						)
+					}
+					if err != nil {
+						return nil, connect.NewError(
+							connect.CodeUnauthenticated,
+							err,
+						)
+					}
+					// if no errors occurred
+					return nil, connect.NewError(
+						connect.CodeUnauthenticated,
+						fmt.Errorf(""),
+					)
+				}
+
+				// update context values
+				if authed.token != nil {
+					ctx = context.WithValue(ctx, ContextJwtKey, authed.token)
+				}
+				if authed.userID != "" {
+					ctx = context.WithValue(ctx, ContextUserIDKey, authed.userID)
+				}
+				if authed.orgID != "" {
+					ctx = context.WithValue(ctx, ContextOrgKey, authed.orgID)
+				}
+			}
+
+			return next(ctx, req)
+		}
+	}
+	return interceptor
 }
 
 func AuthMiddleware(logger *zap.Logger) gin.HandlerFunc {

@@ -1,31 +1,21 @@
 package api
 
 import (
+	contextv1 "buf.build/gen/go/dot/brease/protocolbuffers/go/brease/context/v1"
+	rulev1 "buf.build/gen/go/dot/brease/protocolbuffers/go/brease/rule/v1"
+	"connectrpc.com/connect"
+	"context"
 	"fmt"
 
-	"github.com/gin-gonic/gin"
 	"go.dot.industries/brease/auth"
-	"go.dot.industries/brease/models"
 )
 
-type ReplaceRuleRequest struct {
-	PathParams
-	ID   string      `json:"-" validate:"required" path:"id"`
-	Rule models.Rule `json:"rule" validate:"required"`
-}
+func (b *BreaseHandler) UpdateRule(ctx context.Context, c *connect.Request[contextv1.UpdateRuleRequest]) (*connect.Response[rulev1.VersionedRule], error) {
+	orgID := CtxString(ctx, auth.ContextOrgKey)
 
-type ReplaceRuleResponse struct {
-	Rule models.VersionedRule `json:"rule"`
-}
-
-func (b *BreaseHandler) ReplaceRule(c *gin.Context, r *ReplaceRuleRequest) (*ReplaceRuleResponse, error) {
-	orgID := c.GetString(auth.ContextOrgKey)
-
-	updatedRule, err := b.db.ReplaceRule(c.Request.Context(), orgID, r.ContextID, r.Rule)
+	updatedRule, err := b.db.ReplaceRule(ctx, orgID, c.Msg.ContextId, c.Msg.Rule)
 	if err != nil {
-		return nil, fmt.Errorf("failed to update rule: %v", err)
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to update rule: %v", err))
 	}
-	return &ReplaceRuleResponse{
-		Rule: updatedRule,
-	}, nil
+	return connect.NewResponse(updatedRule), nil
 }

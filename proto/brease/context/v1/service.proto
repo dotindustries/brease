@@ -56,7 +56,7 @@ service ContextService {
   rpc Evaluate(EvaluateRequest) returns (EvaluateResponse) {
     option (google.api.http) = {
       post: "/v1/{context_id}/evaluate"
-      body: "rule"
+      body: "*"
     };
   }
 

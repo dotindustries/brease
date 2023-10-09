@@ -5,10 +5,12 @@ import (
 	"buf.build/gen/go/dot/brease/connectrpc/go/brease/context/v1/contextv1connect"
 	"bytes"
 	"connectrpc.com/connect"
+	"connectrpc.com/grpchealth"
 	"context"
 	"fmt"
 	"go.dot.industries/brease/auditlog"
 	"go.dot.industries/brease/auditlog/auditlogstore"
+	openapi2 "go.dot.industries/brease/openapi"
 	"io"
 	"log"
 	"net/http"
@@ -149,20 +151,26 @@ func newApp(db storage.Database, logger *zap.Logger) *gin.Engine {
 		c.IndentedJSON(http.StatusOK, stats.Report())
 	})
 
-	bh := api.NewHandler(db, memory.New(), logger)
+	// health
+	checker := grpchealth.NewStaticChecker(
+		authv1connect.AuthServiceName,
+		contextv1connect.ContextServiceName,
+	)
+	healthPath, healthHandler := grpchealth.NewHandler(checker)
+	r.GET(healthPath, gin.WrapH(healthHandler))
+	err := openapi2.SetOpenAPIUIRoutes(r)
+	if err != nil {
+		logger.Fatal("Failed to set up openAPI UI routes", zap.Error(err))
+	}
 
+	bh := api.NewHandler(db, memory.New(), logger)
 	interceptors := connect.WithInterceptors(auth.NewAuthInterceptor(logger))
 
-	// TODO: do i need an auth interceptor here as well?
 	authPath, authHandler := authv1connect.NewAuthServiceHandler(bh)
-	r.Any(authPath, func(c *gin.Context) {
-		authHandler.ServeHTTP(c.Writer, c.Request)
-	})
+	r.Any(authPath, gin.WrapH(authHandler))
 
-	path, handler := contextv1connect.NewContextServiceHandler(bh, interceptors)
-	r.Any(path, func(c *gin.Context) {
-		handler.ServeHTTP(c.Writer, c.Request)
-	})
+	ctxPath, ctxHandler := contextv1connect.NewContextServiceHandler(bh, interceptors)
+	r.Any(ctxPath, gin.WrapH(ctxHandler))
 
 	// TODO: move this to the grpc openapi spec
 	//security := &openapi.SecurityRequirement{

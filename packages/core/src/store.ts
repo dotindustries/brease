@@ -3,7 +3,7 @@ import hash from "object-hash";
 import { immer } from "zustand/middleware/immer";
 import { clone } from "lodash-es";
 import { EvaluationResult } from "@brease/sdk";
-import { ApiEvaluateRulesResponse, EvaluateRulesInput } from "@brease/core";
+import { ApiEvaluateRulesResponse, EvaluateRulesInput } from "@brease/sdk";
 import { $setAction, ApplyFunction } from "./actions.js";
 
 export type EvaluateInput<T> = Pick<

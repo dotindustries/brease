@@ -11,7 +11,7 @@ message ListRulesRequest {
   string context_id = 1;
 
   // Whether to return compiled ruleset code
-  bool compileCode = 2;
+  bool compile_code = 2;
 
   // The maximum number of items to return.
   int32 page_size = 3;

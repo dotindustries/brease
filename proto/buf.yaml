@@ -2,9 +2,11 @@ version: v1
 name: buf.build/dot/brease
 deps:
   - buf.build/googleapis/googleapis
+  - buf.build/grpc-ecosystem/grpc-gateway
+  - buf.build/gnostic/gnostic
 breaking:
   use:
-    - FILE
+    - WIRE_JSON
 lint:
   use:
     - DEFAULT

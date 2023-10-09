@@ -71,7 +71,11 @@ For more detailed instructions, please refer to the individual package directori
 
 For comprehensive documentation on how to use the brease business rules engine, refer to the [official documentation](https://docs.brease.run). It provides detailed explanations, tutorials, and examples to help you integrate and leverage the engine's features effectively.
 
-The [API docs](https://api.docs.brease.run) provide an overview of the current endpoints and changelog of the OpenAPI specification.
+The [API docs](https://openapi.docs.brease.run) provide an overview of the current endpoints and changelog of the OpenAPI specification.
+
+The [gRPC API docs](https://grpc.docs.brease.run) provide an overview of the current endpoints and changelog of the OpenAPI specification.
+
+The [gRPC assets](https://buf.build/dot/brease/assets/main) provides access to precompiled gRPC assets and packages.
 
 ## Examples
 

@@ -8,10 +8,6 @@ import (
 	"go.uber.org/zap"
 )
 
-type PathParams struct {
-	ContextID string `path:"contextID"`
-}
-
 type BreaseHandler struct {
 	db        storage.Database
 	logger    *zap.Logger

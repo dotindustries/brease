@@ -1,0 +1,570 @@
+# Generated with protoc-gen-openapi
+# https://github.com/google/gnostic/tree/master/cmd/protoc-gen-openapi
+
+openapi: 3.0.3
+info:
+    title: brease API
+    description: Business rule engine as a service
+    contact:
+        name: Support
+        url: https://app.brease.run/support
+        email: support@dot.industries
+    license:
+        name: MIT License
+        url: https://opensource.org/licenses/MIT
+    version: "0.1"
+servers:
+    - url: https://api.brease.run
+      description: Cloud hosted production server
+    - url: http://localhost:4400
+      description: Development server
+paths:
+    /v1/auth/refreshToken:
+        post:
+            tags:
+                - AuthService
+            description: Refresh the short lived access token for web access
+            operationId: AuthService_RefreshToken
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/RefreshTokenRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/TokenPair'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/auth/token:
+        post:
+            tags:
+                - AuthService
+            description: |-
+                GetToken
+
+                 {{.MethodDescriptorProto.Name}} is a call with the method(s) {{$first := true}}{{range .Bindings}}{{if $first}}{{$first = false}}{{else}}, {{end}}{{.HTTPMethod}}{{end}} within the "{{.Service.Name}}" service.
+                 It takes in "{{.RequestType.Name}}" and returns a "{{.ResponseType.Name}}".
+                 It is used to generate a short lived access token for web access.
+
+                 {{import "tables.md"}}
+            operationId: AuthService_GetToken
+            requestBody:
+                content:
+                    application/json: {}
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/TokenPair'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+            security:
+                - ApiKeyAuth: []
+    /v1/{contextId}/evaluate:
+        post:
+            tags:
+                - ContextService
+            description: Evaluate rules within a context on the provided object
+            operationId: ContextService_Evaluate
+            parameters:
+                - name: contextId
+                  in: path
+                  description: The parent context ID, for example, "contextID1/rules/{rule_id}/versions"
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/EvaluateRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/EvaluateResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/{contextId}/rules:
+        get:
+            tags:
+                - ContextService
+            description: Returns all rules within the context
+            operationId: ContextService_ListRules
+            parameters:
+                - name: contextId
+                  in: path
+                  description: The parent context ID, for example, "contextID1/rules"
+                  required: true
+                  schema:
+                    type: string
+                - name: compileCode
+                  in: query
+                  description: Whether to return compiled ruleset code
+                  schema:
+                    type: boolean
+                - name: pageSize
+                  in: query
+                  description: The maximum number of items to return.
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageToken
+                  in: query
+                  description: The next_page_token value returned from a previous List request, if any.
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListRulesResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+        post:
+            tags:
+                - ContextService
+            description: Adds a new rule to the context
+            operationId: ContextService_CreateRule
+            parameters:
+                - name: contextId
+                  in: path
+                  description: The parent context ID, for example, "contextID1/rules" where the Rule is to be created.
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/Rule'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/VersionedRule'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/{contextId}/rules/add:
+        patch:
+            tags:
+                - ContextService
+            description: Replaces or updates an existing rule within the context
+            operationId: ContextService_UpdateRule
+            parameters:
+                - name: contextId
+                  in: path
+                  description: The parent context ID, for example, "contextID1/rules/{rule_id}/versions"
+                  required: true
+                  schema:
+                    type: string
+                - name: updateMask
+                  in: query
+                  description: The update mask applies to the resource. For the `FieldMask` definition, see https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#fieldmask
+                  schema:
+                    type: string
+                    format: field-mask
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/Rule'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/VersionedRule'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/{contextId}/rules/{ruleId}:
+        get:
+            tags:
+                - ContextService
+            description: Returns a selected rule from the context
+            operationId: ContextService_GetRule
+            parameters:
+                - name: contextId
+                  in: path
+                  description: The parent context ID, for example, "contextID1/rules"
+                  required: true
+                  schema:
+                    type: string
+                - name: ruleId
+                  in: path
+                  description: The rule ID, for example, "{context_id}/rules/rule1/versions"
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/VersionedRule'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+        delete:
+            tags:
+                - ContextService
+            description: Removes a rule from the context
+            operationId: ContextService_DeleteRule
+            parameters:
+                - name: contextId
+                  in: path
+                  description: The parent context ID, for example, "contextID1/rules/{rule_id}/versions"
+                  required: true
+                  schema:
+                    type: string
+                - name: ruleId
+                  in: path
+                  description: The rule ID, for example, "{context_id}/rules/rule1/versions"
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /v1/{contextId}/rules/{ruleId}/versions:
+        get:
+            tags:
+                - ContextService
+            description: Returns all versions of a rule
+            operationId: ContextService_GetRuleVersions
+            parameters:
+                - name: contextId
+                  in: path
+                  description: The parent context ID, for example, "contextID1/rules/{rule_id}/versions"
+                  required: true
+                  schema:
+                    type: string
+                - name: ruleId
+                  in: path
+                  description: The rule ID, for example, "{context_id}/rules/rule1/versions"
+                  required: true
+                  schema:
+                    type: string
+                - name: pageSize
+                  in: query
+                  description: The maximum number of items to return.
+                  schema:
+                    type: integer
+                    format: int32
+                - name: pageToken
+                  in: query
+                  description: The next_page_token value returned from a previous List request, if any.
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListRuleVersionsResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+components:
+    schemas:
+        Action:
+            type: object
+            properties:
+                kind:
+                    type: string
+                    description: The name of the action example:"$set"
+                target:
+                    $ref: '#/components/schemas/Target'
+        And:
+            type: object
+            properties:
+                expression:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Expression'
+        Condition:
+            type: object
+            properties:
+                key:
+                    type: string
+                    description: Holds a direct object key to be used the value extraction
+                ref:
+                    $ref: '#/components/schemas/ConditionBaseRef'
+                kind:
+                    enum:
+                        - e
+                        - hv
+                        - eq
+                        - neq
+                        - px
+                        - npx
+                        - sx
+                        - nsx
+                        - in
+                        - nin
+                        - some
+                        - all
+                        - none
+                        - rgx
+                        - nrgx
+                    type: string
+                    description: The type of this condition, based on the internally defined ConditionType
+                    format: enum
+                value:
+                    type: string
+                    description: A condition parameter holds a target value (right hand side) for a comparison
+                    format: bytes
+            description: A condition expression
+        ConditionBaseRef:
+            type: object
+            properties:
+                src:
+                    type: string
+                dst:
+                    type: string
+                value:
+                    type: string
+                    format: bytes
+            description: 'A reference to point to third party data to be used as the value for the condition. Data retrieval requires dalí integration. Uses a dref format based on the dalí project. Stringified format: `$/map[0]/prop=>/~/datasource/table/searchExpr/selectExpr` Object format: { src: `$/map[0]/prop`, dst: `/~/datasource/table/searchExpr/selectExpr` }'
+        EvaluateRequest:
+            type: object
+            properties:
+                contextId:
+                    type: string
+                    description: The parent context ID, for example, "contextID1/rules/{rule_id}/versions"
+                object:
+                    $ref: '#/components/schemas/GoogleProtobufAny'
+                overrideRules:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Rule'
+                    description: Rules to be applied instead of the stored rules of the context. This is mostly useful for testing purposes or ad-hoc / one-off requests where there is not context set up prior to the evaluation.
+                overrideCode:
+                    type: string
+                    description: Assembled code can be provided, in this case the saved ruleset of the context is ignored. This is mostly useful for testing purposes or ad-hoc / one-off requests where there is not context set up prior to the evaluation.
+        EvaluateResponse:
+            type: object
+            properties:
+                results:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/EvaluationResult'
+        EvaluationResult:
+            type: object
+            properties:
+                action:
+                    type: string
+                    description: The action to be applied
+                target:
+                    $ref: '#/components/schemas/Target'
+                by:
+                    $ref: '#/components/schemas/RuleRef'
+        Expression:
+            type: object
+            properties:
+                and:
+                    $ref: '#/components/schemas/And'
+                or:
+                    $ref: '#/components/schemas/Or'
+                condition:
+                    $ref: '#/components/schemas/Condition'
+        GoogleProtobufAny:
+            type: object
+            properties:
+                '@type':
+                    type: string
+                    description: The type of the serialized message.
+            additionalProperties: true
+            description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
+        ListRuleVersionsResponse:
+            type: object
+            properties:
+                rules:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/VersionedRule'
+                    description: There will be a maximum number of items returned based on the page_size field in the request.
+                nextPageToken:
+                    type: string
+                    description: Token to retrieve the next page of results, or empty if there are no more results in the list.
+        ListRulesResponse:
+            type: object
+            properties:
+                rules:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/VersionedRule'
+                    description: There will be a maximum number of items returned based on the page_size field in the request.
+                code:
+                    type: string
+                    description: The compiled code for the rules in the parameter
+                nextPageToken:
+                    type: string
+                    description: Token to retrieve the next page of results, or empty if there are no more results in the list.
+        Or:
+            type: object
+            properties:
+                expression:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Expression'
+        RefreshTokenRequest:
+            required:
+                - refreshToken
+            type: object
+            properties:
+                refreshToken:
+                    type: string
+        Rule:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: example:"rule_01h89qfdhbejtb3jwqq1gazbm5"
+                description:
+                    type: string
+                actions:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Action'
+                expression:
+                    $ref: '#/components/schemas/Expression'
+        RuleRef:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: example:"rule_01h89qfdhbejtb3jwqq1gazbm5"
+                description:
+                    type: string
+                    description: example:"rule_01h89qfdhbejtb3jwqq1gazbm5"
+        Status:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+                    format: int32
+                message:
+                    type: string
+                    description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
+                details:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/GoogleProtobufAny'
+                    description: A list of messages that carry the error details.  There is a common set of message types for APIs to use.
+            description: 'The `Status` type defines a logical error model that is suitable for different programming environments, including REST APIs and RPC APIs. It is used by [gRPC](https://github.com/grpc). Each `Status` message contains three pieces of data: error code, error message, and error details. You can find out more about this error model and how to work with it in the [API Design Guide](https://cloud.google.com/apis/design/errors).'
+        Target:
+            type: object
+            properties:
+                kind:
+                    type: string
+                    description: This is what determines the type of the id field's value example:"jsonpath" example:"myTargetKind"
+                id:
+                    type: string
+                    description: The identifier for the target. It can be a jsonpath a simple property name or an arbitrary third party id example:"$.prop" example:"propKey" example:"target_01h89qgxe5e7wregw6gb94d5p6"
+                value:
+                    type: string
+                    description: The target value to be set (it is the json serialized representation of the value)
+                    format: bytes
+        TokenPair:
+            type: object
+            properties:
+                accessToken:
+                    type: string
+                refreshToken:
+                    type: string
+        VersionedRule:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: example:"rule_01h89qfdhbejtb3jwqq1gazbm5"
+                version:
+                    type: integer
+                    format: uint64
+                description:
+                    type: string
+                actions:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Action'
+                expression:
+                    $ref: '#/components/schemas/Expression'
+    headers:
+        X-ORG-ID:
+            description: Make sure to include the X-ORG-ID header when using this API key.
+            allowEmptyValue: true
+    securitySchemes:
+        ApiKeyAuth:
+            type: apiKey
+            description: Make sure to include the X-ORG-ID header when using this API key.
+            name: X-API-KEY
+            in: header
+        JWTAuth:
+            type: http
+            scheme: bearer
+            bearerFormat: JWT
+tags:
+    - name: AuthService
+    - name: ContextService
+externalDocs:
+    description: Brease API documentation
+    url: https://openapi.docs.brease.run

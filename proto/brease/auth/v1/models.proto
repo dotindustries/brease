@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package brease.auth.v1;
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+
+message TokenPair {
+  string accessToken = 1;
+  string refreshToken = 2;
+}
+
+message RefreshTokenRequest {
+  string refreshToken = 1 [(google.api.field_behavior) = REQUIRED];
+}

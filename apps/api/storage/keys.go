@@ -18,7 +18,7 @@ func RuleKey(orgID, contextID, ruleID string) string {
 }
 
 // VersionKey creates an org:${orgID}:context:${contextID}:rule:${ruleID}:v${version} key
-func VersionKey(orgID, contextID, ruleID string, version int64) string {
+func VersionKey(orgID, contextID, ruleID string, version uint64) string {
 	return fmt.Sprintf("org:%s:context:%s:rule:%s:v%d", orgID, contextID, ruleID, version)
 }
 
@@ -29,11 +29,11 @@ func IsVersionKey(key string) bool {
 	return strings.HasPrefix(key, "org:") && vSuffix.MatchString(key)
 }
 
-func VersionFromVersionKey(key string) int64 {
+func VersionFromVersionKey(key string) uint64 {
 	vSfx := vSuffix.FindString(key)
 	vStr := numbers.FindString(vSfx)
-	if s, err := strconv.ParseInt(vStr, 10, 64); err == nil {
+	if s, err := strconv.ParseUint(vStr, 10, 64); err == nil {
 		return s
 	}
-	return -1
+	return 0
 }

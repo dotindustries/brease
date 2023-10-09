@@ -1,6 +1,8 @@
 package buntdb
 
 import (
+	authv1 "buf.build/gen/go/dot/brease/protocolbuffers/go/brease/auth/v1"
+	rulev1 "buf.build/gen/go/dot/brease/protocolbuffers/go/brease/rule/v1"
 	"context"
 	"errors"
 	"fmt"
@@ -8,7 +10,6 @@ import (
 
 	"github.com/goccy/go-json"
 	"github.com/tidwall/buntdb"
-	"go.dot.industries/brease/models"
 	"go.dot.industries/brease/storage"
 	"go.uber.org/zap"
 )
@@ -35,7 +36,7 @@ func NewDatabase(opts Options) (storage.Database, error) {
 		logger: opts.Logger,
 		rulePool: sync.Pool{
 			New: func() interface{} {
-				return new(models.VersionedRule)
+				return new(*rulev1.VersionedRule)
 			},
 		},
 	}
@@ -55,17 +56,20 @@ func (b *buntdbContainer) Close() error {
 	return b.db.Close()
 }
 
-func (b *buntdbContainer) AddRule(_ context.Context, ownerID string, contextID string, rule models.Rule) (models.VersionedRule, error) {
-	vRule := models.VersionedRule{
-		Rule:    rule,
-		Version: 1,
+func (b *buntdbContainer) AddRule(_ context.Context, ownerID string, contextID string, rule *rulev1.Rule) (*rulev1.VersionedRule, error) {
+	vRule := &rulev1.VersionedRule{
+		Id:          rule.Id,
+		Version:     1,
+		Description: rule.Description,
+		Actions:     rule.Actions,
+		Expression:  rule.Expression,
 	}
-	rk := storage.RuleKey(ownerID, contextID, vRule.ID)
-	vk := storage.VersionKey(ownerID, contextID, vRule.ID, vRule.Version)
+	rk := storage.RuleKey(ownerID, contextID, vRule.Id)
+	vk := storage.VersionKey(ownerID, contextID, vRule.Id, vRule.Version)
 
 	ruleJSON, err := json.Marshal(vRule)
 	if err != nil {
-		return models.VersionedRule{}, err
+		return nil, err
 	}
 	err = b.db.Update(func(tx *buntdb.Tx) error {
 		_, _, txErr := tx.Set(rk, vk, nil)
@@ -82,7 +86,7 @@ func (b *buntdbContainer) AddRule(_ context.Context, ownerID string, contextID s
 	return vRule, err
 }
 
-func (b *buntdbContainer) Rules(_ context.Context, ownerID string, contextID string) (rules []models.VersionedRule, err error) {
+func (b *buntdbContainer) Rules(_ context.Context, ownerID string, contextID string, pageSize int, pageToken string) (rules []*rulev1.VersionedRule, err error) {
 	rkSearch := storage.RuleKey(ownerID, contextID, "*")
 
 	var ruleKeys []string
@@ -103,12 +107,12 @@ func (b *buntdbContainer) Rules(_ context.Context, ownerID string, contextID str
 				return vErr
 			}
 
-			rule := b.rulePool.Get().(*models.VersionedRule)
+			rule := b.rulePool.Get().(*rulev1.VersionedRule)
 			umErr := json.Unmarshal([]byte(latestVersionData), rule)
 			if umErr != nil {
 				return umErr
 			}
-			rules = append(rules, *rule)
+			rules = append(rules, rule)
 			b.rulePool.Put(rule)
 		}
 		return nil
@@ -117,7 +121,7 @@ func (b *buntdbContainer) Rules(_ context.Context, ownerID string, contextID str
 	return
 }
 
-func (b *buntdbContainer) RuleVersions(_ context.Context, ownerID string, contextID string, ruleID string) (rules []models.VersionedRule, err error) {
+func (b *buntdbContainer) RuleVersions(_ context.Context, ownerID string, contextID string, ruleID string, pageSize int, pageToken string) (rules []*rulev1.VersionedRule, err error) {
 	vkSearch := storage.RuleKey(ownerID, contextID, ruleID) + ":v*"
 	var ruleVersions []string
 	err = b.db.View(func(tx *buntdb.Tx) error {
@@ -129,12 +133,12 @@ func (b *buntdbContainer) RuleVersions(_ context.Context, ownerID string, contex
 
 	err = b.db.View(func(tx *buntdb.Tx) error {
 		for _, versionData := range ruleVersions {
-			rule := b.rulePool.Get().(*models.VersionedRule)
+			rule := b.rulePool.Get().(*rulev1.VersionedRule)
 			umErr := json.Unmarshal([]byte(versionData), rule)
 			if umErr != nil {
 				return umErr
 			}
-			rules = append(rules, *rule)
+			rules = append(rules, rule)
 			b.rulePool.Put(rule)
 		}
 		return nil
@@ -174,8 +178,8 @@ func (b *buntdbContainer) RemoveRule(_ context.Context, ownerID string, contextI
 	})
 }
 
-func (b *buntdbContainer) ruleLatestVersion(ruleKey string) (version int64, err error) {
-	version = -1
+func (b *buntdbContainer) ruleLatestVersion(ruleKey string) (version uint64, err error) {
+	version = 0
 	err = b.db.View(func(tx *buntdb.Tx) error {
 		vk, gErr := tx.Get(ruleKey)
 		if gErr != nil {
@@ -187,20 +191,23 @@ func (b *buntdbContainer) ruleLatestVersion(ruleKey string) (version int64, err 
 	return
 }
 
-func (b *buntdbContainer) ReplaceRule(_ context.Context, ownerID string, contextID string, rule models.Rule) (models.VersionedRule, error) {
-	rk := storage.RuleKey(ownerID, contextID, rule.ID)
+func (b *buntdbContainer) ReplaceRule(_ context.Context, ownerID string, contextID string, rule *rulev1.Rule) (*rulev1.VersionedRule, error) {
+	rk := storage.RuleKey(ownerID, contextID, rule.Id)
 	currentVersion, err := b.ruleLatestVersion(rk)
 	if err != nil {
-		return models.VersionedRule{}, err
+		return nil, err
 	}
-	vRule := models.VersionedRule{
-		Rule:    rule,
-		Version: currentVersion + 1,
+	vRule := &rulev1.VersionedRule{
+		Id:          rule.Id,
+		Version:     currentVersion + 1,
+		Description: rule.Description,
+		Actions:     rule.Actions,
+		Expression:  rule.Expression,
 	}
-	vk := storage.VersionKey(ownerID, contextID, vRule.ID, vRule.Version)
+	vk := storage.VersionKey(ownerID, contextID, vRule.Id, vRule.Version)
 	ruleJSON, jsonErr := json.Marshal(vRule)
 	if jsonErr != nil {
-		return models.VersionedRule{}, jsonErr
+		return nil, jsonErr
 	}
 
 	err = b.db.Update(func(tx *buntdb.Tx) error {
@@ -234,7 +241,7 @@ func (b *buntdbContainer) Exists(_ context.Context, ownerID string, contextID st
 	return
 }
 
-func (b *buntdbContainer) SaveAccessToken(c context.Context, ownerID string, tokenPair models.TokenPair) error {
+func (b *buntdbContainer) SaveAccessToken(c context.Context, ownerID string, tokenPair *authv1.TokenPair) error {
 	atKey := fmt.Sprintf("access:%s", ownerID)
 
 	tokens, err := b.GetAccessTokens(c, ownerID)
@@ -254,7 +261,7 @@ func (b *buntdbContainer) SaveAccessToken(c context.Context, ownerID string, tok
 	})
 }
 
-func (b *buntdbContainer) GetAccessTokens(_ context.Context, ownerID string) (tp []models.TokenPair, err error) {
+func (b *buntdbContainer) GetAccessTokens(_ context.Context, ownerID string) (tp []*authv1.TokenPair, err error) {
 	atKey := fmt.Sprintf("access:%s", ownerID)
 
 	val := ""

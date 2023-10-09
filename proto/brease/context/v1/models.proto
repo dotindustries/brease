@@ -1,0 +1,112 @@
+syntax = "proto3";
+
+package brease.context.v1;
+
+import "google/protobuf/any.proto";
+import "google/protobuf/field_mask.proto";
+import "brease/rule/v1/model.proto";
+
+message ListRulesRequest {
+  // The parent context ID, for example, "contextID1/rules"
+  string context_id = 1;
+
+  // Whether to return compiled ruleset code
+  bool compile_code = 2;
+
+  // The maximum number of items to return.
+  int32 page_size = 3;
+
+  // The next_page_token value returned from a previous List request, if any.
+  string page_token = 4;
+}
+
+message ListRulesResponse {
+  // There will be a maximum number of items returned based on the page_size field in the request.
+  repeated rule.v1.VersionedRule rules = 1;
+
+  // The compiled code for the rules in the parameter
+  string code = 2;
+
+  // Token to retrieve the next page of results, or empty if there are no more results in the list.
+  string next_page_token = 3;
+}
+
+message GetRuleRequest {
+  // The parent context ID, for example, "contextID1/rules"
+  string context_id = 1;
+
+  // The rule ID, for example, "{context_id}/rules/rule1/versions"
+  string rule_id = 2;
+}
+
+message ListRuleVersionsRequest {
+  // The parent context ID, for example, "contextID1/rules/{rule_id}/versions"
+  string context_id = 1;
+
+  // The rule ID, for example, "{context_id}/rules/rule1/versions"
+  string rule_id = 2;
+
+  // The maximum number of items to return.
+  int32 page_size = 3;
+
+  // The next_page_token value returned from a previous List request, if any.
+  string page_token = 4;
+}
+
+message ListRuleVersionsResponse {
+  // There will be a maximum number of items returned based on the page_size field in the request.
+  repeated rule.v1.VersionedRule rules = 1;
+
+  // Token to retrieve the next page of results, or empty if there are no more results in the list.
+  string next_page_token = 3;
+}
+
+message CreateRuleRequest {
+  // The parent context ID, for example, "contextID1/rules" where the Rule is to be created.
+  string context_id = 1;
+
+  // The Rule resource to create.
+  rule.v1.Rule rule = 3;
+}
+
+message UpdateRuleRequest {
+  // The parent context ID, for example, "contextID1/rules/{rule_id}/versions"
+  string context_id = 3;
+
+  // The Rule resource which replaces the resource on the server.
+  rule.v1.Rule rule = 1;
+
+  // The update mask applies to the resource. For the `FieldMask` definition,
+  // see https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#fieldmask
+  google.protobuf.FieldMask update_mask = 2;
+}
+
+message DeleteRuleRequest {
+  // The parent context ID, for example, "contextID1/rules/{rule_id}/versions"
+  string context_id = 1;
+
+  // The rule ID, for example, "{context_id}/rules/rule1/versions"
+  string rule_id = 2;
+}
+
+message EvaluateRequest {
+  // The parent context ID, for example, "contextID1/rules/{rule_id}/versions"
+  string context_id = 1;
+
+  // The object to evaluate the ruleset on
+  google.protobuf.Any object = 2;
+
+  // Rules to be applied instead of the stored rules of the context.
+  // This is mostly useful for testing purposes or
+  // ad-hoc / one-off requests where there is not context set up prior to the evaluation.
+  repeated rule.v1.Rule override_rules = 3;
+
+  // Assembled code can be provided, in this case the saved ruleset of the context is ignored.
+  // This is mostly useful for testing purposes or
+  // ad-hoc / one-off requests where there is not context set up prior to the evaluation.
+  string override_code = 4;
+}
+
+message EvaluateResponse {
+  repeated rule.v1.EvaluationResult results = 1;
+}

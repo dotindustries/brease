@@ -38,7 +38,7 @@ jobs:
       - name: Comment pull request with API diff
         uses: bump-sh/github-action@v1
         with:
-          doc: <BUMP_DOC_ID>
+          doc: ec0a715c-df3d-4339-8548-243e26721c77
           token: ${{secrets.BUMP_TOKEN}}
           file: apps/api/openapi/assets/openapi.yaml
           command: diff

@@ -2,49 +2,54 @@ package cache
 
 import (
 	"fmt"
-	"github.com/goccy/go-json"
 	"testing"
 
-	"go.dot.industries/brease/models"
-	"go.dot.industries/brease/pb"
+	"github.com/goccy/go-json"
+
+	v11 "buf.build/gen/go/dot/brease/protocolbuffers/go/brease/rule/v1"
 )
 
 var (
 	things   = []string{"a", "b", "c"}
 	v2, _    = json.Marshal(2)
 	v4, _    = json.Marshal(4)
-	ruleset1 = []models.VersionedRule{
+	ruleset1 = []v11.VersionedRule{
 		{
-			Rule: models.Rule{
-				ID:          "asdf",
-				Description: "first rule",
-				Actions: []models.Action{
-					{
-						Action: "setValue",
-						Target: models.Target{
-							Kind:   "jsonpath",
-							Target: "$.property2",
-							Value:  "newValue",
-						},
+			Id:          "asdf",
+			Version:     0,
+			Description: "first rule",
+			Actions: []*v11.Action{
+				{
+					Kind: "setValue",
+					Target: &v11.Target{
+						Kind:  "jsonpath",
+						Id:    "$.property2",
+						Value: []byte("newValue"),
 					},
 				},
-				Expression: map[string]interface{}{
-					"and": pb.And{
-						Expression: []*pb.Expression{
+			},
+			Expression: &v11.Expression{
+				Expr: &v11.Expression_And{
+					And: &v11.And{
+						Expression: []*v11.Expression{
 							{
-								Expr: &pb.Expression_Condition{
-									Condition: &pb.Condition{
-										Base:  &pb.Condition_Key{Key: "$.property3"},
-										Kind:  "lt",
+								Expr: &v11.Expression_Condition{
+									Condition: &v11.Condition{
+										Base: &v11.Condition_Key{
+											Key: "$.property3",
+										},
+										Kind:  v11.ConditionKind(v11.ConditionKind_value["lt"]),
 										Value: v2,
 									},
 								},
 							},
 							{
-								Expr: &pb.Expression_Condition{
-									Condition: &pb.Condition{
-										Base:  &pb.Condition_Key{Key: "$.property"},
-										Kind:  "gt",
+								Expr: &v11.Expression_Condition{
+									Condition: &v11.Condition{
+										Base: &v11.Condition_Key{
+											Key: "$.property",
+										},
+										Kind:  v11.ConditionKind(v11.ConditionKind_value["gt"]),
 										Value: v4,
 									},
 								},

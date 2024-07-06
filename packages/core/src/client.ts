@@ -1,37 +1,26 @@
-import {
-  And,
-  ApiEvaluateRulesResponse,
-  BreaseSDK,
-  ConditionKey,
-  Environment,
-  EvaluateRulesInput,
-  Expression,
-  Or,
-  Rule,
-  Target,
-} from "@brease/sdk";
 import hash from "object-hash";
 import { LRUCache } from "lru-cache";
 import { cachified, CacheEntry } from "cachified";
-import { encode } from "./encoder.js";
+import {encode, encodeToUint8Array} from "./encoder.js";
+import {createPromiseClient, PromiseClient} from "@connectrpc/connect";
+import {AuthService} from "@buf/dot_brease.connectrpc_es/brease/auth/v1/service_connect.js";
+import {createConnectTransport} from "@connectrpc/connect-web";
+import {ContextService} from "@buf/dot_brease.connectrpc_es/brease/context/v1/service_connect.js";
+import {Action, And, Condition, EvaluationResult, Expression, Or, Rule, Target} from "@buf/dot_brease.bufbuild_es/brease/rule/v1/model_pb.js";
 
 const cache = new LRUCache<string, CacheEntry>({ max: 1000 });
 
 export type ClientOptions = {
   accessToken: string;
   refreshToken?: string;
-  environment?: Environment;
 };
 
-export const newClient = ({
-  environment,
-  accessToken,
-  refreshToken,
-}: ClientOptions): {
+export type BreaseClient = {
   /**
    * An initialized brease SDK client
    */
-  sdk: BreaseSDK;
+  client: PromiseClient<typeof ContextService>;
+  authClient: PromiseClient<typeof AuthService>;
   /**
    * Created an evaluateRules function with caching functionality within a specific contextID.
    * @param contextID
@@ -39,23 +28,33 @@ export const newClient = ({
    * @returns
    */
   createEvaluateRules: (
-    contextID: string,
-    cacheTtl?: number | undefined,
+      contextID: string,
+      cacheTtl?: number | undefined,
   ) => (
-    input: EvaluateRulesInput.Model,
-  ) => Promise<ApiEvaluateRulesResponse.Results | undefined>;
-} => {
-  const sdk = new BreaseSDK(refreshToken, accessToken);
-  environment && sdk.setEnvironment(environment);
+      input: any,
+  ) => Promise<EvaluationResult[]>;
+}
+
+export const newClient = (_opts: ClientOptions): BreaseClient => {
+  const transport = createConnectTransport({
+    baseUrl: "http://localhost:4400",
+  })
+  const authClient = createPromiseClient(AuthService, transport)
+  const client = createPromiseClient(ContextService, transport)
 
   const createEvaluateRules =
     (contextID: string, cacheTtl?: number) =>
-    (input: EvaluateRulesInput.Model) => {
+    (input: any) => {
       return cachified({
         key: `${contextID}-${hash(input)}`,
         cache,
         async getFreshValue() {
-          const { results } = await sdk.Context.evaluateRules(input, contextID);
+          const { results } = await client.evaluate({
+            contextId: contextID,
+            object: input,
+            // overrideRules: [],
+            // overrideCode: ''
+          });
           return results;
         },
         ttl: cacheTtl,
@@ -63,7 +62,8 @@ export const newClient = ({
     };
 
   return {
-    sdk,
+    client,
+    authClient,
     createEvaluateRules,
   };
 };
@@ -77,18 +77,18 @@ export type Json =
   | { [key: string]: Json };
 
 export type ClientAnd = {
-  and?: ClientExpression;
+  and?: Array<ClientExpression>;
 };
 
 export type ClientOr = {
-  or?: ClientExpression;
+  or?: Array<ClientExpression>;
 };
 
-export type ClientConditionKey = Omit<ConditionKey.Model, "value"> & {
+export type ClientConditionKey = Omit<Condition, "value"> & {
   value?: Json;
 };
 
-export type ClientConditionRef = Omit<ConditionKey.Model, "value"> & {
+export type ClientConditionRef = Omit<Condition, "value"> & {
   value?: Json;
 };
 
@@ -96,48 +96,77 @@ export type ClientCondition = {
   condition?: ClientConditionKey | ClientConditionRef;
 };
 
-export type ClientExpression = ClientAnd | ClientOr | ClientCondition;
+export type ClientExpression = ClientAnd | ClientOr | ClientCondition
 
-export type ClientTarget = Omit<Target.Model, "value"> & {
+export type ClientTarget = Omit<Target, "value"> & {
   value?: Json;
 };
 
-export type ClientRule = {
-  action: Rule.Action;
-  description?: Rule.Description;
-  expression: ClientExpression;
-  id: Rule.Id;
+export type ClientAction = Omit<Action, 'target'> & {
   target: ClientTarget;
+}
+
+export type ClientRule = {
+  actions: Array<ClientAction>;
+  description?: string;
+  expression: ClientExpression;
+  id: string;
 };
 
-export const encodeClientRule = (rule: ClientRule): Rule.Model => {
-  const { expression, target, ...rest } = rule;
-  const encodedTarget = encodeTarget(target);
+export const encodeClientRule = (rule: ClientRule): Rule => {
+  const { expression, actions, ...rest } = rule;
   const encodedExpression = encodeExpression(expression);
-  return Object.assign(rest, {
+  return new Rule({
+    ...rest,
     expression: encodedExpression!, // the first expr is secured via ClientRule TS
-    target: encodedTarget,
-  });
+    actions: actions.map(action => new Action({
+      kind: action.kind,
+      target: encodeTarget(action.target),
+    }))
+  })
 };
 
-const encodeTarget = (t: ClientTarget) => {
+const encodeTarget = (t: ClientTarget): Target => {
   const { value, ...rest } = t;
-  return Object.assign(rest, { value: encode(value) });
+  return new Target({
+    ...rest,
+    value: encodeToUint8Array(encode(value)),
+  })
 };
 
 const encodeExpression = (
   e?: ClientExpression,
-): Expression.Model | undefined => {
+): Expression | undefined => {
   if (!e) return undefined;
 
-  if ("and" in e) {
-    return Object.assign(e, { and: encodeExpression(e.and) }) as And.Model; // find a better way to make TS happy
-  } else if ("or" in e) {
-    return Object.assign(e, { or: encodeExpression(e.or) }) as Or.Model; // find a better way to make TS happy
-  } else if ("condition" in e) {
-    return Object.assign(e, {
-      condition: encodeCondition(e.condition),
-    });
+  if ("and" in e && e.and) {
+    return new Expression({
+      expr: {
+        value: new And({
+          expression: e.and.map(a => encodeExpression(a)!) // find a better way to make TS happy
+        }),
+        case: 'and'
+      }
+    })
+  } else if ("or" in e && e.or) {
+    return new Expression({
+      expr: {
+        value: new Or({
+          expression: e.or.map(o => encodeExpression(o)!) // find a better way to make TS happy
+        }),
+        case: 'or'
+      }
+    })
+  } else if ("condition" in e && e.condition) {
+    const condition = encodeCondition(e.condition);
+    if (!condition) return undefined;
+
+    return new Expression({
+      expr: {
+        value: condition,
+        case: 'condition'
+      }
+    })
   }
   console.error("Unknown expression type:", e);
   return undefined;
@@ -148,7 +177,10 @@ const encodeCondition = (c?: ClientConditionKey | ClientConditionRef) => {
 
   if ("value" in c) {
     const { value, ...rest } = c;
-    return Object.assign(rest, { value: encode(value) });
+    return new Condition({
+      ...rest,
+      value: encodeToUint8Array(encode(value)),
+    })
   }
   console.error("Unknown condition type:", c);
   return undefined;

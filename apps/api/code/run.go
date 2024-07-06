@@ -1,13 +1,12 @@
 package code
 
 import (
+	rulev1 "buf.build/gen/go/dot/brease/protocolbuffers/go/brease/rule/v1"
 	"context"
 	"github.com/d5/tengo/v2"
 	"github.com/juju/errors"
-	"go.dot.industries/brease/models"
 	"go.dot.industries/brease/trace"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	"log"
 	"time"
 )
@@ -32,7 +31,7 @@ func NewRun(_ context.Context, logger *zap.Logger, object interface{}) (*Run, er
 	}, nil
 }
 
-func (r *Run) Execute(ctx context.Context, script *Script) ([]models.EvaluationResult, error) {
+func (r *Run) Execute(ctx context.Context, script *Script) ([]*rulev1.EvaluationResult, error) {
 	ctx, span := trace.Tracer.Start(ctx, "exec")
 	defer span.End()
 
@@ -51,22 +50,11 @@ func (r *Run) Execute(ctx context.Context, script *Script) ([]models.EvaluationR
 	r.logger.Info("Run execution finished", zap.Duration("time", time.Since(start)))
 	resVar := runner.Get(resultVariable)
 	results := r.parseResults(resVar)
-	r.logger.Debug("Run results", zap.Array("results", resultsArray(results)))
+	r.logger.Debug("Run results", zap.Any("results", results))
 	return results, nil
 }
 
-type resultsArray []models.EvaluationResult
-
-func (r resultsArray) MarshalLogArray(arr zapcore.ArrayEncoder) error {
-	for i := range r {
-		if e := arr.AppendObject(r[i]); e != nil {
-			return e
-		}
-	}
-	return nil
-}
-
-func (r *Run) parseResults(result *tengo.Variable) (results []models.EvaluationResult) {
+func (r *Run) parseResults(result *tengo.Variable) (results []*rulev1.EvaluationResult) {
 	// transform results for sending back
 	for _, raw := range result.Array() {
 		res, ok := raw.(map[string]interface{})
@@ -76,14 +64,14 @@ func (r *Run) parseResults(result *tengo.Variable) (results []models.EvaluationR
 		// if result structure changes to dynamic value types, use
 		//   github.com/mitchellh/mapstructure
 		target := res["target"].(map[string]interface{})
-		results = append(results, models.EvaluationResult{
+		results = append(results, &rulev1.EvaluationResult{
 			Action: res["action"].(string),
-			Target: models.Target{
-				Kind:   target["kind"].(string),
-				Target: target["target"].(string),
-				Value:  target["value"].(string),
+			Target: &rulev1.Target{
+				Kind:  target["kind"].(string),
+				Id:    target["target"].(string),
+				Value: target["value"].([]byte),
 			},
-			By: res["by"].(string),
+			By: res["by"].(*rulev1.RuleRef),
 		})
 	}
 	return

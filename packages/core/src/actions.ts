@@ -1,27 +1,27 @@
-import { EvaluationResult } from "@brease/sdk";
+import { EvaluationResult } from "@buf/dot_brease.bufbuild_es/brease/rule/v1/model_pb.js";
 import { isJsonPath, setValue } from "./jsonpath.js";
 
 export type ApplyFunction<T extends object, R extends object> = (
-  action: EvaluationResult.Model,
+  action: EvaluationResult,
   obj: T,
 ) => Promise<R>;
 
-export interface Action<T extends object, R extends object> {
+export interface ClientActionFn<T extends object, R extends object> {
   kind: string;
   apply: ApplyFunction<T, R>;
 }
 
 export const $setAction = async <T extends object, R extends object>(
-  action: EvaluationResult.Model,
-  obj: T,
+  action: EvaluationResult,
+  _obj: T,
 ) => {
   if (action.action !== "$set") return {} as R;
   const a: { [k: string]: any } = {};
 
-  if (action.targetID && isJsonPath(action.targetID)) {
-    setValue(a, action.targetID, action.value);
-  } else if (action.targetID) {
-    a[action.targetID] = action.value;
+  if (action.target?.id && isJsonPath(action.target?.id)) {
+    setValue(a, action.target?.id, action.target.value);
+  } else if (action.target?.id) {
+    a[action.target?.id] = action.target.value;
   }
 
   return a as R;

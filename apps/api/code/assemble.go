@@ -1,10 +1,10 @@
 package code
 
 import (
+	rulev1 "buf.build/gen/go/dot/brease/protocolbuffers/go/brease/rule/v1"
 	"context"
 	"fmt"
 	"go.dot.industries/brease/cache"
-	"go.dot.industries/brease/models"
 	"go.dot.industries/brease/trace"
 	"go.uber.org/zap"
 )
@@ -21,7 +21,7 @@ func NewAssembler(logger *zap.Logger, c cache.Cache) *Assembler {
 	}
 }
 
-func (a *Assembler) BuildCode(ctx context.Context, rules []models.VersionedRule) (string, error) {
+func (a *Assembler) BuildCode(ctx context.Context, rules []*rulev1.VersionedRule) (string, error) {
 	ctx, span := trace.Tracer.Start(ctx, "code")
 	defer span.End()
 
@@ -51,11 +51,11 @@ func (a *Assembler) BuildCode(ctx context.Context, rules []models.VersionedRule)
 	return assembled, nil
 }
 
-func (a *Assembler) assemble(ctx context.Context, rules []models.VersionedRule) (string, error) {
+func (a *Assembler) assemble(ctx context.Context, rules []*rulev1.VersionedRule) (string, error) {
 	ctx, span := trace.Tracer.Start(ctx, "assemble")
 	defer span.End()
 
-	relevantRules := make([]models.VersionedRule, 0, len(rules))
+	relevantRules := make([]*rulev1.VersionedRule, 0, len(rules))
 	for i := 0; i < len(rules); i++ {
 		if rules[i].Expression == nil {
 			continue

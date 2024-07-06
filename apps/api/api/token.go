@@ -1,21 +1,78 @@
 package api
 
 import (
+	authv1 "buf.build/gen/go/dot/brease/protocolbuffers/go/brease/auth/v1"
+	"connectrpc.com/connect"
+	"context"
 	"fmt"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/juju/errors"
 	"go.dot.industries/brease/auth"
-	"go.dot.industries/brease/models"
 )
 
-type RefreshTokenPairRequest struct {
-	RefreshToken string `json:"refreshToken" validate:"required"`
+func (b *BreaseHandler) GetToken(ctx context.Context, c *connect.Request[emptypb.Empty]) (*connect.Response[authv1.TokenPair], error) {
+	ownerID := CtxString(ctx, auth.ContextOrgKey)
+	userID := CtxString(ctx, auth.ContextUserIDKey)
+
+	tp, err := b.generateTokenPair(ownerID, userID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to generate tokens: %w", err))
+	}
+
+	if err = b.db.SaveAccessToken(ctx, ownerID, tp); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to save tokens to database: %w", err))
+	}
+
+	return connect.NewResponse(tp), nil
 }
 
-func (b *BreaseHandler) generateTokenPair(ownerID string, userID string) (tp models.TokenPair, err error) {
+func (b *BreaseHandler) RefreshToken(ctx context.Context, c *connect.Request[authv1.RefreshTokenRequest]) (*connect.Response[authv1.TokenPair], error) {
+	token, err := b.token.Parse(c.Msg.RefreshToken)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid refreshToken: %w", err))
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok || !token.Valid {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid refreshToken"))
+	}
+
+	orgID, ok := claims["sub"].(string)
+	if !ok {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid refreshToken sub"))
+	}
+
+	oldTokenPairs, err := b.db.GetAccessTokens(ctx, orgID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("refreshToken not found"))
+	}
+
+	unknown := true
+	for _, tp := range oldTokenPairs {
+		if tp.RefreshToken == c.Msg.RefreshToken {
+			unknown = false
+			break
+		}
+	}
+	if unknown {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown refreshToken"))
+	}
+
+	tp, err := b.generateTokenPair(orgID, "")
+	if err != nil {
+		return nil, err
+	}
+
+	if err = b.db.SaveAccessToken(ctx, orgID, tp); err != nil {
+		return nil, fmt.Errorf("failed to save tokens to database: %w", err)
+	}
+
+	return connect.NewResponse(tp), nil
+}
+
+func (b *BreaseHandler) generateTokenPair(ownerID string, userID string) (tp *authv1.TokenPair, err error) {
 	t, err := b.token.Sign(ownerID, userID, 0)
 	if err != nil {
 		return tp, fmt.Errorf("failed to generate accessToken: %w", err)
@@ -30,64 +87,4 @@ func (b *BreaseHandler) generateTokenPair(ownerID string, userID string) (tp mod
 	tp.RefreshToken = rt
 
 	return tp, nil
-}
-
-func (b *BreaseHandler) GenerateTokenPair(c *gin.Context) (*models.TokenPair, error) {
-	ownerID := c.GetString(auth.ContextOrgKey)
-	userID := c.GetString(auth.ContextUserIDKey)
-
-	tp, err := b.generateTokenPair(ownerID, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	if err = b.db.SaveAccessToken(c.Request.Context(), ownerID, tp); err != nil {
-		return nil, fmt.Errorf("failed to save tokens to database: %w", err)
-	}
-
-	return &tp, nil
-}
-
-func (b *BreaseHandler) RefreshTokenPair(c *gin.Context, r *RefreshTokenPairRequest) (*models.TokenPair, error) {
-	token, err := b.token.Parse(r.RefreshToken)
-	if err != nil {
-		return nil, errors.BadRequestf("invalid refreshToken: %w", err)
-	}
-
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok || !token.Valid {
-		return nil, errors.BadRequestf("invalid refreshToken")
-	}
-
-	orgID, ok := claims["sub"].(string)
-	if !ok {
-		return nil, errors.BadRequestf("invalid refreshToken sub")
-	}
-
-	oldTokenPairs, err := b.db.GetAccessTokens(c.Request.Context(), orgID)
-	if err != nil {
-		return nil, errors.BadRequestf("refreshToken not found")
-	}
-
-	unknown := true
-	for _, tp := range oldTokenPairs {
-		if tp.RefreshToken == r.RefreshToken {
-			unknown = false
-			break
-		}
-	}
-	if unknown {
-		return nil, errors.BadRequestf("unknown refreshToken")
-	}
-
-	tp, err := b.generateTokenPair(orgID, "")
-	if err != nil {
-		return nil, err
-	}
-
-	if err = b.db.SaveAccessToken(c.Request.Context(), orgID, tp); err != nil {
-		return nil, fmt.Errorf("failed to save tokens to database: %w", err)
-	}
-
-	return &tp, nil
 }

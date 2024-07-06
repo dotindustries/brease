@@ -1,4 +1,9 @@
-export * from "@brease/sdk";
+export type * from '@buf/dot_brease.bufbuild_es/brease/auth/v1/models_pb.js';
+export type * from '@buf/dot_brease.bufbuild_es/brease/context/v1/models_pb.js';
+export type * from '@buf/dot_brease.bufbuild_es/brease/rule/v1/model_pb.js';
+export {ContextService} from "@buf/dot_brease.connectrpc_es/brease/context/v1/service_connect.js";
+export {AuthService} from "@buf/dot_brease.connectrpc_es/brease/auth/v1/service_connect.js";
+export type {PromiseClient} from "@connectrpc/connect";
 
 export * from "./client.js";
 export * from "./utils.js";

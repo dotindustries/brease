@@ -1,11 +1,11 @@
 package rref
 
 import (
+	rulev1 "buf.build/gen/go/dot/brease/protocolbuffers/go/brease/rule/v1"
 	"context"
 
 	"go.dot.industries/brease/cache"
 	"go.dot.industries/brease/cache/memory"
-	"go.dot.industries/brease/pb"
 	"go.dot.industries/brease/trace"
 )
 
@@ -16,7 +16,7 @@ func IsConfigured() bool {
 	return false
 }
 
-func LookupReferenceValue(ctx context.Context, ref *pb.ConditionBaseRef) []byte {
+func LookupReferenceValue(ctx context.Context, ref *rulev1.ConditionBaseRef) []byte {
 	ctx, span := trace.Tracer.Start(ctx, "reference-query")
 	defer span.End()
 
@@ -53,7 +53,7 @@ func LookupReferenceValue(ctx context.Context, ref *pb.ConditionBaseRef) []byte 
 	return nil
 }
 
-func fetchReferenceValue(ctx context.Context, ref *pb.ConditionBaseRef) ([]byte, error) {
+func fetchReferenceValue(ctx context.Context, ref *rulev1.ConditionBaseRef) ([]byte, error) {
 	// TODO: actually call the remote service to fetch the value
 	return nil, nil
 }

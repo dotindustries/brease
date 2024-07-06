@@ -1,0 +1,159 @@
+syntax = "proto3";
+
+package brease.rule.v1;
+
+message Action {
+  // The name of the action
+  // example:"$set"
+  string kind = 1;
+
+  // The target the action applies to
+  Target target = 2;
+}
+
+message RuleRef {
+  // example:"rule_01h89qfdhbejtb3jwqq1gazbm5"
+  string id = 1;
+
+  // example:"rule_01h89qfdhbejtb3jwqq1gazbm5"
+  string description = 2;
+}
+
+message Rule {
+  // example:"rule_01h89qfdhbejtb3jwqq1gazbm5"
+  string id = 1;
+
+  string description = 2;
+
+  repeated Action actions = 3;
+
+  // A variadic condition expression
+  //  Expression:
+  //    type: object
+  //    oneOf:
+  //      - $ref: '#/components/schemas/And'
+  //      - $ref: '#/components/schemas/Or'
+  //      - $ref: '#/components/schemas/Condition'
+  Expression expression = 4;
+}
+
+message VersionedRule {
+  // example:"rule_01h89qfdhbejtb3jwqq1gazbm5"
+  string id = 1;
+  uint64 version = 5;
+
+  string description = 2;
+
+  repeated Action actions = 3;
+
+  // A variadic condition expression
+  //  Expression:
+  //    type: object
+  //    oneOf:
+  //      - $ref: '#/components/schemas/And'
+  //      - $ref: '#/components/schemas/Or'
+  //      - $ref: '#/components/schemas/Condition'
+  Expression expression = 4;
+}
+
+message Target {
+  // This is what determines the type of the id field's value
+  // example:"jsonpath" example:"myTargetKind"
+  string kind = 1;
+
+  // The identifier for the target.
+  // It can be a jsonpath a simple property name or an arbitrary third party id
+  // example:"$.prop" example:"propKey" example:"target_01h89qgxe5e7wregw6gb94d5p6"
+  string id = 2;
+
+  // The target value to be set (it is the json serialized representation of the value)
+  bytes value = 3;
+}
+
+message EvaluationResult {
+  // The action to be applied
+  string action = 1;
+
+  // The target the action needs to be applied to
+  Target target = 2;
+
+  // The truthy rule ID responsible for this result
+  // This field is used by the frontend devtools packages.
+  RuleRef by = 3;
+}
+
+// A reference to point to third party data to be used as the value for the condition.
+//
+// Data retrieval requires dalí integration.
+// Uses a dref format based on the dalí project.
+// Stringified format: `$/map[0]/prop=>/~/datasource/table/searchExpr/selectExpr`
+// Object format: { src: `$/map[0]/prop`, dst: `/~/datasource/table/searchExpr/selectExpr` }
+message ConditionBaseRef {
+  string src = 1;
+  string dst = 2;
+  bytes value = 3;
+}
+
+enum ConditionKind {
+  // Golang: ConditionEmpty
+  e = 0;
+  // Golang: ConditionHasValue
+  hv = 1;
+  // Golang: ConditionEquals
+  eq = 2;
+  // Golang: ConditionDoesNotEqual
+  neq = 3;
+  // Golang: ConditionHasPrefix
+  px = 4;
+  // Golang: ConditionDoesNotHavePrefix
+  npx = 5;
+  // Golang: ConditionHasSuffix
+  sx = 6;
+  // Golang: ConditionDoesNotHaveSuffix
+  nsx = 7;
+  // Golang: ConditionInList
+  in = 8;
+  // Golang: ConditionNotInList
+  nin = 9;
+  // Golang: ConditionSome
+  some = 10;
+  // Golang: ConditionAll
+  all = 11;
+  // Golang: ConditionNone
+  none = 12;
+  // Golang: ConditionRegex
+  rgx = 13;
+  // Golang: ConditionNotRegex
+  nrgx = 14;
+}
+
+message Expression {
+  oneof expr {
+    And and = 1;
+    Or or = 2;
+    Condition condition = 3;
+  };
+}
+
+message And {
+  repeated Expression expression = 1;
+}
+
+message Or {
+  repeated Expression expression = 1;
+}
+
+// A condition expression
+message Condition {
+  oneof base {
+    // Holds a direct object key to be used the value extraction
+    string key = 1;
+
+    // Holds a dref reference (see dalí project for details)
+    ConditionBaseRef ref = 2;
+  }
+  // The type of this condition, based on the internally defined ConditionType
+  ConditionKind kind = 3;
+  // A condition parameter holds a target value (right hand side) for a comparison
+  bytes value = 4;
+}

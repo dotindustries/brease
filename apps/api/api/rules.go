@@ -1,41 +1,55 @@
 package api
 
 import (
+	rulev1 "buf.build/gen/go/dot/brease/protocolbuffers/go/brease/rule/v1"
+	"connectrpc.com/connect"
+	"context"
 	"fmt"
 	"go.uber.org/zap"
 
-	"github.com/gin-gonic/gin"
+	v1 "buf.build/gen/go/dot/brease/protocolbuffers/go/brease/context/v1"
 	"go.dot.industries/brease/auth"
-	"go.dot.industries/brease/models"
 )
 
-type AllRulesRequest struct {
-	PathParams
-	CompileCode bool `query:"compileCode"`
-}
-
-type AllRulesResponse struct {
-	Rules []models.VersionedRule `json:"rules" validate:"required"`
-	Code  string                 `json:"code"`
-}
-
-func (b *BreaseHandler) AllRules(c *gin.Context, r *AllRulesRequest) (*AllRulesResponse, error) {
-	orgID := c.GetString(auth.ContextOrgKey)
-	rules, err := b.db.Rules(c.Request.Context(), orgID, r.ContextID)
+func (b *BreaseHandler) ListRules(ctx context.Context, c *connect.Request[v1.ListRulesRequest]) (*connect.Response[v1.ListRulesResponse], error) {
+	orgID := CtxString(ctx, auth.ContextOrgKey)
+	pageToken := c.Msg.PageToken
+	pageSize := c.Msg.PageSize
+	rules, err := b.db.Rules(ctx, orgID, c.Msg.ContextId, int(pageSize), pageToken)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch rules: %v", err)
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to fetch rules: %v", err))
 	}
 	code := ""
-	if r.CompileCode {
-		code, err = b.assembler.BuildCode(c.Request.Context(), rules)
+	if c.Msg.CompileCode {
+		code, err = b.assembler.BuildCode(ctx, rules)
 		if err != nil {
 			b.logger.Warn("Failed to assemble code", zap.Error(err))
 		} else {
 			b.logger.Debug("Assembled code", zap.String("code", code))
 		}
 	}
-	return &AllRulesResponse{
-		Rules: rules,
-		Code:  code,
-	}, nil
+	return connect.NewResponse(&v1.ListRulesResponse{
+		Rules:         rules,
+		Code:          code,
+		NextPageToken: "",
+	}), nil
+}
+
+func (b *BreaseHandler) GetRule(ctx context.Context, c *connect.Request[v1.GetRuleRequest]) (*connect.Response[rulev1.VersionedRule], error) {
+	orgID := CtxString(ctx, auth.ContextOrgKey)
+	ruleID := c.Msg.RuleId
+	if ruleID == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("missing rule_id"))
+	}
+	rules, err := b.db.Rules(ctx, orgID, c.Msg.ContextId, 1, ruleID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to fetch rules: %v", err))
+	}
+	if l := len(rules); l == 0 {
+		return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("rule_id not found: %s", ruleID))
+	} else if l > 1 {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("rule_id is corrupted: %s", ruleID))
+	}
+
+	return connect.NewResponse(rules[0]), nil
 }

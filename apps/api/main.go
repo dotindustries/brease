@@ -30,7 +30,6 @@ import (
 	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
 	stats "github.com/semihalev/gin-stats"
-	"github.com/speakeasy-api/speakeasy-go-sdk"
 	"github.com/wI2L/fizz"
 	"github.com/wI2L/fizz/openapi"
 	"go.dot.industries/brease/api"
@@ -156,20 +155,6 @@ func newApp(db storage.Database, logger *zap.Logger) *gin.Engine {
 	))
 	r.Use(gin.Recovery())
 
-	speakeasyAPIKey := env.Getenv("SPEAKEASY_API_KEY", "")
-	if speakeasyAPIKey != "" {
-		auth.InitJWKS()
-
-		// Configure the Global SDK
-		speakeasy.Configure(speakeasy.Config{
-			APIKey:    speakeasyAPIKey,
-			ApiID:     "brease",
-			VersionID: "0.1",
-		})
-		r.Use(speakeasy.GinMiddleware)
-		logger.Info("Configured Speakeasy API layer")
-	}
-
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"client": c.ClientIP(),
@@ -206,8 +191,7 @@ func newApp(db storage.Database, logger *zap.Logger) *gin.Engine {
 		logger.Fatal("Failed to set up grpc-gateway for context")
 	}
 	// connect context
-	interceptors := connect.WithInterceptors(auth.NewAuthInterceptor(logger))
-	ctxPath, ctxHandler := contextv1connect.NewContextServiceHandler(bh, interceptors)
+	ctxPath, ctxHandler := contextv1connect.NewContextServiceHandler(bh, connect.WithInterceptors(auth.NewAuthInterceptor(logger)))
 	r.Any(ctxPath, gin.WrapH(ctxHandler))
 
 	// TODO: cannot register the openapi handlers yet:

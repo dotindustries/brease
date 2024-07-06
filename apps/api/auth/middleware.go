@@ -6,14 +6,14 @@ import (
 	"fmt"
 	"go.dot.industries/brease/worker"
 	"net/http"
-	strings2 "strings"
+	"strings"
 
-	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	errors2 "github.com/juju/errors"
 	"go.dot.industries/brease/env"
-	"go.dot.industries/brease/strings"
 	"go.uber.org/zap"
+
+	unkey "github.com/WilfredAlmeida/unkey-go/features"
 )
 
 const (
@@ -21,14 +21,14 @@ const (
 	ContextJwtKey    = "jwt"
 	ContextUserIDKey = "userId"
 	ContextOrgKey    = "orgId"
+	bearerAuthPrefix = "Bearer "
 )
 
 type validateAuthTokenArgs struct {
-	logger       *zap.Logger
-	useSpeakeasy bool
-	token        string
-	rootAPIKey   string
-	headers      http.Header
+	logger     *zap.Logger
+	token      string
+	rootAPIKey string
+	headers    http.Header
 }
 
 type validationErr struct {
@@ -56,17 +56,13 @@ func NewAuthInterceptor(logger *zap.Logger) connect.UnaryInterceptorFunc {
 				// TODO: client side auth interceptor
 				// Send a token with client requests.
 				// req.Header().Set(tokenHeader, "sample")
-			} else if !strings2.Contains(req.Spec().Procedure, "RefreshToken") {
+			} else if !strings.Contains(req.Spec().Procedure, "RefreshToken") {
 				// server only
 				rootAPIKey := env.Getenv("ROOT_API_KEY", "")
-				useSpeakeasy := env.Getenv("SPEAKEASY_API_KEY", "") != ""
 				canUseRootAPIKey := rootAPIKey != ""
 
-				if !canUseRootAPIKey && !useSpeakeasy {
-					logger.Fatal("🔥 Neither ROOT_API_KEY nor SPEAKEASY_API_KEY are specified. You have to choose one.")
-				}
-				if useSpeakeasy && jwksClient == nil {
-					logger.Fatal("🔥 JWKS client is not configured. Make sure SPEAKEASY_WORKSPACE_ID is set.")
+				if !canUseRootAPIKey {
+					logger.Fatal("🔥 ROOT_API_KEY is not specified.")
 				}
 
 				authHeader := req.Header().Get(ApiKeyHeader)
@@ -81,11 +77,10 @@ func NewAuthInterceptor(logger *zap.Logger) connect.UnaryInterceptorFunc {
 				}
 
 				args := validateAuthTokenArgs{
-					logger:       logger,
-					useSpeakeasy: useSpeakeasy,
-					rootAPIKey:   rootAPIKey,
-					token:        authHeader,
-					headers:      req.Header(),
+					logger:     logger,
+					rootAPIKey: rootAPIKey,
+					token:      authHeader,
+					headers:    req.Header(),
 				}
 
 				pool := authPool(args)
@@ -131,70 +126,6 @@ func NewAuthInterceptor(logger *zap.Logger) connect.UnaryInterceptorFunc {
 	return interceptor
 }
 
-func AuthMiddleware(logger *zap.Logger) gin.HandlerFunc {
-	rootAPIKey := env.Getenv("ROOT_API_KEY", "")
-	useSpeakeasy := env.Getenv("SPEAKEASY_API_KEY", "") != ""
-	canUseRootAPIKey := rootAPIKey != ""
-
-	if !canUseRootAPIKey && !useSpeakeasy {
-		logger.Fatal("🔥 Neither ROOT_API_KEY nor SPEAKEASY_API_KEY are specified. You have to choose one.")
-	}
-	if useSpeakeasy && jwksClient == nil {
-		logger.Fatal("🔥 JWKS client is not configured. Make sure SPEAKEASY_WORKSPACE_ID is set.")
-	}
-
-	return func(c *gin.Context) {
-		authHeader := c.Request.Header.Get("X-API-KEY")
-		if authHeader == "" {
-			authHeader = c.Request.Header.Get("Authorization")
-		}
-		if authHeader == "" {
-			_ = c.AbortWithError(http.StatusUnauthorized, errors2.Unauthorizedf("API key not set"))
-			return
-		}
-
-		args := validateAuthTokenArgs{
-			logger:       logger,
-			useSpeakeasy: useSpeakeasy,
-			rootAPIKey:   rootAPIKey,
-			token:        authHeader,
-			headers:      c.Request.Header,
-		}
-
-		pool := authPool(args)
-		pool.Run(c.Request.Context())
-		authed, valErr, err := getResult(pool, logger)
-
-		if authed == nil {
-			logger.Warn("All authenticators failed for request.", zap.Any("validationErr", valErr), zap.Error(err))
-			if valErr != nil {
-				_ = c.AbortWithError(valErr.Status, valErr.Error)
-				return
-			}
-			if err != nil {
-				_ = c.AbortWithError(http.StatusUnauthorized, err)
-				return
-			}
-			// if no errors occurred
-			c.AbortWithStatus(http.StatusUnauthorized)
-			return
-		}
-
-		if authed.token != nil {
-			c.Set(ContextJwtKey, authed.token)
-		}
-		if authed.userID != "" {
-			c.Set(ContextUserIDKey, authed.userID)
-		}
-		if authed.orgID != "" {
-			c.Set(ContextOrgKey, authed.orgID)
-		}
-
-		// continue processing
-		c.Next()
-	}
-}
-
 func authPool(args validateAuthTokenArgs) worker.WorkerPool {
 	pool := worker.New(3)
 	pool.GenerateFrom([]worker.Job{
@@ -204,8 +135,8 @@ func authPool(args validateAuthTokenArgs) worker.WorkerPool {
 			Args:       args,
 		},
 		{
-			Descriptor: worker.JobDescriptor{ID: "speakeasy"},
-			ExecFn:     validateSpeakeasyJWT,
+			Descriptor: worker.JobDescriptor{ID: "unkey"},
+			ExecFn:     validateUnkey,
 			Args:       args,
 		},
 		{
@@ -242,10 +173,76 @@ func getResult(pool worker.WorkerPool, logger *zap.Logger) (authed *validateAuth
 	return
 }
 
+func validateUnkey(ctx context.Context, args interface{}) (interface{}, error) {
+	a := args.(validateAuthTokenArgs)
+
+	key := a.token
+	if key == "" {
+		key = a.headers.Get(ApiKeyHeader)
+	} else {
+		key = strings.TrimPrefix(key, bearerAuthPrefix)
+	}
+	if key == "" {
+		return validateAuthTokenResult{
+			error: &validationErr{
+				Status: http.StatusUnauthorized,
+				Error:  errors2.Unauthorizedf("missing API key"),
+			},
+		}, nil
+	}
+
+	resp, err := unkey.KeyVerify(key)
+	if err != nil {
+		return validateAuthTokenResult{
+			error: &validationErr{
+				Status: http.StatusUnauthorized,
+				Error:  errors2.NewUnauthorized(err, "could not verify API key"),
+			},
+		}, nil
+	}
+
+	if !resp.Valid {
+		return validateAuthTokenResult{
+			error: &validationErr{
+				Status: http.StatusUnauthorized,
+				Error:  errors2.Unauthorizedf("invalid API key"),
+			},
+		}, nil
+	}
+
+	userID := ""
+	if uid, ok := resp.Meta[ContextUserIDKey]; ok && uid != nil {
+		userID, ok = uid.(string)
+		if !ok || userID == "" {
+			return validateAuthTokenResult{
+				error: &validationErr{
+					Status: http.StatusUnauthorized,
+					Error:  errors2.BadRequestf("invalid API key: missing userID"),
+				},
+			}, nil
+		}
+	}
+
+	orgID := ""
+	if oid, ok := resp.Meta[ContextOrgKey]; ok && oid != nil {
+		orgID, ok = oid.(string)
+		if !ok || orgID == "" {
+			return validateAuthTokenResult{
+				error: &validationErr{
+					Status: http.StatusUnauthorized,
+					Error:  errors2.BadRequestf("invalid API key: missing orgID"),
+				},
+			}, nil
+		}
+	}
+
+	return validateAuthTokenResult{authed: true, userID: userID, orgID: orgID}, nil
+}
+
 func validateRootAPIKey(_ context.Context, args interface{}) (interface{}, error) {
 	a := args.(validateAuthTokenArgs)
 
-	if a.rootAPIKey == "" || strings2.HasPrefix(a.token, "JWT ") {
+	if a.rootAPIKey == "" || strings.HasPrefix(a.token, "JWT ") {
 		// not configured to authenticate, but no errors
 		return validateAuthTokenResult{}, nil
 	}
@@ -277,7 +274,7 @@ func validateRootAPIKey(_ context.Context, args interface{}) (interface{}, error
 func validateJWT(_ context.Context, args interface{}) (interface{}, error) {
 	a := args.(validateAuthTokenArgs)
 
-	if !strings2.HasPrefix(a.token, "JWT ") {
+	if !strings.HasPrefix(a.token, "JWT ") {
 		// cannot authenticate, but no errors -- must be root API key
 		return validateAuthTokenResult{}, nil
 	}
@@ -340,86 +337,5 @@ func validateJWT(_ context.Context, args interface{}) (interface{}, error) {
 
 	// FIXME: do we have to look up the token under the orgID to be sure it's valid?
 
-	return validateAuthTokenResult{authed: true, token: token, userID: userID, orgID: orgID}, nil
-}
-
-func validateSpeakeasyJWT(_ context.Context, args interface{}) (interface{}, error) {
-	a := args.(validateAuthTokenArgs)
-
-	if !a.useSpeakeasy || !strings2.HasPrefix(a.token, "JWT ") {
-		// cannot authenticate, but no errors -- must be root API key
-		return validateAuthTokenResult{}, nil
-	}
-
-	apiKey, hasPrefix := strings.CutPrefix(a.token, "JWT ")
-	if !hasPrefix {
-		// cannot authenticate
-		return validateAuthTokenResult{
-			authed: false,
-			error: &validationErr{
-				Status: http.StatusUnauthorized,
-				Error:  errors2.Unauthorizedf("API key must be a JWT token"),
-			},
-		}, nil
-	}
-
-	token, _, err := new(jwt.Parser).ParseUnverified(apiKey, jwt.MapClaims{})
-	if err != nil {
-		return validateAuthTokenResult{
-			authed: false,
-			error: &validationErr{
-				Status: http.StatusUnauthorized,
-				Error:  errors2.NewUnauthorized(err, "Invalid JWT"),
-			},
-		}, nil
-	}
-
-	kid, hasKid := token.Header["kid"].(string)
-	if !hasKid {
-		return validateAuthTokenResult{
-			authed: false,
-			error: &validationErr{
-				Status: http.StatusUnauthorized,
-				Error:  errors2.Unauthorizedf("Invalid JWT: kid not present"),
-			},
-		}, nil
-	}
-
-	// don't use the request's context because it's short life will prevent the underlying jwks from refreshing
-	key, err := jwksClient.GetKey(context.Background(), kid, "kid")
-	if err != nil {
-		return validateAuthTokenResult{
-			authed: false,
-			error: &validationErr{
-				Status: http.StatusUnauthorized,
-				Error:  errors2.NewUnauthorized(err, "Invalid JWT"),
-			},
-		}, nil
-	}
-
-	// verify the token
-	_, err = jwt.Parse(apiKey, func(token *jwt.Token) (interface{}, error) {
-		return key.Key, nil
-	})
-	if err != nil {
-		a.logger.Error("Failed to verify the JWT.\nError: %s", zap.Error(err))
-		return validateAuthTokenResult{
-			authed: false,
-			error: &validationErr{
-				Status: http.StatusUnauthorized,
-				Error:  errors2.Unauthorizedf("Invalid API key"),
-			},
-		}, nil
-	}
-
-	userID, orgID := "", ""
-	claims := token.Claims.(jwt.MapClaims)
-	if uid, ok := claims[ContextUserIDKey]; ok {
-		userID = uid.(string)
-	}
-
-	if oid, ok := claims[ContextOrgKey]; ok {
-		orgID = oid.(string)
-	}
 	return validateAuthTokenResult{authed: true, token: token, userID: userID, orgID: orgID}, nil
 }

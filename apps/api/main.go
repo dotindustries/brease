@@ -108,8 +108,8 @@ func newRelicApm(logger *zap.Logger) (*newrelic.Application, error) {
 		return nil, nil
 	}
 	return newrelic.NewApplication(
-		newrelic.ConfigAppName("brease-cloud-api"),
-		newrelic.ConfigLicense("eu01xx16533883feecb2232cfe77b46bFFFFNRAL"),
+		newrelic.ConfigAppName(appName),
+		newrelic.ConfigLicense(license),
 		newrelic.ConfigAppLogForwardingEnabled(true),
 	)
 }

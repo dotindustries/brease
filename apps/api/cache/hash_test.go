@@ -6,7 +6,6 @@ import (
 
 	"github.com/goccy/go-json"
 
-	expressionv1 "buf.build/gen/go/dot/brease/protocolbuffers/go/brease/expression/v1"
 	v11 "buf.build/gen/go/dot/brease/protocolbuffers/go/brease/rule/v1"
 )
 
@@ -16,49 +15,49 @@ var (
 	v4, _    = json.Marshal(4)
 	ruleset1 = []v11.VersionedRule{
 		{
-				Id:          "asdf",
-				Version: 0,
-				Description: "first rule",
-				Actions: []*v11.Action{
-					{
-						Kind: "setValue",
-						Target: &v11.Target{
-							Kind:   "jsonpath",
-							Id: "$.property2",
-							Value:  []byte("newValue"),
-						},
+			Id:          "asdf",
+			Version:     0,
+			Description: "first rule",
+			Actions: []*v11.Action{
+				{
+					Kind: "setValue",
+					Target: &v11.Target{
+						Kind:  "jsonpath",
+						Id:    "$.property2",
+						Value: []byte("newValue"),
 					},
 				},
-				Expression: &expressionv1.Expression{
-					Expr: &expressionv1.Expression_And{
-						And: &expressionv1.And{
-							Expression: []*expressionv1.Expression{
-								{
-									Expr: &expressionv1.Expression_Condition{
-										Condition: &expressionv1.Condition{
-											Base: &expressionv1.Condition_Key{
-												Key: "$.property3",
-											},
-											Kind: expressionv1.ConditionKind(expressionv1.ConditionKind_value["lt"]),
-											Value: v2,
+			},
+			Expression: &v11.Expression{
+				Expr: &v11.Expression_And{
+					And: &v11.And{
+						Expression: []*v11.Expression{
+							{
+								Expr: &v11.Expression_Condition{
+									Condition: &v11.Condition{
+										Base: &v11.Condition_Key{
+											Key: "$.property3",
 										},
+										Kind:  v11.ConditionKind(v11.ConditionKind_value["lt"]),
+										Value: v2,
 									},
 								},
-								{
-									Expr: &expressionv1.Expression_Condition{
-										Condition: &expressionv1.Condition{
-											Base: &expressionv1.Condition_Key{
-												Key: "$.property",
-											},
-											Kind: expressionv1.ConditionKind(expressionv1.ConditionKind_value["gt"]),
-											Value: v4,
+							},
+							{
+								Expr: &v11.Expression_Condition{
+									Condition: &v11.Condition{
+										Base: &v11.Condition_Key{
+											Key: "$.property",
 										},
+										Kind:  v11.ConditionKind(v11.ConditionKind_value["gt"]),
+										Value: v4,
 									},
 								},
 							},
 						},
 					},
 				},
+			},
 		},
 	}
 )

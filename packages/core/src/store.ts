@@ -2,12 +2,12 @@ import { StoreApi, createStore } from "zustand/vanilla";
 import hash from "object-hash";
 import { immer } from "zustand/middleware/immer";
 import { clone } from "lodash-es";
-import { EvaluationResult } from "@brease/sdk";
-import { ApiEvaluateRulesResponse, EvaluateRulesInput } from "@brease/sdk";
 import { $setAction, ApplyFunction } from "./actions.js";
+import {EvaluateRequest} from "@buf/dot_brease.bufbuild_es/brease/context/v1/models_pb.js";
+import { EvaluationResult } from "@buf/dot_brease.bufbuild_es/brease/rule/v1/model_pb.js";
 
 export type EvaluateInput<T> = Pick<
-  EvaluateRulesInput.Model,
+  EvaluateRequest,
   "overrideCode" | "overrideRules"
 > & {
   object: T;
@@ -33,17 +33,17 @@ export type Resolve<T> = {
 
 export type RuleStoreOptions<T extends object, F extends FunctionMap<T>> = {
   evaluateRulesFn: (
-    input: EvaluateRulesInput.Model,
-  ) => Promise<ApiEvaluateRulesResponse.Results | undefined>;
+    input: EvaluateInput<T>,
+  ) => Promise<EvaluationResult[]>;
   userDefinedActions?: F;
   overrideCode?: string;
-  overrideRules?: EvaluateRulesInput.OverrideRules;
+  overrideRules?: EvaluateRequest['overrideRules']
 };
 
 export interface RulesStore<T extends object, F extends FunctionMap<T>> {
   isExecuting: boolean;
   lastHash?: string;
-  rawActions: EvaluationResult.Model[];
+  rawActions: EvaluationResult[];
   executeRules: (object: T) => void;
   result:
     | Resolve<T & UnionToIntersection<Awaited<ReturnType<F[keyof F]>>>>
@@ -82,8 +82,8 @@ const createRulesStore = <T extends object, F extends FunctionMap<T>>({
 
         const rawActions = await evaluateRulesFn({
           object: object as any,
-          overrideCode,
-          overrideRules,
+          overrideCode: overrideCode ?? '',
+          overrideRules: overrideRules ?? [],
         });
 
         // nothing to execute
@@ -97,6 +97,7 @@ const createRulesStore = <T extends object, F extends FunctionMap<T>>({
         }
 
         // apply builtIn actions
+        // @ts-ignore -- is assignable to the constraint of type F, but F could be instantiated with a different subtype of constraint FunctionMap<T>
         const functions: F = {
           $set: $setAction,
           ...userDefinedActions,
@@ -117,7 +118,7 @@ const createRulesStore = <T extends object, F extends FunctionMap<T>>({
 
 export const applyActions = async <T extends object, F extends FunctionMap<T>>(
   obj: T,
-  rawActions: EvaluationResult.Model[],
+  rawActions: EvaluationResult[],
   fns: F,
 ): Promise<Resolve<T & UnionToIntersection<ReturnType<F[keyof F]>>>> => {
   const copy = clone(obj);

@@ -1,14 +1,7 @@
-import {
-  ZodSchema,
-  ZodTypeDef,
-  ZodTypeAny,
-  ZodRawShape,
-  ZodType,
-  ZodTypeWithoutNonValues,
-} from "zod";
 // Using from https://github.com/temporalio/sdk-typescript/blob/main/packages/common/src/encoding.ts
 // Pasted with modifications from: https://raw.githubusercontent.com/anonyco/FastestSmallestTextEncoderDecoder/master/EncoderDecoderTogether.src.js
 /* eslint no-fallthrough: 0 */
+// @ts-nocheck
 
 const fromCharCode = String.fromCharCode;
 const encoderRegexp =

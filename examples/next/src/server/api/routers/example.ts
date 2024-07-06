@@ -6,7 +6,7 @@ import { brease } from "~/server/brease";
 export const exampleRouter = createTRPCRouter({
   breaseWebToken: publicProcedure.query(async () => {
     try {
-      return await brease.Auth.getToken();
+      return await brease.authClient.getToken({});
     } catch (e: any) {
       console.log(e.statusCode);
       console.log(e.detail);

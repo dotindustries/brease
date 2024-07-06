@@ -1,26 +1,29 @@
 package main
 
 import (
-	"buf.build/gen/go/dot/brease/connectrpc/go/brease/auth/v1/authv1connect"
-	"buf.build/gen/go/dot/brease/connectrpc/go/brease/context/v1/contextv1connect"
+	"buf.build/gen/go/dot/brease/grpc-ecosystem/gateway/v2/brease/auth/v1/service/authv1gateway"
+	"buf.build/gen/go/dot/brease/grpc-ecosystem/gateway/v2/brease/context/v1/service/contextv1gateway"
 	"bytes"
-	"connectrpc.com/connect"
-	"connectrpc.com/grpchealth"
 	"context"
+	"errors"
 	"fmt"
-	"go.dot.industries/brease/auditlog"
-	"go.dot.industries/brease/auditlog/auditlogstore"
+	"github.com/gin-contrib/static"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	openapi2 "go.dot.industries/brease/openapi"
+	trace2 "go.dot.industries/brease/trace"
 	"io"
 	"log"
 	"net/http"
 	"regexp"
 	"time"
 
+	"buf.build/gen/go/dot/brease/connectrpc/go/brease/auth/v1/authv1connect"
+	"buf.build/gen/go/dot/brease/connectrpc/go/brease/context/v1/contextv1connect"
+	"connectrpc.com/connect"
+	"connectrpc.com/grpchealth"
+	"go.dot.industries/brease/auditlog"
+	"go.dot.industries/brease/auditlog/auditlogstore"
 	"go.dot.industries/brease/storage/redis"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
-	"go.opentelemetry.io/otel/propagation"
-	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 
 	"github.com/fvbock/endless"
 	"github.com/gin-contrib/requestid"
@@ -37,19 +40,14 @@ import (
 	log2 "go.dot.industries/brease/log"
 	"go.dot.industries/brease/storage"
 	"go.dot.industries/brease/storage/buntdb"
-	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"google.golang.org/grpc/credentials"
 
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
-	"go.opentelemetry.io/otel/sdk/resource"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	"go.opentelemetry.io/otel/trace"
+	nrgin "github.com/newrelic/go-agent/v3/integrations/nrgin"
+	"github.com/newrelic/go-agent/v3/newrelic"
 )
 
 func main() {
@@ -65,21 +63,27 @@ func main() {
 	logger, _, flush := log2.Logger()
 	defer flush()
 
-	cleanup := tracer(logger)
-	defer cleanup(context.Background())
+	otelShutdown, err := trace2.SetupOTelSDK(context.Background(), logger)
+	if err != nil {
+		logger.Fatal("OTel SDK setup failed", zap.Error(err))
+		return
+	}
 
 	db, err := setupStorage(logger)
 	if err != nil {
 		logger.Fatal("failed to initialize storage", zap.Error(err))
 	}
-	defer db.Close()
+	defer func() {
+		dbErr := db.Close()
+		err = errors.Join(err, dbErr, otelShutdown(context.Background()))
+	}()
 
 	app := newApp(db, logger)
-
 	host := env.Getenv("HOST", "")
 	port := env.Getenv("PORT", "4400")
 	addr := fmt.Sprintf("%s:%s", host, port)
-	_ = endless.ListenAndServe(addr, app)
+
+	err = endless.ListenAndServe(addr, app)
 }
 
 // setupStorage Determines which storage engine should be instantiated and returns an instance.
@@ -95,6 +99,22 @@ func setupStorage(logger *zap.Logger) (db storage.Database, err error) {
 	return buntdb.NewDatabase(buntdb.Options{Logger: logger})
 }
 
+func newRelicApm(logger *zap.Logger) (*newrelic.Application, error) {
+	appName := env.Getenv("NEW_RELIC_APP_NAME", "")
+	license := env.Getenv("NEW_RELIC_LICENSE", "")
+
+	if appName == "" && license == "" {
+		logger.Debug("Skipping New Relic setup: not required.")
+		// not set up
+		return nil, nil
+	}
+	return newrelic.NewApplication(
+		newrelic.ConfigAppName("brease-cloud-api"),
+		newrelic.ConfigLicense("eu01xx16533883feecb2232cfe77b46bFFFFNRAL"),
+		newrelic.ConfigAppLogForwardingEnabled(true),
+	)
+}
+
 func newApp(db storage.Database, logger *zap.Logger) *gin.Engine {
 	if !env.IsDebug() {
 		gin.SetMode(gin.ReleaseMode)
@@ -106,13 +126,22 @@ func newApp(db storage.Database, logger *zap.Logger) *gin.Engine {
 	// https://github.com/gin-gonic/gin/blob/master/docs/doc.md#dont-trust-all-proxies
 	_ = r.SetTrustedProxies(nil)
 
+	apm, err := newRelicApm(logger)
+	if err != nil {
+		logger.Fatal("Failed to set up New Relic APM", zap.Error(err))
+		return nil
+	}
+	if apm != nil {
+		r.Use(nrgin.Middleware(apm))
+	}
+
 	r.Use(otelgin.Middleware(otelServiceName()))
 	r.Use(requestid.New())
 	r.Use(stats.RequestStats())
 	r.Use(ginzap.GinzapWithConfig(logger, ginLoggerConfig()))
-
+	r.Use(static.Serve("/openapi", static.EmbedFolder(openapi2.OpenApiAssets, "assets")))
 	r.Use(auditlog.Middleware(
-		getAuditLogStore(logger),
+		auditLogStore(logger),
 		auditlog.WithSensitivePaths([]*regexp.Regexp{regexp.MustCompile("^/(token|refreshToken)$")}),
 		auditlog.WithIDExtractor(func(c *gin.Context) (contextID, ownerID, userID string) {
 			ownerID = c.GetString(auth.ContextOrgKey)
@@ -141,12 +170,12 @@ func newApp(db storage.Database, logger *zap.Logger) *gin.Engine {
 		logger.Info("Configured Speakeasy API layer")
 	}
 
-	//r.GET("/", func(c *gin.Context) {
-	//	c.JSON(http.StatusOK, gin.H{
-	//		"client": c.ClientIP(),
-	//		"status": "ready to rumble!",
-	//	})
-	//})
+	r.GET("/", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"client": c.ClientIP(),
+			"status": "ready to rumble!",
+		})
+	})
 	r.GET("/stats", func(c *gin.Context) {
 		c.IndentedJSON(http.StatusOK, stats.Report())
 	})
@@ -158,19 +187,32 @@ func newApp(db storage.Database, logger *zap.Logger) *gin.Engine {
 	)
 	healthPath, healthHandler := grpchealth.NewHandler(checker)
 	r.GET(healthPath, gin.WrapH(healthHandler))
-	err := openapi2.SetOpenAPIUIRoutes(r)
-	if err != nil {
-		logger.Fatal("Failed to set up openAPI UI routes", zap.Error(err))
-	}
 
+	mux := runtime.NewServeMux()
 	bh := api.NewHandler(db, memory.New(), logger)
-	interceptors := connect.WithInterceptors(auth.NewAuthInterceptor(logger))
 
+	// openapi auth
+	err = authv1gateway.RegisterAuthServiceHandlerServer(context.Background(), mux, bh.OpenApi)
+	if err != nil {
+		logger.Fatal("Failed to set up grpc-gateway for auth")
+	}
+	// connect auth
 	authPath, authHandler := authv1connect.NewAuthServiceHandler(bh)
 	r.Any(authPath, gin.WrapH(authHandler))
 
+	// openapi context
+	err = contextv1gateway.RegisterContextServiceHandlerServer(context.Background(), mux, bh.OpenApi)
+	if err != nil {
+		logger.Fatal("Failed to set up grpc-gateway for context")
+	}
+	// connect context
+	interceptors := connect.WithInterceptors(auth.NewAuthInterceptor(logger))
 	ctxPath, ctxHandler := contextv1connect.NewContextServiceHandler(bh, interceptors)
 	r.Any(ctxPath, gin.WrapH(ctxHandler))
+
+	// TODO: cannot register the openapi handlers yet:
+	//  panic: catch-all wildcard '*any' in new path '/*any' conflicts with existing path segment 'brease.' in existing prefix '/brease.'
+	// r.Any("/*any", gin.WrapF(mux.ServeHTTP))
 
 	// TODO: move this to the grpc openapi spec
 	//security := &openapi.SecurityRequirement{
@@ -181,7 +223,7 @@ func newApp(db storage.Database, logger *zap.Logger) *gin.Engine {
 	return r
 }
 
-func getAuditLogStore(logger *zap.Logger) auditlog.Store {
+func auditLogStore(logger *zap.Logger) auditlog.Store {
 	stores := auditlog.Stores{auditlogstore.NewLog(auditlogstore.LogConfig{Verbosity: 5}, logger)}
 	if redisURL := env.Getenv("REDIS_URL", ""); redisURL != "" {
 		redisStore, err := auditlogstore.NewRedis(auditlogstore.Options{
@@ -227,6 +269,7 @@ func ginLoggerConfig() *ginzap.Config {
 	}
 }
 
+// FIXME: remove this -- missing features and oas3 support :/
 func newOpenapi(r *gin.Engine) *fizz.Fizz {
 	f := fizz.NewFromEngine(r)
 	f.Generator().SetInfo(&openapi.Info{
@@ -262,86 +305,4 @@ func newOpenapi(r *gin.Engine) *fizz.Fizz {
 
 func otelServiceName() string {
 	return env.Getenv("OTEL_SERVICE_NAME", "")
-}
-
-func tracer(logger *zap.Logger) func(context.Context) error {
-	serviceName := otelServiceName()
-	serviceVersion := env.Getenv("OTEL_VERSION", "0.0.1")
-	serviceEnv := env.Getenv("OTEL_ENV", "dev")
-	otelCollectorURL := env.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "")
-	otelInsecure := env.Getenv("OTEL_INSECURE_MODE", "")
-	accessToken := env.Getenv("OTEL_ACCESS_TOKEN", "")
-
-	if serviceName == "" {
-		serviceName = "brease"
-	}
-
-	var exporter sdktrace.SpanExporter
-	if otelCollectorURL == "" {
-		var err error
-		var opts []stdouttrace.Option
-		if pretty := env.Getenv("OTEL_PRETTY_PRINT", ""); pretty != "" {
-			opts = append(opts, stdouttrace.WithPrettyPrint())
-		}
-		exporter, err = stdouttrace.New(opts...)
-		if err != nil {
-			logger.Fatal("Failed to setup OTLP tracer", zap.Error(err))
-		} else {
-			logger.Debug("OTLP setup finished with stdout tracer")
-		}
-	} else {
-		securityOption := otlptracegrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, ""))
-		if len(otelInsecure) > 0 {
-			securityOption = otlptracegrpc.WithInsecure()
-		}
-		var err error
-		opts := []otlptracegrpc.Option{
-			securityOption,
-			otlptracegrpc.WithEndpoint(otelCollectorURL),
-		}
-
-		if accessToken != "" {
-			opts = append(opts, otlptracegrpc.WithHeaders(map[string]string{
-				"lightstep-access-token": accessToken,
-			}))
-		}
-
-		exporter, err = otlptrace.New(
-			context.Background(),
-			otlptracegrpc.NewClient(opts...),
-		)
-		if err != nil {
-			logger.Fatal("failed to connect to OTLP tracer", zap.Error(err))
-		} else {
-			logger.Debug("OTLP setup finished with remote tracer", zap.String("collectorURL", otelCollectorURL))
-		}
-	}
-
-	resources, err := resource.Merge(
-		resource.Default(),
-		resource.NewWithAttributes(
-			semconv.SchemaURL,
-			semconv.ServiceNameKey.String(serviceName),
-			semconv.ServiceVersionKey.String(serviceVersion),
-			attribute.String("library.language", "go"),
-			attribute.String("environment", serviceEnv),
-		),
-	)
-	if err != nil {
-		logger.Fatal("Could not set resources: ", zap.Error(err))
-	}
-
-	tp := sdktrace.NewTracerProvider(
-		sdktrace.WithSampler(sdktrace.AlwaysSample()),
-		sdktrace.WithBatcher(exporter),
-		sdktrace.WithResource(resources),
-	)
-	otel.SetTracerProvider(tp)
-	otel.SetTextMapPropagator(
-		propagation.NewCompositeTextMapPropagator(
-			propagation.TraceContext{},
-			propagation.Baggage{},
-		),
-	)
-	return tp.Shutdown
 }

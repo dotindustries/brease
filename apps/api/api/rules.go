@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"go.uber.org/zap"
 
-	contextv1 "buf.build/gen/go/dot/brease/protocolbuffers/go/brease/context/v1"
+	v1 "buf.build/gen/go/dot/brease/protocolbuffers/go/brease/context/v1"
 	"go.dot.industries/brease/auth"
 )
 
-func (b *BreaseHandler) ListRules(ctx context.Context, c *connect.Request[contextv1.ListRulesRequest]) (*connect.Response[contextv1.ListRulesResponse], error) {
+func (b *BreaseHandler) ListRules(ctx context.Context, c *connect.Request[v1.ListRulesRequest]) (*connect.Response[v1.ListRulesResponse], error) {
 	orgID := CtxString(ctx, auth.ContextOrgKey)
 	pageToken := c.Msg.PageToken
 	pageSize := c.Msg.PageSize
@@ -28,14 +28,14 @@ func (b *BreaseHandler) ListRules(ctx context.Context, c *connect.Request[contex
 			b.logger.Debug("Assembled code", zap.String("code", code))
 		}
 	}
-	return connect.NewResponse(&contextv1.ListRulesResponse{
+	return connect.NewResponse(&v1.ListRulesResponse{
 		Rules:         rules,
 		Code:          code,
 		NextPageToken: "",
 	}), nil
 }
 
-func (b *BreaseHandler) GetRule(ctx context.Context, c *connect.Request[contextv1.GetRuleRequest]) (*connect.Response[rulev1.VersionedRule], error) {
+func (b *BreaseHandler) GetRule(ctx context.Context, c *connect.Request[v1.GetRuleRequest]) (*connect.Response[rulev1.VersionedRule], error) {
 	orgID := CtxString(ctx, auth.ContextOrgKey)
 	ruleID := c.Msg.RuleId
 	if ruleID == "" {

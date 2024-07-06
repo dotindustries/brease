@@ -2,57 +2,63 @@ package cache
 
 import (
 	"fmt"
-	"github.com/goccy/go-json"
 	"testing"
 
-	"go.dot.industries/brease/models"
-	"go.dot.industries/brease/pb"
+	"github.com/goccy/go-json"
+
+	expressionv1 "buf.build/gen/go/dot/brease/protocolbuffers/go/brease/expression/v1"
+	v11 "buf.build/gen/go/dot/brease/protocolbuffers/go/brease/rule/v1"
 )
 
 var (
 	things   = []string{"a", "b", "c"}
 	v2, _    = json.Marshal(2)
 	v4, _    = json.Marshal(4)
-	ruleset1 = []models.VersionedRule{
+	ruleset1 = []v11.VersionedRule{
 		{
-			Rule: models.Rule{
-				ID:          "asdf",
+				Id:          "asdf",
+				Version: 0,
 				Description: "first rule",
-				Actions: []models.Action{
+				Actions: []*v11.Action{
 					{
-						Action: "setValue",
-						Target: models.Target{
+						Kind: "setValue",
+						Target: &v11.Target{
 							Kind:   "jsonpath",
-							Target: "$.property2",
-							Value:  "newValue",
+							Id: "$.property2",
+							Value:  []byte("newValue"),
 						},
 					},
 				},
-				Expression: map[string]interface{}{
-					"and": pb.And{
-						Expression: []*pb.Expression{
-							{
-								Expr: &pb.Expression_Condition{
-									Condition: &pb.Condition{
-										Base:  &pb.Condition_Key{Key: "$.property3"},
-										Kind:  "lt",
-										Value: v2,
+				Expression: &expressionv1.Expression{
+					Expr: &expressionv1.Expression_And{
+						And: &expressionv1.And{
+							Expression: []*expressionv1.Expression{
+								{
+									Expr: &expressionv1.Expression_Condition{
+										Condition: &expressionv1.Condition{
+											Base: &expressionv1.Condition_Key{
+												Key: "$.property3",
+											},
+											Kind: expressionv1.ConditionKind(expressionv1.ConditionKind_value["lt"]),
+											Value: v2,
+										},
 									},
 								},
-							},
-							{
-								Expr: &pb.Expression_Condition{
-									Condition: &pb.Condition{
-										Base:  &pb.Condition_Key{Key: "$.property"},
-										Kind:  "gt",
-										Value: v4,
+								{
+									Expr: &expressionv1.Expression_Condition{
+										Condition: &expressionv1.Condition{
+											Base: &expressionv1.Condition_Key{
+												Key: "$.property",
+											},
+											Kind: expressionv1.ConditionKind(expressionv1.ConditionKind_value["gt"]),
+											Value: v4,
+										},
 									},
 								},
 							},
 						},
 					},
 				},
-			},
 		},
 	}
 )

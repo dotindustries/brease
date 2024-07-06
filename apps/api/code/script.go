@@ -1,7 +1,7 @@
 package code
 
 import (
-	expressionv1 "buf.build/gen/go/dot/brease/protocolbuffers/go/brease/expression/v1"
+	rulev1 "buf.build/gen/go/dot/brease/protocolbuffers/go/brease/rule/v1"
 	"fmt"
 	"github.com/d5/tengo/v2"
 	"github.com/d5/tengo/v2/stdlib"
@@ -23,7 +23,7 @@ func moduleMaps(names ...string) *tengo.ModuleMap {
 	return modules
 }
 
-func conditionToScript(condition *expressionv1.Condition) (code string) {
+func conditionToScript(condition *rulev1.Condition) (code string) {
 	jsonPath, ref := extractScriptBase(condition)
 	isReference := ref != nil
 
@@ -36,53 +36,53 @@ func conditionToScript(condition *expressionv1.Condition) (code string) {
 	}
 
 	switch condition.Kind {
-	case expressionv1.ConditionKind_e:
+	case rulev1.ConditionKind_e:
 		return // nothind to do
-	case expressionv1.ConditionKind_hv:
+	case rulev1.ConditionKind_hv:
 		if isReference {
 			code = fmt.Sprintf(`%s.hasValue(dref(jsonpath("%s", %s), "%s"))`, tengoModuleName, ref.Src, objectVariable, ref.Dst)
 		} else {
 			code = fmt.Sprintf(`%s.hasValue(jsonpath("%s", %s))`, tengoModuleName, jsonPath, objectVariable)
 		}
-	case expressionv1.ConditionKind_eq:
+	case rulev1.ConditionKind_eq:
 		if isReference {
 			code = fmt.Sprintf(`dref(jsonpath("%s", %s), "%s") == %s`, ref.Src, objectVariable, ref.Dst, paramCode)
 		} else {
 			code = fmt.Sprintf(`jsonpath("%s", %s) == %s`, jsonPath, objectVariable, paramCode)
 		}
-	case expressionv1.ConditionKind_neq:
+	case rulev1.ConditionKind_neq:
 		code = fmt.Sprintf(`!%s`, fnWithParamLine("equals"))
-	case expressionv1.ConditionKind_px:
+	case rulev1.ConditionKind_px:
 		code = fnWithParamLine("hasPrefix")
-	case expressionv1.ConditionKind_npx:
+	case rulev1.ConditionKind_npx:
 		code = fmt.Sprintf(`!%s`, fnWithParamLine("hasPrefix"))
-	case expressionv1.ConditionKind_sx:
+	case rulev1.ConditionKind_sx:
 		code = fnWithParamLine("hasSuffix")
-	case expressionv1.ConditionKind_nsx:
+	case rulev1.ConditionKind_nsx:
 		code = fmt.Sprintf(`!%s`, fnWithParamLine("hasSuffix"))
-	case expressionv1.ConditionKind_in:
+	case rulev1.ConditionKind_in:
 		code = fnWithParamLine("inList")
-	case expressionv1.ConditionKind_nin:
+	case rulev1.ConditionKind_nin:
 		code = fmt.Sprintf(`!%s`, fnWithParamLine("inList"))
-	case expressionv1.ConditionKind_rgx:
+	case rulev1.ConditionKind_rgx:
 		code = fnWithParamLine("regex")
-	case expressionv1.ConditionKind_nrgx:
+	case rulev1.ConditionKind_nrgx:
 		code = fmt.Sprintf(`!%s`, fnWithParamLine("regex"))
-	case expressionv1.ConditionKind_some:
+	case rulev1.ConditionKind_some:
 		code = fnWithParamLine("some")
-	case expressionv1.ConditionKind_all:
+	case rulev1.ConditionKind_all:
 		code = fnWithParamLine("all")
-	case expressionv1.ConditionKind_none:
+	case rulev1.ConditionKind_none:
 		code = fnWithParamLine("none")
 	}
 	return
 }
 
-func extractScriptBase(condition *expressionv1.Condition) (jsonPath string, ref *expressionv1.ConditionBaseRef) {
-	if rf, ok := condition.Base.(*expressionv1.Condition_Ref); ok {
+func extractScriptBase(condition *rulev1.Condition) (jsonPath string, ref *rulev1.ConditionBaseRef) {
+	if rf, ok := condition.Base.(*rulev1.Condition_Ref); ok {
 		ref = rf.Ref
 		jsonPath = rf.Ref.Src
-	} else if base, ok := condition.Base.(*expressionv1.Condition_Key); ok {
+	} else if base, ok := condition.Base.(*rulev1.Condition_Key); ok {
 		jsonPath = base.Key
 	}
 	return jsonPath, ref

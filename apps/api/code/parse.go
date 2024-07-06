@@ -1,7 +1,6 @@
 package code
 
 import (
-	expressionv1 "buf.build/gen/go/dot/brease/protocolbuffers/go/brease/expression/v1"
 	rulev1 "buf.build/gen/go/dot/brease/protocolbuffers/go/brease/rule/v1"
 	"context"
 	"fmt"
@@ -74,21 +73,21 @@ func generateCodeForRule(ctx context.Context, args interface{}) (interface{}, er
 	return nil, nil
 }
 
-func parseExpression(ctx context.Context, expr *expressionv1.Expression) string {
+func parseExpression(ctx context.Context, expr *rulev1.Expression) string {
 	switch expr.Expr.(type) {
-	case *expressionv1.Expression_And:
+	case *rulev1.Expression_And:
 		and := expr.GetAnd()
 		if and == nil || len(and.Expression) == 0 {
 			return ""
 		}
 		return joinExpressions(deepDiveFn(ctx, and.Expression), andJoin)
-	case *expressionv1.Expression_Or:
+	case *rulev1.Expression_Or:
 		or := expr.GetOr()
 		if or == nil || len(or.Expression) == 0 {
 			return ""
 		}
 		return joinExpressions(deepDiveFn(ctx, or.Expression), orJoin)
-	case *expressionv1.Expression_Condition:
+	case *rulev1.Expression_Condition:
 		condition := expr.GetCondition()
 		if condition == nil {
 			return ""
@@ -99,7 +98,7 @@ func parseExpression(ctx context.Context, expr *expressionv1.Expression) string 
 	}
 }
 
-func deepDiveFn(ctx context.Context, e []*expressionv1.Expression) (expressions []string) {
+func deepDiveFn(ctx context.Context, e []*rulev1.Expression) (expressions []string) {
 	for _, ex := range e {
 		cex := parseExpression(ctx, ex)
 		if cex != "" {

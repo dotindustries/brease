@@ -71,7 +71,7 @@ func (r *Run) parseResults(result *tengo.Variable) (results []*rulev1.Evaluation
 				Id:    target["target"].(string),
 				Value: target["value"].([]byte),
 			},
-			By: res["by"].(string),
+			By: res["by"].(*rulev1.RuleRef),
 		})
 	}
 	return

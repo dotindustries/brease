@@ -11,6 +11,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"go.opentelemetry.io/otel/semconv/v1.17.0/httpconv"
 	oteltrace "go.opentelemetry.io/otel/trace"
+	"os"
 )
 
 var Tracer = otel.Tracer("gin-server")
@@ -79,6 +80,11 @@ func Middleware(service string, opts ...Option) gin.HandlerFunc {
 			kv := semconv.HTTPRoute(spanName)
 			attr = append(attr, trace2.StringAttribute(string(kv.Key), kv.Value.AsString()))
 		}
+		region := os.Getenv("FLY_REGION")
+		if region != "" {
+			attr = append(attr, trace2.StringAttribute("region", region))
+		}
+
 		ctx, span := trace2.StartSpan(ctx, spanName, trace2.WithSpanKind(trace2.SpanKindServer))
 		defer span.End()
 

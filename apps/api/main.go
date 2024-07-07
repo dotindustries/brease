@@ -138,7 +138,7 @@ func newApp(db storage.Database, logger *zap.Logger) *gin.Engine {
 	r.Use(requestid.New())
 	r.Use(stats.RequestStats())
 	r.Use(ginzap.GinzapWithConfig(logger, ginLoggerConfig()))
-	r.Use(static.Serve("/openapi", static.EmbedFolder(openapi2.OpenApiAssets, "assets")))
+	r.Use(static.Serve("/", static.EmbedFolder(openapi2.OpenApiAssets, "assets")))
 	r.Use(auditlog.Middleware(
 		auditLogStore(logger),
 		auditlog.WithSensitivePaths([]*regexp.Regexp{regexp.MustCompile("^/(token|refreshToken)$")}),

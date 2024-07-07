@@ -3,6 +3,10 @@ package trace
 import (
 	"context"
 	"errors"
+	"github.com/getsentry/sentry-go"
+	sentryotel "github.com/getsentry/sentry-go/otel"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutlog"
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
@@ -13,6 +17,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/trace"
 	"go.uber.org/zap"
+	"os"
 )
 
 // SetupOTelSDK bootstraps the OpenTelemetry pipeline.
@@ -41,7 +46,6 @@ func SetupOTelSDK(ctx context.Context, logger *zap.Logger) (shutdown func(contex
 	prop := newPropagator()
 	otel.SetTextMapPropagator(prop)
 
-	// Set up trace provider.
 	tracerProvider, err := newTraceProvider()
 	if err != nil {
 		handleErr(err)
@@ -50,7 +54,6 @@ func SetupOTelSDK(ctx context.Context, logger *zap.Logger) (shutdown func(contex
 	shutdownFuncs = append(shutdownFuncs, tracerProvider.Shutdown)
 	otel.SetTracerProvider(tracerProvider)
 
-	// Set up meter provider.
 	meterProvider, err := newMeterProvider()
 	if err != nil {
 		handleErr(err)
@@ -59,19 +62,25 @@ func SetupOTelSDK(ctx context.Context, logger *zap.Logger) (shutdown func(contex
 	shutdownFuncs = append(shutdownFuncs, meterProvider.Shutdown)
 	otel.SetMeterProvider(meterProvider)
 
-	// Set up logger provider.
-	loggerProvider, err := newLoggerProvider(logger)
-	if err != nil {
-		handleErr(err)
-		return
+	if os.Getenv("OTEL_USE_LOGGER") != "" {
+		loggerProvider, err2 := newLoggerProvider(logger)
+		if err2 != nil {
+			handleErr(err2)
+			return
+		}
+		shutdownFuncs = append(shutdownFuncs, loggerProvider.Shutdown)
+		global.SetLoggerProvider(loggerProvider)
 	}
-	shutdownFuncs = append(shutdownFuncs, loggerProvider.Shutdown)
-	global.SetLoggerProvider(loggerProvider)
 
 	return
 }
 
 func newPropagator() propagation.TextMapPropagator {
+	if os.Getenv("SENTRY_DSN") != "" {
+		return sentryotel.NewSentryPropagator()
+	}
+
+	// otherwise use basic propagation
 	return propagation.NewCompositeTextMapPropagator(
 		propagation.TraceContext{},
 		propagation.Baggage{},
@@ -79,6 +88,25 @@ func newPropagator() propagation.TextMapPropagator {
 }
 
 func newTraceProvider() (*trace.TracerProvider, error) {
+	if dsn := os.Getenv("SENTRY_DSN"); dsn != "" {
+		debug := os.Getenv("SENTRY_DEBUG") != ""
+		err := sentry.Init(sentry.ClientOptions{
+			Dsn:              dsn,
+			EnableTracing:    true,
+			TracesSampleRate: 1.0,
+			Debug:            debug,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		tp := sdktrace.NewTracerProvider(
+			sdktrace.WithSpanProcessor(sentryotel.NewSentrySpanProcessor()),
+		)
+		return tp, nil
+	}
+
+	// otherwise use stdout
 	traceExporter, err := stdouttrace.New(
 		stdouttrace.WithPrettyPrint())
 	if err != nil {

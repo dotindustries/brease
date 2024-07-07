@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	sentrygin "github.com/getsentry/sentry-go/gin"
 	"github.com/gin-contrib/static"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	openapi2 "go.dot.industries/brease/openapi"
@@ -14,6 +15,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"regexp"
 	"time"
 
@@ -53,10 +55,10 @@ func main() {
 	err := env.LoadEnv()
 	if err != nil {
 		log.Println("WARN: No .env file")
-	}
-
-	if env.IsDebug() {
-		env.PrintEnv()
+	} else {
+		if env.IsDebug() {
+			env.PrintEnv()
+		}
 	}
 
 	logger, _, flush := log2.Logger()
@@ -78,7 +80,7 @@ func main() {
 	}()
 
 	app := newApp(db, logger)
-	host := env.Getenv("HOST", "")
+	host := env.Getenv("HOST", "0.0.0.0")
 	port := env.Getenv("PORT", "4400")
 	addr := fmt.Sprintf("%s:%s", host, port)
 
@@ -134,6 +136,9 @@ func newApp(db storage.Database, logger *zap.Logger) *gin.Engine {
 		r.Use(nrgin.Middleware(apm))
 	}
 
+	if os.Getenv("SENTRY_DSN") != "" {
+		r.Use(sentrygin.New(sentrygin.Options{}))
+	}
 	r.Use(otelgin.Middleware(otelServiceName()))
 	r.Use(requestid.New())
 	r.Use(stats.RequestStats())

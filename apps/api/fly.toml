@@ -9,6 +9,7 @@ primary_region = 'ams'
 [build]
 
 [env]
+  SENTRY_DEBUG = "true"
 
 [http_service]
   internal_port = 4400

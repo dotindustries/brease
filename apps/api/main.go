@@ -138,6 +138,15 @@ func newApp(db storage.Database, logger *zap.Logger) *gin.Engine {
 
 	if os.Getenv("SENTRY_DSN") != "" {
 		r.Use(sentrygin.New(sentrygin.Options{}))
+		region := os.Getenv("FLY_REGION")
+		if region != "" {
+			r.Use(func(ctx *gin.Context) {
+				if hub := sentrygin.GetHubFromContext(ctx); hub != nil {
+					hub.Scope().SetTag("region", region)
+				}
+				ctx.Next()
+			})
+		}
 	}
 	r.Use(otelgin.Middleware(otelServiceName()))
 	r.Use(requestid.New())

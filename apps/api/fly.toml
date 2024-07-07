@@ -1,17 +1,14 @@
-# fly.toml app configuration file generated for api-ancient-snow-5714 on 2024-07-06T18:55:30+02:00
+# fly.toml app configuration file generated for brease-api on 2024-07-06T19:36:51+02:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'api-ancient-snow-5714'
+app = 'brease-api'
 primary_region = 'ams'
 
 [build]
-  [build.args]
-    GO_VERSION = '1.21'
 
 [env]
-  PORT = '8080'
 
 [http_service]
   internal_port = 4400

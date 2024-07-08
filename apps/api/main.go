@@ -197,7 +197,7 @@ func newApp(db storage.Database, logger *zap.Logger) *gin.Engine {
 	}
 	// connect auth
 	authPath, authHandler := authv1connect.NewAuthServiceHandler(bh)
-	r.Any(authPath, gin.WrapH(authHandler))
+	r.Match([]string{"POST"}, authPath, gin.WrapH(authHandler))
 
 	// openapi context
 	err = contextv1gateway.RegisterContextServiceHandlerServer(context.Background(), mux, bh.OpenApi)
@@ -206,17 +206,11 @@ func newApp(db storage.Database, logger *zap.Logger) *gin.Engine {
 	}
 	// connect context
 	ctxPath, ctxHandler := contextv1connect.NewContextServiceHandler(bh, connect.WithInterceptors(auth.NewAuthInterceptor(logger)))
-	r.Any(ctxPath, gin.WrapH(ctxHandler))
+	r.Match([]string{"POST", "GET", "PATCH", "DELETE"}, ctxPath, gin.WrapH(ctxHandler))
 
 	// TODO: cannot register the openapi handlers yet:
 	//  panic: catch-all wildcard '*any' in new path '/*any' conflicts with existing path segment 'brease.' in existing prefix '/brease.'
-	// r.Any("/*any", gin.WrapF(mux.ServeHTTP))
-
-	// TODO: move this to the grpc openapi spec
-	//security := &openapi.SecurityRequirement{
-	//	"JWTAuth":    []string{},
-	//	"ApiKeyAuth": []string{},
-	//}
+	r.Any("/v1/*any", gin.WrapF(mux.ServeHTTP))
 
 	return r
 }

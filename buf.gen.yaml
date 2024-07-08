@@ -1,28 +1,18 @@
-version: v1
+version: v2
 managed:
   enabled: true
-  go_package_prefix:
-    default: api
-    except:
-      - buf.build/googleapis/googleapis
-      - buf.build/grpc-ecosystem/grpc-gateway
-      - buf.build/gnostic/gnostic
+  disable:
+    - file_option: go_package
+      module: buf.build/googleapis/googleapis
+    - file_option: go_package
+      module: buf.build/grpc-ecosystem/grpc-gateway
+    - file_option: go_package
+      module: buf.build/gnostic/gnostic
+  override:
+    - file_option: go_package_prefix
+      value: api
 plugins:
-#  - plugin: buf.build/protocolbuffers/go
-#    out: gen
-#    opt: paths=source_relative
-#  - plugin: buf.build/bufbuild/connect-go
-#    out: gen
-#    opt: paths=source_relative
-# API requires OAS3 due to oneOf
-#  - plugin: buf.build/grpc-ecosystem/openapiv2:v2.18.0
-#    out: apps/api/openapi/assets/
-#    opt: allow_merge=true,merge_file_name=brease,use_go_templates=true
-  - plugin: openapi
+  - local: protoc-gen-openapi
     out: apps/api/openapi/assets/
-    strategy: all
     opt: enum_type=string
-#  - plugin: debug
-#    strategy: all
-#    out: proto
-#    opt: debug_out=proto
+    strategy: all

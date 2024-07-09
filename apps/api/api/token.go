@@ -13,8 +13,8 @@ import (
 )
 
 func (b *BreaseHandler) GetToken(ctx context.Context, c *connect.Request[emptypb.Empty]) (*connect.Response[authv1.TokenPair], error) {
-	ownerID := CtxString(ctx, auth.ContextOrgKey)
-	userID := CtxString(ctx, auth.ContextUserIDKey)
+	ownerID := auth.CtxString(ctx, auth.ContextOrgKey)
+	userID := auth.CtxString(ctx, auth.ContextUserIDKey)
 
 	tp, err := b.generateTokenPair(ownerID, userID)
 	if err != nil {

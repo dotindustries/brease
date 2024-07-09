@@ -13,7 +13,7 @@ import (
 )
 
 func (b *BreaseHandler) Evaluate(ctx context.Context, c *connect.Request[contextv1.EvaluateRequest]) (*connect.Response[contextv1.EvaluateResponse], error) {
-	orgID := CtxString(ctx, auth.ContextOrgKey)
+	orgID := auth.CtxString(ctx, auth.ContextOrgKey)
 
 	codeBlock, err := b.findCode(ctx, c.Msg, orgID)
 	if err != nil {

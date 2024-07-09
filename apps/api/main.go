@@ -162,7 +162,7 @@ func newApp(db storage.Database, logger *zap.Logger) *gin.Engine {
 			contextID = ""
 			userID = c.GetString(auth.ContextUserIDKey)
 			if userID == "" {
-				userID = "root:" + ownerID
+				userID = "n/a:" + ownerID
 			}
 			return
 		}),
@@ -187,7 +187,9 @@ func newApp(db storage.Database, logger *zap.Logger) *gin.Engine {
 	healthPath, healthHandler := grpchealth.NewHandler(checker)
 	r.GET(healthPath, gin.WrapH(healthHandler))
 
-	mux := runtime.NewServeMux()
+	mux := runtime.NewServeMux(
+		auth.WithMetadataTransfer(),
+	)
 	bh := api.NewHandler(db, memory.New(), logger)
 
 	// openapi auth
@@ -208,9 +210,8 @@ func newApp(db storage.Database, logger *zap.Logger) *gin.Engine {
 	ctxPath, ctxHandler := contextv1connect.NewContextServiceHandler(bh, connect.WithInterceptors(auth.NewAuthInterceptor(logger)))
 	r.Match([]string{"POST", "GET", "PATCH", "DELETE"}, ctxPath, gin.WrapH(ctxHandler))
 
-	// TODO: cannot register the openapi handlers yet:
-	//  panic: catch-all wildcard '*any' in new path '/*any' conflicts with existing path segment 'brease.' in existing prefix '/brease.'
-	r.Any("/v1/*any", gin.WrapF(mux.ServeHTTP))
+	// register openapi handlers
+	r.Any("/v1/*any", auth.Middleware(logger), gin.WrapF(mux.ServeHTTP))
 
 	return r
 }

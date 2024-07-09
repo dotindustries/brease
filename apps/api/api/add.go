@@ -13,7 +13,7 @@ import (
 )
 
 func (b *BreaseHandler) CreateRule(ctx context.Context, c *connect.Request[v1.CreateRuleRequest]) (*connect.Response[v11.VersionedRule], error) {
-	orgID := CtxString(ctx, auth.ContextOrgKey)
+	orgID := auth.CtxString(ctx, auth.ContextOrgKey)
 	ctxID := c.Msg.ContextId
 	rule := c.Msg.Rule
 

@@ -9,7 +9,7 @@ import (
 )
 
 func (b *BreaseHandler) GetRuleVersions(ctx context.Context, c *connect.Request[contextv1.ListRuleVersionsRequest]) (*connect.Response[contextv1.ListRuleVersionsResponse], error) {
-	orgID := CtxString(ctx, auth.ContextOrgKey)
+	orgID := auth.CtxString(ctx, auth.ContextOrgKey)
 
 	ctxID := c.Msg.ContextId
 	ruleID := c.Msg.RuleId

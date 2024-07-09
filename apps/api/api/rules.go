@@ -12,9 +12,13 @@ import (
 )
 
 func (b *BreaseHandler) ListRules(ctx context.Context, c *connect.Request[v1.ListRulesRequest]) (*connect.Response[v1.ListRulesResponse], error) {
-	orgID := CtxString(ctx, auth.ContextOrgKey)
+	orgID := auth.CtxString(ctx, auth.ContextOrgKey)
 	pageToken := c.Msg.PageToken
 	pageSize := c.Msg.PageSize
+	if orgID == "" {
+		b.logger.Warn("ListRules", zap.String("contextID", c.Msg.ContextId), zap.String("orgID", orgID))
+		return nil, connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("missing orgID"))
+	}
 	rules, err := b.db.Rules(ctx, orgID, c.Msg.ContextId, int(pageSize), pageToken)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to fetch rules: %v", err))
@@ -36,7 +40,7 @@ func (b *BreaseHandler) ListRules(ctx context.Context, c *connect.Request[v1.Lis
 }
 
 func (b *BreaseHandler) GetRule(ctx context.Context, c *connect.Request[v1.GetRuleRequest]) (*connect.Response[rulev1.VersionedRule], error) {
-	orgID := CtxString(ctx, auth.ContextOrgKey)
+	orgID := auth.CtxString(ctx, auth.ContextOrgKey)
 	ruleID := c.Msg.RuleId
 	if ruleID == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("missing rule_id"))

@@ -9,7 +9,7 @@ import (
 )
 
 func (b *BreaseHandler) DeleteRule(ctx context.Context, c *connect.Request[contextv1.DeleteRuleRequest]) (*connect.Response[emptypb.Empty], error) {
-	orgID := CtxString(ctx, auth.ContextOrgKey)
+	orgID := auth.CtxString(ctx, auth.ContextOrgKey)
 	_ = b.db.RemoveRule(ctx, orgID, c.Msg.ContextId, c.Msg.RuleId)
 	// we don't expose whether we succeeded
 	return connect.NewResponse(&emptypb.Empty{}), nil

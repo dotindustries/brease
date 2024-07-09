@@ -4,7 +4,10 @@ import (
 	"connectrpc.com/connect"
 	"context"
 	"fmt"
+	"github.com/gin-gonic/gin"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"go.dot.industries/brease/worker"
+	"google.golang.org/grpc/metadata"
 	"net/http"
 	"strings"
 
@@ -58,65 +61,10 @@ func NewAuthInterceptor(logger *zap.Logger) connect.UnaryInterceptorFunc {
 				// req.Header().Set(tokenHeader, "sample")
 			} else if !strings.Contains(req.Spec().Procedure, "RefreshToken") {
 				// server only
-				rootAPIKey := env.Getenv("ROOT_API_KEY", "")
-				canUseRootAPIKey := rootAPIKey != ""
-
-				if !canUseRootAPIKey {
-					logger.Fatal("🔥 ROOT_API_KEY is not specified.")
-				}
-
-				authHeader := req.Header().Get(ApiKeyHeader)
-				if authHeader == "" {
-					authHeader = req.Header().Get("Authorization")
-				}
-				if authHeader == "" {
-					return nil, connect.NewError(
-						connect.CodeUnauthenticated,
-						fmt.Errorf("API key not set"),
-					)
-				}
-
-				args := validateAuthTokenArgs{
-					logger:     logger,
-					rootAPIKey: rootAPIKey,
-					token:      authHeader,
-					headers:    req.Header(),
-				}
-
-				pool := authPool(args)
-				pool.Run(ctx)
-				authed, valErr, err := getResult(pool, logger)
-
-				if authed == nil {
-					logger.Warn("All authenticators failed for request.", zap.Any("validationErr", valErr), zap.Error(err))
-					if valErr != nil {
-						return nil, connect.NewError(
-							connect.CodeUnauthenticated,
-							valErr.Error,
-						)
-					}
-					if err != nil {
-						return nil, connect.NewError(
-							connect.CodeUnauthenticated,
-							err,
-						)
-					}
-					// if no errors occurred
-					return nil, connect.NewError(
-						connect.CodeUnauthenticated,
-						fmt.Errorf(""),
-					)
-				}
-
-				// update context values
-				if authed.token != nil {
-					ctx = context.WithValue(ctx, ContextJwtKey, authed.token)
-				}
-				if authed.userID != "" {
-					ctx = context.WithValue(ctx, ContextUserIDKey, authed.userID)
-				}
-				if authed.orgID != "" {
-					ctx = context.WithValue(ctx, ContextOrgKey, authed.orgID)
+				var err error
+				ctx, err = authenticate(ctx, req.Header(), logger)
+				if err != nil {
+					return nil, err
 				}
 			}
 
@@ -124,6 +72,107 @@ func NewAuthInterceptor(logger *zap.Logger) connect.UnaryInterceptorFunc {
 		}
 	}
 	return interceptor
+}
+
+func Middleware(logger *zap.Logger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx, err := authenticate(c.Request.Context(), c.Request.Header, logger)
+		if err != nil {
+			_ = c.AbortWithError(http.StatusUnauthorized, err)
+			return
+		}
+		if jwtToken := CtxJWTToken(ctx, ContextJwtKey); jwtToken != nil {
+			c.Set(ContextJwtKey, jwtToken)
+		}
+		if userID := CtxString(ctx, ContextUserIDKey); userID != "" {
+			c.Set(ContextUserIDKey, userID)
+		}
+		if orgID := CtxString(ctx, ContextOrgKey); orgID != "" {
+			c.Set(ContextOrgKey, orgID)
+		}
+
+		// continue processing
+		c.Next()
+	}
+}
+
+func WithMetadataTransfer() runtime.ServeMuxOption {
+	return runtime.WithMetadata(func(ctx context.Context, req *http.Request) metadata.MD {
+		//
+		// Step 2 - Extend the context
+		//
+		md := metadata.Pairs(
+			ContextUserIDKey, CtxString(req.Context(), ContextUserIDKey),
+			ContextOrgKey, CtxString(req.Context(), ContextOrgKey),
+		)
+		return md
+	})
+}
+
+func authenticate(ctx context.Context, headers http.Header, logger *zap.Logger) (context.Context, error) {
+	rootAPIKey := env.Getenv("ROOT_API_KEY", "")
+	canUseRootAPIKey := rootAPIKey != ""
+
+	if !canUseRootAPIKey {
+		logger.Fatal("🔥 ROOT_API_KEY is not specified.")
+	}
+
+	authHeader := headers.Get(ApiKeyHeader)
+	if authHeader == "" {
+		authHeader = headers.Get("Authorization")
+	}
+	if authHeader == "" {
+		return nil, connect.NewError(
+			connect.CodeUnauthenticated,
+			fmt.Errorf("API key not set"),
+		)
+	}
+
+	args := validateAuthTokenArgs{
+		logger:     logger,
+		rootAPIKey: rootAPIKey,
+		token:      authHeader,
+		headers:    headers,
+	}
+
+	pool := authPool(args)
+	pool.Run(ctx)
+	authed, valErr, err := getResult(pool, logger)
+
+	if authed == nil {
+		logger.Warn("All authenticators failed for request.", zap.Any("validationErr", valErr), zap.Error(err))
+		if valErr != nil {
+			return nil, connect.NewError(
+				connect.CodeUnauthenticated,
+				valErr.Error,
+			)
+		}
+		if err != nil {
+			return nil, connect.NewError(
+				connect.CodeUnauthenticated,
+				err,
+			)
+		}
+		// if no errors occurred
+		return nil, connect.NewError(
+			connect.CodeUnauthenticated,
+			fmt.Errorf(""),
+		)
+	}
+	logger.Debug("Authenticated", zap.String("userID", authed.userID), zap.String("orgID", authed.orgID), zap.String("via", authed.authenticator))
+
+	// update context values
+	if authed.token != nil {
+		ctx = context.WithValue(ctx, ContextJwtKey, authed.token)
+	}
+	if authed.userID != "" {
+		ctx = context.WithValue(ctx, ContextUserIDKey, authed.userID)
+	}
+	if authed.orgID != "" {
+		ctx = context.WithValue(ctx, ContextOrgKey, authed.orgID)
+	}
+
+	return ctx, nil
 }
 
 func authPool(args validateAuthTokenArgs) worker.WorkerPool {
@@ -268,7 +317,7 @@ func validateRootAPIKey(_ context.Context, args interface{}) (interface{}, error
 		}, nil
 	}
 
-	return validateAuthTokenResult{authed: true, orgID: orgIDHeader}, nil
+	return validateAuthTokenResult{authed: true, userID: "root", orgID: orgIDHeader}, nil
 }
 
 func validateJWT(_ context.Context, args interface{}) (interface{}, error) {

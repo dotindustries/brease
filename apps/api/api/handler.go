@@ -13,6 +13,7 @@ import (
 	"go.dot.industries/brease/code"
 	"go.dot.industries/brease/storage"
 	"go.uber.org/zap"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -68,6 +69,11 @@ func (o *openApiHandler) RefreshToken(ctx context.Context, request *authv1.Refre
 }
 
 func (o *openApiHandler) ListRules(ctx context.Context, request *contextv1.ListRulesRequest) (*contextv1.ListRulesResponse, error) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if ok {
+		ctx = context.WithValue(ctx, auth.ContextOrgKey, md.Get(auth.ContextOrgKey))
+		ctx = context.WithValue(ctx, auth.ContextUserIDKey, md.Get(auth.ContextUserIDKey))
+	}
 	r, err := o.handler.ListRules(ctx, connect.NewRequest(request))
 	if err != nil {
 		return nil, err

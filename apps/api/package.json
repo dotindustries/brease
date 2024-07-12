@@ -1,12 +1,13 @@
 {
   "name": "api-server",
   "description": "Business rules engine service and go package",
+  "private": "true",
   "scripts": {
     "clean": "rm -rf ./dist",
     "proto": "protoc --go_out=paths=source_relative:./pb *.proto",
     "dev": "gow run .",
     "release": "goreleaser release --snapshot --clean",
-    "test": "dev && k6 run load.js"
+    "test": "go test -v ./..."
   },
   "dependencies": {
     "chai": "^4.3.8"

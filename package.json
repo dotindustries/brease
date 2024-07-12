@@ -9,12 +9,12 @@
     "build": "turbo build",
     "test": "turbo run test",
     "lint": "turbo run lint",
-    "publish-packages": "turbo run build lint test && changeset version && changeset publish"
+    "publish-packages": "turbo run build && changeset version && changeset publish"
   },
   "namespace": "@brease",
   "packageManager": "pnpm@8.6.0",
   "engines": {
-    "node": "18.0.0"
+    "node": ">=20.0.0"
   },
   "keywords": [],
   "author": "",

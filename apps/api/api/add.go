@@ -17,6 +17,10 @@ func (b *BreaseHandler) CreateRule(ctx context.Context, c *connect.Request[v1.Cr
 	ctxID := c.Msg.ContextId
 	rule := c.Msg.Rule
 
+	if !auth.HasPermission(ctx, auth.PermissionWrite) {
+		return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("permission denied"))
+	}
+
 	if rule == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("new rule cannot be missing"))
 	}

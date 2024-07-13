@@ -21,10 +21,19 @@ import (
 
 const (
 	ApiKeyHeader     = "X-API-KEY"
-	ContextJwtKey    = "jwt"
-	ContextUserIDKey = "userId"
-	ContextOrgKey    = "orgId"
 	bearerAuthPrefix = "Bearer "
+
+	ContextJwtKey         = "jwt"
+	ContextUserIDKey      = "userId"
+	ContextOrgKey         = "orgId"
+	ContextPermissionsKey = "permissions"
+	PermissionRead        = "read"
+	PermissionWrite       = "write"
+	PermissionEvaluate    = "evaluate"
+)
+
+var (
+	allPermissions = []string{PermissionRead, PermissionWrite, PermissionEvaluate}
 )
 
 type validateAuthTokenArgs struct {
@@ -46,6 +55,7 @@ type validateAuthTokenResult struct {
 	userID        string
 	orgID         string
 	authenticator string
+	permissions   []string
 }
 
 func NewAuthInterceptor(logger *zap.Logger) connect.UnaryInterceptorFunc {
@@ -90,21 +100,24 @@ func Middleware(logger *zap.Logger) gin.HandlerFunc {
 		if orgID := CtxString(ctx, ContextOrgKey); orgID != "" {
 			c.Set(ContextOrgKey, orgID)
 		}
+		if permissions := CtxString(ctx, ContextPermissionsKey); permissions != "" {
+			c.Set(ContextPermissionsKey, permissions)
+		}
 
 		// continue processing
 		c.Next()
 	}
 }
 
+// WithMetadataTransfer transfers metadata from the request of the serverMux to the grpc context
 func WithMetadataTransfer() runtime.ServeMuxOption {
 	return runtime.WithMetadata(func(ctx context.Context, req *http.Request) metadata.MD {
-		//
-		// Step 2 - Extend the context
-		//
+		// FIXME: this doesn't actually work with grpc-gateway and RegisterxFromHandler
 		md := metadata.Pairs(
-			ContextUserIDKey, CtxString(req.Context(), ContextUserIDKey),
-			ContextOrgKey, CtxString(req.Context(), ContextOrgKey),
+			ContextUserIDKey, UserIDFromContext(req.Context()),
+			ContextOrgKey, OrgIDFromContext(req.Context()),
 		)
+		md.Set(ContextPermissionsKey, PermissionsFromContext(req.Context())...)
 		return md
 	})
 }
@@ -170,6 +183,9 @@ func authenticate(ctx context.Context, headers http.Header, logger *zap.Logger) 
 	}
 	if authed.orgID != "" {
 		ctx = context.WithValue(ctx, ContextOrgKey, authed.orgID)
+	}
+	if authed.permissions != nil {
+		ctx = context.WithValue(ctx, ContextPermissionsKey, authed.permissions)
 	}
 
 	return ctx, nil
@@ -272,20 +288,20 @@ func validateUnkey(ctx context.Context, args interface{}) (interface{}, error) {
 		}
 	}
 
-	orgID := ""
-	if oid, ok := resp.Meta[ContextOrgKey]; ok && oid != nil {
-		orgID, ok = oid.(string)
-		if !ok || orgID == "" {
-			return validateAuthTokenResult{
-				error: &validationErr{
-					Status: http.StatusUnauthorized,
-					Error:  errors2.BadRequestf("invalid API key: missing orgID"),
-				},
-			}, nil
-		}
+	orgID := resp.OwnerId
+	if orgID == "" {
+		return validateAuthTokenResult{
+			error: &validationErr{
+				Status: http.StatusUnauthorized,
+				Error:  errors2.BadRequestf("invalid API key: missing orgID"),
+			},
+		}, nil
 	}
 
-	return validateAuthTokenResult{authed: true, userID: userID, orgID: orgID}, nil
+	// TODO: clean normalized takeover of permissions
+	permissions := resp.Permissions
+
+	return validateAuthTokenResult{authed: true, userID: userID, orgID: orgID, permissions: permissions}, nil
 }
 
 func validateRootAPIKey(_ context.Context, args interface{}) (interface{}, error) {
@@ -317,7 +333,7 @@ func validateRootAPIKey(_ context.Context, args interface{}) (interface{}, error
 		}, nil
 	}
 
-	return validateAuthTokenResult{authed: true, userID: "root", orgID: orgIDHeader}, nil
+	return validateAuthTokenResult{authed: true, userID: "root", orgID: orgIDHeader, permissions: allPermissions}, nil
 }
 
 func validateJWT(_ context.Context, args interface{}) (interface{}, error) {
@@ -384,7 +400,8 @@ func validateJWT(_ context.Context, args interface{}) (interface{}, error) {
 	}
 	userID = uid.(string)
 
+	permissions := claims["permissions"].([]string)
 	// FIXME: do we have to look up the token under the orgID to be sure it's valid?
 
-	return validateAuthTokenResult{authed: true, token: token, userID: userID, orgID: orgID}, nil
+	return validateAuthTokenResult{authed: true, token: token, userID: userID, orgID: orgID, permissions: permissions}, nil
 }

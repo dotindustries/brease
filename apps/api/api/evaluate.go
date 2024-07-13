@@ -14,7 +14,9 @@ import (
 
 func (b *BreaseHandler) Evaluate(ctx context.Context, c *connect.Request[contextv1.EvaluateRequest]) (*connect.Response[contextv1.EvaluateResponse], error) {
 	orgID := auth.CtxString(ctx, auth.ContextOrgKey)
-
+	if !auth.HasPermission(ctx, auth.PermissionEvaluate) && !auth.HasPermission(ctx, auth.PermissionRead) {
+		return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("permission denied"))
+	}
 	codeBlock, err := b.findCode(ctx, c.Msg, orgID)
 	if err != nil {
 		return nil, err
@@ -22,12 +24,12 @@ func (b *BreaseHandler) Evaluate(ctx context.Context, c *connect.Request[context
 
 	compiledScript, err := b.findScript(ctx, codeBlock)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to compile code: %v", err)
+		return nil, fmt.Errorf("failed to compile code: %v", err)
 	}
 
 	run, err := code.NewRun(ctx, b.logger, c.Msg.Object)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create run context: %v", err)
+		return nil, fmt.Errorf("failed to create run context: %v", err)
 	}
 
 	results, err := run.Execute(ctx, compiledScript)

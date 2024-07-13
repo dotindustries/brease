@@ -10,9 +10,15 @@ import {Action, And, Condition, EvaluationResult, Expression, Or, Rule, Target} 
 
 const cache = new LRUCache<string, CacheEntry>({ max: 1000 });
 
+export enum Environment {
+  Development = "http://localhost:4400",
+  Production = "https://api.brease.run",
+}
+
 export type ClientOptions = {
   accessToken: string;
   refreshToken?: string;
+  baseUrl?: Environment | (string & {});
 };
 
 export type BreaseClient = {
@@ -35,9 +41,10 @@ export type BreaseClient = {
   ) => Promise<EvaluationResult[]>;
 }
 
-export const newClient = (_opts: ClientOptions): BreaseClient => {
+export const newClient = (opts: ClientOptions): BreaseClient => {
+  const baseUrl = opts.baseUrl ?? Environment.Production;
   const transport = createConnectTransport({
-    baseUrl: "http://localhost:4400",
+    baseUrl,
   })
   const authClient = createPromiseClient(AuthService, transport)
   const client = createPromiseClient(ContextService, transport)

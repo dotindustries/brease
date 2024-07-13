@@ -1,5 +1,11 @@
 # @brease/react-devtools
 
+## 1.0.1
+
+### Patch Changes
+
+- @brease/react@0.1.1
+
 ## 1.0.0
 
 ### Patch Changes

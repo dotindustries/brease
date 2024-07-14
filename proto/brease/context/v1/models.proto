@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package brease.context.v1;
 
-import "google/protobuf/any.proto";
+import "google/protobuf/struct.proto";
 import "google/protobuf/field_mask.proto";
 import "brease/rule/v1/model.proto";
 
@@ -94,7 +94,7 @@ message EvaluateRequest {
   string context_id = 1;
 
   // The object to evaluate the ruleset on
-  google.protobuf.Any object = 2;
+  google.protobuf.Struct object = 2;
 
   // Rules to be applied instead of the stored rules of the context.
   // This is mostly useful for testing purposes or

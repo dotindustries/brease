@@ -2,6 +2,7 @@ package code
 
 import (
 	rulev1 "buf.build/gen/go/dot/brease/protocolbuffers/go/brease/rule/v1"
+	"encoding/base64"
 	"fmt"
 	"github.com/d5/tengo/v2"
 	"github.com/d5/tengo/v2/stdlib"
@@ -72,6 +73,13 @@ func conditionToScript(condition *rulev1.Condition) (code string) {
 		code = fnWithParamLine("some")
 	case rulev1.ConditionKind_all:
 		code = fnWithParamLine("all")
+	case rulev1.ConditionKind_cel:
+		// base64 decode the paramCode
+		bts, err := base64.StdEncoding.DecodeString(paramCode)
+		if err != nil {
+			panic(err)
+		}
+		code = fmt.Sprintf(`%s.cel(%s, %s)`, tengoModuleName, objectVariable, string(bts))
 	case rulev1.ConditionKind_none:
 		code = fnWithParamLine("none")
 	}

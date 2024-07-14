@@ -9,6 +9,7 @@ import (
 	"go.dot.industries/brease/worker"
 	"google.golang.org/grpc/metadata"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -84,8 +85,19 @@ func NewAuthInterceptor(logger *zap.Logger) connect.UnaryInterceptorFunc {
 	return interceptor
 }
 
-func Middleware(logger *zap.Logger) gin.HandlerFunc {
+func Middleware(logger *zap.Logger, protectPaths []*regexp.Regexp) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		protected := false
+		for _, p := range protectPaths {
+			if p.MatchString(c.Request.URL.Path) {
+				protected = true
+			}
+		}
+		if !protected {
+			c.Next() // process without authentication
+			return
+		}
+
 		ctx, err := authenticate(c.Request.Context(), c.Request.Header, logger)
 		if err != nil {
 			_ = c.AbortWithError(http.StatusUnauthorized, err)
@@ -307,12 +319,19 @@ func validateUnkey(ctx context.Context, args interface{}) (interface{}, error) {
 func validateRootAPIKey(_ context.Context, args interface{}) (interface{}, error) {
 	a := args.(validateAuthTokenArgs)
 
-	if a.rootAPIKey == "" || strings.HasPrefix(a.token, "JWT ") {
+	key := a.token
+	if a.rootAPIKey == "" || strings.HasPrefix(key, "JWT ") {
 		// not configured to authenticate, but no errors
 		return validateAuthTokenResult{}, nil
 	}
 
-	if a.token != a.rootAPIKey {
+	if key == "" {
+		key = a.headers.Get(ApiKeyHeader)
+	} else {
+		key = strings.TrimPrefix(key, bearerAuthPrefix)
+	}
+
+	if key != a.rootAPIKey {
 		return validateAuthTokenResult{
 			error: &validationErr{
 				Status: http.StatusUnauthorized,

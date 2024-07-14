@@ -48,7 +48,7 @@ func evalCEL(program cel.Program, obj *structpb.Struct) (any, error) {
 		return nil, err
 	}
 	// Evaluate the program without any additional arguments.
-	evalRef, details, err := program.Eval(
+	evalRef, _, err := program.Eval(
 		vars,
 	)
 	if err != nil {

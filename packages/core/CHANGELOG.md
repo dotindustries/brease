@@ -1,5 +1,11 @@
 # @brease/core
 
+## 0.2.0
+
+### Minor Changes
+
+- 2d92a8b: CEL expression support
+
 ## 0.1.1
 
 ### Patch Changes

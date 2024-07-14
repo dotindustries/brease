@@ -10,13 +10,13 @@ import {
     Action,
     And,
     Condition,
-    EvaluationResult,
     Expression,
     Or,
-    Rule,
+    Rule, RuleRef,
     Target
 } from "@buf/dot_brease.bufbuild_es/brease/rule/v1/model_pb.js";
 import {JsonValue, Struct} from "@bufbuild/protobuf";
+import {Result} from "./store.js";
 
 // const logger: Interceptor = (next) => async (req) => {
 //   return await next(req);
@@ -66,7 +66,7 @@ export type BreaseClient = {
         cacheTtl?: number | undefined,
     ) => (
         input: any,
-    ) => Promise<EvaluationResult[]>;
+    ) => Promise<Result[]>;
 }
 
 export const newClient = (opts: ClientOptions): BreaseClient => {
@@ -95,7 +95,17 @@ export const newClient = (opts: ClientOptions): BreaseClient => {
                             // overrideRules: [],
                             // overrideCode: ''
                         });
-                        return results;
+                        return results.map(({by, target, action}) => ({
+                            action,
+                            target: target &&{
+                                id: target.id,
+                                kind: target.kind,
+                            },
+                            by: by && {
+                                id: by.id,
+                                description: by.description
+                            }
+                        } satisfies Result));
                     },
                     ttl: cacheTtl,
                 });
@@ -152,6 +162,8 @@ export type ClientRule = {
     expression: ClientExpression;
     id: string;
 };
+
+export type ClientRuleRef = Pick<RuleRef, "id" | "description">
 
 export const encodeClientRule = (rule: ClientRule): Rule => {
     const {expression, actions, ...rest} = rule;

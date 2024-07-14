@@ -5,12 +5,19 @@ import { clone } from "lodash-es";
 import { $setAction, ApplyFunction } from "./actions.js";
 import {EvaluateRequest} from "@buf/dot_brease.bufbuild_es/brease/context/v1/models_pb.js";
 import { EvaluationResult } from "@buf/dot_brease.bufbuild_es/brease/rule/v1/model_pb.js";
+import {ClientRule, ClientRuleRef, ClientTarget} from "./client.js";
 
 export type EvaluateInput<T> = Pick<
   EvaluateRequest,
-  "overrideCode" | "overrideRules"
+  "overrideCode"
 > & {
   object: T;
+  overrideRules?: Array<ClientRule>;
+};
+
+export type Result = Pick<EvaluationResult, "action"> & {
+  target?: ClientTarget
+  by?: ClientRuleRef
 };
 
 export type FunctionKeys = "$set" | string;
@@ -34,16 +41,16 @@ export type Resolve<T> = {
 export type RuleStoreOptions<T extends object, F extends FunctionMap<T>> = {
   evaluateRulesFn: (
     input: EvaluateInput<T>,
-  ) => Promise<EvaluationResult[]>;
+  ) => Promise<Result[]>;
   userDefinedActions?: F;
   overrideCode?: string;
-  overrideRules?: EvaluateRequest['overrideRules']
+  overrideRules?: Array<ClientRule>
 };
 
 export interface RulesStore<T extends object, F extends FunctionMap<T>> {
   isExecuting: boolean;
   lastHash?: string;
-  rawActions: EvaluationResult[];
+  rawActions: Result[];
   executeRules: (object: T) => void;
   result:
     | Resolve<T & UnionToIntersection<Awaited<ReturnType<F[keyof F]>>>>
@@ -118,7 +125,7 @@ const createRulesStore = <T extends object, F extends FunctionMap<T>>({
 
 export const applyActions = async <T extends object, F extends FunctionMap<T>>(
   obj: T,
-  rawActions: EvaluationResult[],
+  rawActions: Result[],
   fns: F,
 ): Promise<Resolve<T & UnionToIntersection<ReturnType<F[keyof F]>>>> => {
   const copy = clone(obj);
@@ -137,7 +144,10 @@ export const getStore = <T extends object, F extends FunctionMap<T>>(
   let store = stores.get(contextID);
   if (!store) {
     store = createRulesStore<T, F>(opts);
-    stores.set(contextID, store);
+    if (store) {
+      stores.set(contextID, store);
+    }
   }
+  // @ts-ignore
   return store as StoreApi<RulesStore<T, F>>;
 };

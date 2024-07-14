@@ -1,11 +1,10 @@
 import type {
     ClientRule, EvaluateInput,
     EvaluateRequest,
-    EvaluationResult,
     FunctionMap,
     ListRulesResponse,
     PromiseClient,
-    Resolve,
+    Resolve, Result,
     RuleStoreOptions,
     UnionToIntersection,
     VersionedRule
@@ -33,7 +32,7 @@ export type UseRuleOptions<T extends object, F extends FunctionMap<T>> = {
     cacheTtl?: number;
     userDefinedActions?: F;
     overrideCode?: string;
-    overrideRules?: EvaluateRequest['overrideRules'];
+    overrideRules?: Array<ClientRule>;
 };
 
 export type ExecuteRulesOptions = Pick<
@@ -43,7 +42,7 @@ export type ExecuteRulesOptions = Pick<
 
 export type UseRulesOutput<T extends object, F extends FunctionMap<T>> = {
     isLoading: boolean;
-    rawActions: EvaluationResult[];
+    rawActions: Result[];
     executeRules: (object: T, opts?: ExecuteRulesOptions) => void;
     result:
         | Resolve<T & UnionToIntersection<Awaited<ReturnType<F[keyof F]>>>>
@@ -84,7 +83,7 @@ export const useRules = <T extends object, F extends FunctionMap<T>>(
 export type RuleContext<T> = {
     evaluateRules: (
         input: EvaluateInput<T>,
-    ) => Promise<EvaluationResult[]>;
+    ) => Promise<Result[]>;
     addRule: (input: ClientRule) => Promise<VersionedRule>;
     getAllRules: (
         compileCode?: boolean | undefined,

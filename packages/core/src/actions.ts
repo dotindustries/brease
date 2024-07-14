@@ -1,8 +1,9 @@
 import { EvaluationResult } from "@buf/dot_brease.bufbuild_es/brease/rule/v1/model_pb.js";
 import { isJsonPath, setValue } from "./jsonpath.js";
+import {Result} from "./store.js";
 
 export type ApplyFunction<T extends object, R extends object> = (
-  action: EvaluationResult,
+  action: Result,
   obj: T,
 ) => Promise<R>;
 

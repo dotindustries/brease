@@ -12,7 +12,9 @@ import (
 
 func (b *BreaseHandler) UpdateRule(ctx context.Context, c *connect.Request[contextv1.UpdateRuleRequest]) (*connect.Response[rulev1.VersionedRule], error) {
 	orgID := auth.CtxString(ctx, auth.ContextOrgKey)
-
+	if !auth.HasPermission(ctx, auth.PermissionWrite) {
+		return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("permission denied"))
+	}
 	updatedRule, err := b.db.ReplaceRule(ctx, orgID, c.Msg.ContextId, c.Msg.Rule)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to update rule: %v", err))

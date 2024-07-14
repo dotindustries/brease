@@ -364,6 +364,7 @@ components:
                         - none
                         - rgx
                         - nrgx
+                        - cel
                     type: string
                     description: The type of this condition, based on the internally defined ConditionType
                     format: enum
@@ -390,7 +391,8 @@ components:
                     type: string
                     description: The parent context ID, for example, "contextID1/rules/{rule_id}/versions"
                 object:
-                    $ref: '#/components/schemas/GoogleProtobufAny'
+                    type: object
+                    description: The object to evaluate the ruleset on
                 overrideRules:
                     type: array
                     items:

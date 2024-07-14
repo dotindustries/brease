@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"go.dot.industries/brease/code"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/juju/errors"
 	"go.dot.industries/brease/auth"
@@ -14,23 +15,15 @@ import (
 
 func (b *BreaseHandler) Evaluate(ctx context.Context, c *connect.Request[contextv1.EvaluateRequest]) (*connect.Response[contextv1.EvaluateResponse], error) {
 	orgID := auth.CtxString(ctx, auth.ContextOrgKey)
-
+	if !auth.HasPermission(ctx, auth.PermissionEvaluate) && !auth.HasPermission(ctx, auth.PermissionRead) {
+		return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("permission denied"))
+	}
 	codeBlock, err := b.findCode(ctx, c.Msg, orgID)
 	if err != nil {
 		return nil, err
 	}
 
-	compiledScript, err := b.findScript(ctx, codeBlock)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to compile code: %v", err)
-	}
-
-	run, err := code.NewRun(ctx, b.logger, c.Msg.Object)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to create run context: %v", err)
-	}
-
-	results, err := run.Execute(ctx, compiledScript)
+	results, err := b.run(ctx, codeBlock, c.Msg.Object)
 	if err != nil {
 		return nil, err
 	}
@@ -38,6 +31,20 @@ func (b *BreaseHandler) Evaluate(ctx context.Context, c *connect.Request[context
 	return connect.NewResponse(&contextv1.EvaluateResponse{
 		Results: results,
 	}), nil
+}
+
+func (b *BreaseHandler) run(ctx context.Context, codeBlock string, object *structpb.Struct) ([]*rulev1.EvaluationResult, error) {
+	compiledScript, err := b.findScript(ctx, codeBlock)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compile code: %v", err)
+	}
+
+	run, err := code.NewRun(ctx, b.logger, object)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create run context: %v", err)
+	}
+
+	return run.Execute(ctx, compiledScript)
 }
 
 // Override code takes precedence

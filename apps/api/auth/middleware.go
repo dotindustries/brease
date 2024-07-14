@@ -9,6 +9,7 @@ import (
 	"go.dot.industries/brease/worker"
 	"google.golang.org/grpc/metadata"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -21,10 +22,19 @@ import (
 
 const (
 	ApiKeyHeader     = "X-API-KEY"
-	ContextJwtKey    = "jwt"
-	ContextUserIDKey = "userId"
-	ContextOrgKey    = "orgId"
 	bearerAuthPrefix = "Bearer "
+
+	ContextJwtKey         = "jwt"
+	ContextUserIDKey      = "userId"
+	ContextOrgKey         = "orgId"
+	ContextPermissionsKey = "permissions"
+	PermissionRead        = "read"
+	PermissionWrite       = "write"
+	PermissionEvaluate    = "evaluate"
+)
+
+var (
+	allPermissions = []string{PermissionRead, PermissionWrite, PermissionEvaluate}
 )
 
 type validateAuthTokenArgs struct {
@@ -46,6 +56,7 @@ type validateAuthTokenResult struct {
 	userID        string
 	orgID         string
 	authenticator string
+	permissions   []string
 }
 
 func NewAuthInterceptor(logger *zap.Logger) connect.UnaryInterceptorFunc {
@@ -74,8 +85,19 @@ func NewAuthInterceptor(logger *zap.Logger) connect.UnaryInterceptorFunc {
 	return interceptor
 }
 
-func Middleware(logger *zap.Logger) gin.HandlerFunc {
+func Middleware(logger *zap.Logger, protectPaths []*regexp.Regexp) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		protected := false
+		for _, p := range protectPaths {
+			if p.MatchString(c.Request.URL.Path) {
+				protected = true
+			}
+		}
+		if !protected {
+			c.Next() // process without authentication
+			return
+		}
+
 		ctx, err := authenticate(c.Request.Context(), c.Request.Header, logger)
 		if err != nil {
 			_ = c.AbortWithError(http.StatusUnauthorized, err)
@@ -90,21 +112,24 @@ func Middleware(logger *zap.Logger) gin.HandlerFunc {
 		if orgID := CtxString(ctx, ContextOrgKey); orgID != "" {
 			c.Set(ContextOrgKey, orgID)
 		}
+		if permissions := CtxString(ctx, ContextPermissionsKey); permissions != "" {
+			c.Set(ContextPermissionsKey, permissions)
+		}
 
 		// continue processing
 		c.Next()
 	}
 }
 
+// WithMetadataTransfer transfers metadata from the request of the serverMux to the grpc context
 func WithMetadataTransfer() runtime.ServeMuxOption {
 	return runtime.WithMetadata(func(ctx context.Context, req *http.Request) metadata.MD {
-		//
-		// Step 2 - Extend the context
-		//
+		// FIXME: this doesn't actually work with grpc-gateway and RegisterxFromHandler
 		md := metadata.Pairs(
-			ContextUserIDKey, CtxString(req.Context(), ContextUserIDKey),
-			ContextOrgKey, CtxString(req.Context(), ContextOrgKey),
+			ContextUserIDKey, UserIDFromContext(req.Context()),
+			ContextOrgKey, OrgIDFromContext(req.Context()),
 		)
+		md.Set(ContextPermissionsKey, PermissionsFromContext(req.Context())...)
 		return md
 	})
 }
@@ -170,6 +195,9 @@ func authenticate(ctx context.Context, headers http.Header, logger *zap.Logger) 
 	}
 	if authed.orgID != "" {
 		ctx = context.WithValue(ctx, ContextOrgKey, authed.orgID)
+	}
+	if authed.permissions != nil {
+		ctx = context.WithValue(ctx, ContextPermissionsKey, authed.permissions)
 	}
 
 	return ctx, nil
@@ -272,31 +300,38 @@ func validateUnkey(ctx context.Context, args interface{}) (interface{}, error) {
 		}
 	}
 
-	orgID := ""
-	if oid, ok := resp.Meta[ContextOrgKey]; ok && oid != nil {
-		orgID, ok = oid.(string)
-		if !ok || orgID == "" {
-			return validateAuthTokenResult{
-				error: &validationErr{
-					Status: http.StatusUnauthorized,
-					Error:  errors2.BadRequestf("invalid API key: missing orgID"),
-				},
-			}, nil
-		}
+	orgID := resp.OwnerId
+	if orgID == "" {
+		return validateAuthTokenResult{
+			error: &validationErr{
+				Status: http.StatusUnauthorized,
+				Error:  errors2.BadRequestf("invalid API key: missing orgID"),
+			},
+		}, nil
 	}
 
-	return validateAuthTokenResult{authed: true, userID: userID, orgID: orgID}, nil
+	// TODO: clean normalized takeover of permissions
+	permissions := resp.Permissions
+
+	return validateAuthTokenResult{authed: true, userID: userID, orgID: orgID, permissions: permissions}, nil
 }
 
 func validateRootAPIKey(_ context.Context, args interface{}) (interface{}, error) {
 	a := args.(validateAuthTokenArgs)
 
-	if a.rootAPIKey == "" || strings.HasPrefix(a.token, "JWT ") {
+	key := a.token
+	if a.rootAPIKey == "" || strings.HasPrefix(key, "JWT ") {
 		// not configured to authenticate, but no errors
 		return validateAuthTokenResult{}, nil
 	}
 
-	if a.token != a.rootAPIKey {
+	if key == "" {
+		key = a.headers.Get(ApiKeyHeader)
+	} else {
+		key = strings.TrimPrefix(key, bearerAuthPrefix)
+	}
+
+	if key != a.rootAPIKey {
 		return validateAuthTokenResult{
 			error: &validationErr{
 				Status: http.StatusUnauthorized,
@@ -317,7 +352,7 @@ func validateRootAPIKey(_ context.Context, args interface{}) (interface{}, error
 		}, nil
 	}
 
-	return validateAuthTokenResult{authed: true, userID: "root", orgID: orgIDHeader}, nil
+	return validateAuthTokenResult{authed: true, userID: "root", orgID: orgIDHeader, permissions: allPermissions}, nil
 }
 
 func validateJWT(_ context.Context, args interface{}) (interface{}, error) {
@@ -384,7 +419,8 @@ func validateJWT(_ context.Context, args interface{}) (interface{}, error) {
 	}
 	userID = uid.(string)
 
+	permissions := claims["permissions"].([]string)
 	// FIXME: do we have to look up the token under the orgID to be sure it's valid?
 
-	return validateAuthTokenResult{authed: true, token: token, userID: userID, orgID: orgID}, nil
+	return validateAuthTokenResult{authed: true, token: token, userID: userID, orgID: orgID, permissions: permissions}, nil
 }

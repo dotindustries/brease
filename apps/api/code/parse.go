@@ -63,7 +63,7 @@ func generateCodeForRule(ctx context.Context, args interface{}) (interface{}, er
 
 	actions := ""
 	for _, action := range rule.Actions {
-		actions += fmt.Sprintf("\naction(\"%s\", \"%s\", \"%s\", \"%s\", \"%s\")\n", action.Kind, action.Target.Kind, action.Target.Id, action.Target.Value, rule.Id)
+		actions += fmt.Sprintf("\naction(\"%s\", \"%s\", \"%s\", \"%s\", { \"id\": \"%s\", \"description\": \"%s\"})\n", action.Kind, action.Target.Kind, action.Target.Id, action.Target.Value, rule.Id, rule.Description)
 
 	}
 	codeSection := fmt.Sprintf(`if %s {%s}`, expression, actions)

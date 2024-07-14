@@ -1,8 +1,8 @@
 package main
 
 import (
-	"buf.build/gen/go/dot/brease/grpc-ecosystem/gateway/v2/brease/auth/v1/service/authv1gateway"
-	"buf.build/gen/go/dot/brease/grpc-ecosystem/gateway/v2/brease/context/v1/service/contextv1gateway"
+	"buf.build/gen/go/dot/brease/grpc-ecosystem/gateway/v2/brease/auth/v1/authv1gateway"
+	"buf.build/gen/go/dot/brease/grpc-ecosystem/gateway/v2/brease/context/v1/contextv1gateway"
 	"bytes"
 	"context"
 	"errors"
@@ -153,9 +153,12 @@ func newApp(db storage.Database, logger *zap.Logger) *gin.Engine {
 	r.Use(stats.RequestStats())
 	r.Use(ginzap.GinzapWithConfig(logger, ginLoggerConfig()))
 	r.Use(static.Serve("/", static.EmbedFolder(openapi2.OpenApiAssets, "assets")))
+	r.Use(gin.Recovery())
+	r.Use(auth.Middleware(logger, []*regexp.Regexp{regexp.MustCompile("^/(brease.*|v1.*)$")}))
 	r.Use(auditlog.Middleware(
 		auditLogStore(logger),
 		auditlog.WithSensitivePaths([]*regexp.Regexp{regexp.MustCompile("^/(token|refreshToken)$")}),
+		auditlog.WithIgnorePaths([]*regexp.Regexp{regexp.MustCompile("^/(stats)$")}),
 		auditlog.WithIDExtractor(func(c *gin.Context) (contextID, ownerID, userID string) {
 			ownerID = c.GetString(auth.ContextOrgKey)
 			// TODO: we don't have access to the contextID yet
@@ -167,7 +170,6 @@ func newApp(db storage.Database, logger *zap.Logger) *gin.Engine {
 			return
 		}),
 	))
-	r.Use(gin.Recovery())
 
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
@@ -185,7 +187,7 @@ func newApp(db storage.Database, logger *zap.Logger) *gin.Engine {
 		contextv1connect.ContextServiceName,
 	)
 	healthPath, healthHandler := grpchealth.NewHandler(checker)
-	r.GET(healthPath, gin.WrapH(healthHandler))
+	r.GET(healthPath+"/*path", gin.WrapH(healthHandler))
 
 	mux := runtime.NewServeMux(
 		auth.WithMetadataTransfer(),
@@ -199,7 +201,7 @@ func newApp(db storage.Database, logger *zap.Logger) *gin.Engine {
 	}
 	// connect auth
 	authPath, authHandler := authv1connect.NewAuthServiceHandler(bh)
-	r.Match([]string{"POST"}, authPath, gin.WrapH(authHandler))
+	r.Match([]string{"POST"}, authPath+"/*path", gin.WrapH(authHandler))
 
 	// openapi context
 	err = contextv1gateway.RegisterContextServiceHandlerServer(context.Background(), mux, bh.OpenApi)
@@ -208,10 +210,10 @@ func newApp(db storage.Database, logger *zap.Logger) *gin.Engine {
 	}
 	// connect context
 	ctxPath, ctxHandler := contextv1connect.NewContextServiceHandler(bh, connect.WithInterceptors(auth.NewAuthInterceptor(logger)))
-	r.Match([]string{"POST", "GET", "PATCH", "DELETE"}, ctxPath, gin.WrapH(ctxHandler))
+	r.Match([]string{"POST", "GET", "PATCH", "DELETE"}, ctxPath+"/*path", gin.WrapH(ctxHandler))
 
 	// register openapi handlers
-	r.Any("/v1/*any", auth.Middleware(logger), gin.WrapF(mux.ServeHTTP))
+	r.Any("/v1/*any", gin.WrapF(mux.ServeHTTP))
 
 	return r
 }

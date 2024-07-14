@@ -39,10 +39,11 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@buf/dot_brease.connectrpc_es": "^1.4.0-20231009040727-da70494a324d.3",
-    "@buf/dot_brease.bufbuild_es": "^1.4.0-20231009040727-da70494a324d.3",
+    "@buf/dot_brease.connectrpc_es": "^1.4.0-20240714091619-59a856dfa11f.3",
+    "@buf/dot_brease.bufbuild_es": "^1.4.2-20240714091619-59a856dfa11f.2",
     "@connectrpc/connect": "^1.4.0",
     "@connectrpc/connect-web": "^1.4.0",
+    "@bufbuild/protobuf": "^1.10.0",
     "cachified": "^3.5.4",
     "jsonpath": "^1.1.1",
     "lodash-es": "^4.17.21",

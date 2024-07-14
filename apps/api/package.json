@@ -2,14 +2,21 @@
   "name": "api-server",
   "description": "Business rules engine service and go package",
   "private": "true",
+  "type": "module",
   "scripts": {
     "clean": "rm -rf ./dist",
     "proto": "protoc --go_out=paths=source_relative:./pb *.proto",
     "dev": "gow run .",
     "release": "goreleaser release --snapshot --clean",
-    "test": "go test -v ./..."
+    "test:go": "go test -v ./...",
+    "test": "tap --allow-empty-coverage run tests.ts"
   },
   "dependencies": {
-    "chai": "^4.3.8"
+    "chai": "^4.3.8",
+    "@brease/core": "workspace:*",
+    "tap": "^21.0.0"
+  },
+  "devDependencies": {
+    "immer": "^10.1.1"
   }
 }

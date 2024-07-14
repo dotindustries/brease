@@ -14,6 +14,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
+	"google.golang.org/protobuf/proto"
 	"sync"
 )
 
@@ -46,7 +47,7 @@ func NewDatabase(opts Options) (storage.Database, error) {
 		logger: opts.Logger,
 		rulePool: sync.Pool{
 			New: func() interface{} {
-				return new(*rulev1.VersionedRule)
+				return &rulev1.VersionedRule{}
 			},
 		},
 	}
@@ -81,7 +82,7 @@ func (r *redisContainer) AddRule(ctx context.Context, ownerID string, contextID 
 	rk := storage.RuleKey(ownerID, contextID, vRule.Id)
 	vk := storage.VersionKey(ownerID, contextID, vRule.Id, vRule.Version)
 
-	data, err := json.Marshal(vRule)
+	data, err := proto.Marshal(vRule)
 	if err != nil {
 		return nil, errors2.Wrap(err, "failed to marshal rule")
 	}
@@ -131,7 +132,7 @@ func (r *redisContainer) Rules(ctx context.Context, ownerID string, contextID st
 
 	for vk, versionData := range latestVersionData {
 		rule := r.rulePool.Get().(*rulev1.VersionedRule)
-		umErr := json.Unmarshal([]byte(versionData), rule)
+		umErr := proto.Unmarshal([]byte(versionData), rule)
 		if umErr != nil {
 			return nil, errors2.Wrapf(umErr, "couldn't unmarshal versionData for %s", vk)
 		}
@@ -154,7 +155,7 @@ func (r *redisContainer) RuleVersions(ctx context.Context, ownerID string, conte
 			continue
 		}
 		rule := r.rulePool.Get().(*rulev1.VersionedRule)
-		umErr := json.Unmarshal([]byte(jsonData), rule)
+		umErr := proto.Unmarshal([]byte(jsonData), rule)
 		if umErr != nil {
 			return nil, umErr
 		}
@@ -225,7 +226,7 @@ func (r *redisContainer) ReplaceRule(ctx context.Context, ownerID string, contex
 	}
 	vk := storage.VersionKey(ownerID, contextID, vRule.Id, vRule.Version)
 
-	ruleJSON, err := json.Marshal(vRule)
+	ruleJSON, err := proto.Marshal(vRule)
 	if err != nil {
 		return nil, err
 	}
@@ -257,6 +258,7 @@ func (r *redisContainer) SaveAccessToken(ctx context.Context, ownerID string, to
 
 	tokens = append(tokens, tokenPair)
 
+	// TODO: use proto.Marshal instead
 	bts, err := json.Marshal(tokens)
 	if err != nil {
 		return err

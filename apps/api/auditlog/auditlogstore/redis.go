@@ -60,5 +60,5 @@ func contextKey(orgID string, contextID string) string {
 	if contextID != "" {
 		ctx = fmt.Sprintf(":context:%s", contextID)
 	}
-	return fmt.Sprintf("org:%s%s", orgID, ctx)
+	return fmt.Sprintf("audit:org:%s%s", orgID, ctx)
 }

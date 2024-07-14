@@ -125,6 +125,8 @@ enum ConditionKind {
   rgx = 13;
   // Golang: ConditionNotRegex
   nrgx = 14;
+  // Golang: ConditionCEL
+  cel = 15;
 }
 
 message Expression {

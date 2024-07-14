@@ -5,6 +5,7 @@ import (
 	"fmt"
 	jpath "github.com/PaesslerAG/jsonpath"
 	"github.com/d5/tengo/v2"
+	"github.com/google/cel-go/cel"
 	"go.dot.industries/brease/rref"
 	"log"
 	"regexp"
@@ -66,8 +67,56 @@ action := func(action, kind, target, value, by) {
 			Name:  "dref",
 			Value: dref,
 		},
+		"cel": &tengo.UserFunction{
+			Name:  "cel",
+			Value: celEval,
+		},
 	}
 )
+
+func celEval(args ...tengo.Object) (ret tengo.Object, err error) {
+	if len(args) != 2 {
+		return nil, tengo.ErrWrongNumArguments
+	}
+
+	// the object
+	var val *ProtoStruct
+	switch arg := args[0].(type) {
+	case *ProtoStruct:
+		val = tengo.ToInterface(arg).(*ProtoStruct)
+	default:
+		return nil, tengo.ErrInvalidArgumentType{
+			Name:     "object",
+			Expected: (&ProtoStruct{}).TypeName(),
+			Found:    arg.TypeName(),
+		}
+	}
+
+	celExpression := ""
+	switch o := args[1].(type) {
+	case *tengo.String:
+		celExpression = o.Value
+	default:
+		celExpression = o.String()
+	}
+
+	prg, err := compileCEL(celExpression, cel.BoolType, val.Value)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := evalCEL(prg, val.Value)
+	if err != nil {
+		return nil, err
+	}
+
+	ret = tengo.FalseValue
+	if res, ok := result.(bool); ok && res {
+		ret = tengo.TrueValue
+	}
+
+	return
+}
 
 func hasValue(args ...tengo.Object) (ret tengo.Object, err error) {
 	if len(args) != 1 {

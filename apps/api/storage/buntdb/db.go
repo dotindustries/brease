@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"google.golang.org/protobuf/proto"
 	"sync"
 
 	"github.com/goccy/go-json"
@@ -36,7 +37,7 @@ func NewDatabase(opts Options) (storage.Database, error) {
 		logger: opts.Logger,
 		rulePool: sync.Pool{
 			New: func() interface{} {
-				return new(*rulev1.VersionedRule)
+				return &rulev1.VersionedRule{}
 			},
 		},
 	}
@@ -67,7 +68,7 @@ func (b *buntdbContainer) AddRule(_ context.Context, ownerID string, contextID s
 	rk := storage.RuleKey(ownerID, contextID, vRule.Id)
 	vk := storage.VersionKey(ownerID, contextID, vRule.Id, vRule.Version)
 
-	ruleJSON, err := json.Marshal(vRule)
+	ruleJSON, err := proto.Marshal(vRule)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +109,7 @@ func (b *buntdbContainer) Rules(_ context.Context, ownerID string, contextID str
 			}
 
 			rule := b.rulePool.Get().(*rulev1.VersionedRule)
-			umErr := json.Unmarshal([]byte(latestVersionData), rule)
+			umErr := proto.Unmarshal([]byte(latestVersionData), rule)
 			if umErr != nil {
 				return umErr
 			}
@@ -134,7 +135,7 @@ func (b *buntdbContainer) RuleVersions(_ context.Context, ownerID string, contex
 	err = b.db.View(func(tx *buntdb.Tx) error {
 		for _, versionData := range ruleVersions {
 			rule := b.rulePool.Get().(*rulev1.VersionedRule)
-			umErr := json.Unmarshal([]byte(versionData), rule)
+			umErr := proto.Unmarshal([]byte(versionData), rule)
 			if umErr != nil {
 				return umErr
 			}
@@ -205,7 +206,7 @@ func (b *buntdbContainer) ReplaceRule(_ context.Context, ownerID string, context
 		Expression:  rule.Expression,
 	}
 	vk := storage.VersionKey(ownerID, contextID, vRule.Id, vRule.Version)
-	ruleJSON, jsonErr := json.Marshal(vRule)
+	ruleJSON, jsonErr := proto.Marshal(vRule)
 	if jsonErr != nil {
 		return nil, jsonErr
 	}
@@ -281,6 +282,7 @@ func (b *buntdbContainer) GetAccessTokens(_ context.Context, ownerID string) (tp
 		return nil, fmt.Errorf("tokenPair not found")
 	}
 
+	// TODO use proto.Unmarshal instead
 	if err = json.Unmarshal([]byte(val), &tp); err != nil {
 		return nil, fmt.Errorf("failed to read tokenPairs: %w", err)
 	}

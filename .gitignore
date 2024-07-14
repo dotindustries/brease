@@ -13,3 +13,4 @@ dist
 .aider*
 apps/api/.env.local
 apps/api/tmp
+apps/api/.tap

@@ -6,7 +6,6 @@ import (
 	"github.com/gin-contrib/requestid"
 	"github.com/juju/errors"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"regexp"
 	"time"
@@ -107,6 +106,7 @@ type middlewareOptions struct {
 	sensitivePaths  []*regexp.Regexp
 	userIDExtractor func(c *gin.Context) (contextID, ownerID, userID string)
 	errorHandler    ErrorHandler
+	ignorePaths     []*regexp.Regexp
 }
 
 type optionFunc func(o *middlewareOptions)
@@ -119,6 +119,13 @@ func (fn optionFunc) apply(o *middlewareOptions) {
 func WithClock(clock Clock) Option {
 	return optionFunc(func(o *middlewareOptions) {
 		o.clock = clock
+	})
+}
+
+// WithIgnorePaths marks API call paths as ignored, causing the log entry to omit the request body.
+func WithIgnorePaths(ignorePaths []*regexp.Regexp) Option {
+	return optionFunc(func(o *middlewareOptions) {
+		o.ignorePaths = ignorePaths
 	})
 }
 
@@ -162,6 +169,13 @@ func Middleware(store Store, opts ...Option) gin.HandlerFunc {
 			path = path + "?" + c.Request.URL.RawQuery
 		}
 
+		for _, ignorePath := range options.ignorePaths {
+			if ignorePath.MatchString(path) {
+				c.Next() // process request without logging
+				return
+			}
+		}
+
 		entry := Entry{
 			Time:      options.clock.Now(),
 			RequestID: requestid.Get(c),
@@ -191,14 +205,14 @@ func Middleware(store Store, opts ...Option) gin.HandlerFunc {
 		if saveBody {
 			// This should be ok, because the server keeps a reference to the original body,
 			// so it can close the original request itself.
-			c.Request.Body = ioutil.NopCloser(io.TeeReader(c.Request.Body, &buf))
+			c.Request.Body = io.NopCloser(io.TeeReader(c.Request.Body, &buf))
 		}
 
 		c.Next() // process request
 
 		contextID, ownerID, userID := options.userIDExtractor(c)
 		entry.ContextID = contextID
-		ownerID = ownerID
+		entry.OrgID = ownerID
 		entry.UserID = userID
 
 		// Consider making this configurable if you need to log unauthorized requests,
@@ -213,7 +227,7 @@ func Middleware(store Store, opts ...Option) gin.HandlerFunc {
 
 		if saveBody {
 			// Make sure everything is read from the body.
-			_, err := ioutil.ReadAll(c.Request.Body)
+			_, err := io.ReadAll(c.Request.Body)
 			if err != nil && err != io.EOF {
 				options.errorHandler.HandleContext(c.Request.Context(), errors.Maskf(err, "Failed to read response body"))
 			}

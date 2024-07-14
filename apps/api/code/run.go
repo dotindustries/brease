@@ -7,6 +7,7 @@ import (
 	"github.com/juju/errors"
 	"go.dot.industries/brease/trace"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/types/known/structpb"
 	"log"
 	"time"
 )
@@ -16,7 +17,7 @@ const (
 )
 
 type Run struct {
-	object interface{}
+	object *structpb.Struct
 	logger *zap.Logger
 }
 
@@ -24,7 +25,7 @@ type Object struct {
 	tengo.ObjectImpl
 }
 
-func NewRun(_ context.Context, logger *zap.Logger, object interface{}) (*Run, error) {
+func NewRun(_ context.Context, logger *zap.Logger, object *structpb.Struct) (*Run, error) {
 	return &Run{
 		object: object,
 		logger: logger,
@@ -37,7 +38,7 @@ func (r *Run) Execute(ctx context.Context, script *Script) ([]*rulev1.Evaluation
 
 	runner := script.compiled.Clone()
 	start := time.Now()
-	err := runner.Set(objectVariable, r.object)
+	err := runner.Set(objectVariable, &ProtoStruct{Value: r.object})
 	if err != nil {
 		r.logger.Error("Failed to set object on script", zap.Error(err))
 		return nil, errors.Errorf("failed to setup run: %v", err)
@@ -64,14 +65,19 @@ func (r *Run) parseResults(result *tengo.Variable) (results []*rulev1.Evaluation
 		// if result structure changes to dynamic value types, use
 		//   github.com/mitchellh/mapstructure
 		target := res["target"].(map[string]interface{})
+		by := res["by"].(map[string]interface{})
 		results = append(results, &rulev1.EvaluationResult{
 			Action: res["action"].(string),
 			Target: &rulev1.Target{
-				Kind:  target["kind"].(string),
-				Id:    target["target"].(string),
-				Value: target["value"].([]byte),
+				Kind: target["kind"].(string),
+				Id:   target["target"].(string),
+				// FIXME: make sure string is base64 encoded before passing to value
+				Value: []byte(target["value"].(string)),
 			},
-			By: res["by"].(*rulev1.RuleRef),
+			By: &rulev1.RuleRef{
+				Id:          by["id"].(string),
+				Description: by["description"].(string),
+			},
 		})
 	}
 	return

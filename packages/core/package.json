@@ -15,6 +15,7 @@
     "url": "https://github.com/sponsors/dotindustries"
   },
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
       "require": "./dist/index.cjs",
@@ -25,8 +26,8 @@
       "default": "./src/index.ts"
     }
   },
-  "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
     "dist",

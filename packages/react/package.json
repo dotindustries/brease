@@ -1,6 +1,6 @@
 {
   "name": "@brease/react",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Hooks and headless client library for managing and executing business rules in domain contexts.",
   "author": "nadilas",
   "license": "MIT",

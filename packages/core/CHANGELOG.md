@@ -1,5 +1,11 @@
 # @brease/core
 
+## 0.2.1
+
+### Patch Changes
+
+- e575aa7: exports
+
 ## 0.2.0
 
 ### Minor Changes

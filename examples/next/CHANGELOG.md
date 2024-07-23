@@ -1,5 +1,13 @@
 # example-next
 
+## 0.1.4
+
+### Patch Changes
+
+- Updated dependencies [e575aa7]
+  - @brease/core@0.2.1
+  - @brease/react@0.1.3
+
 ## 0.1.3
 
 ### Patch Changes

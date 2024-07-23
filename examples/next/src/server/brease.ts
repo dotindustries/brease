@@ -1,5 +1,5 @@
 import {BreaseClient, newClient} from "@brease/core";
-import { env } from "~/env.mjs";
+import { env } from "~/env.js";
 
 const globalForBrease = globalThis as unknown as {
   brease: BreaseClient | undefined;

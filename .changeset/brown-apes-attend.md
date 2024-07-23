@@ -1,5 +1,6 @@
 ---
+"next": patch
 "@brease/core": patch
 ---
 
-package.json updates
+replace jsonpath

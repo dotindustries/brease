@@ -1,5 +1,11 @@
 # @brease/core
 
+## 0.2.2
+
+### Patch Changes
+
+- e596607: package.json updates
+
 ## 0.2.1
 
 ### Patch Changes

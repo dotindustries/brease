@@ -1,7 +1,7 @@
 {
   "name": "@brease/core",
   "description": "The framework agnostic core that powers Brease",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "author": "nadilas",
   "license": "MIT",
   "repository": {
@@ -46,7 +46,7 @@
     "@connectrpc/connect-web": "^1.4.0",
     "@bufbuild/protobuf": "^1.10.0",
     "cachified": "^3.5.4",
-    "jsonpath": "^1.1.1",
+    "jsonpath-plus": "^9.0.0",
     "lodash-es": "^4.17.21",
     "lru-cache": "^10.0.0",
     "object-hash": "^3.0.0",

@@ -1,4 +1,12 @@
-import {ClientAction, ConditionKind, encodeClientRule, Environment, newClient, Struct} from "@brease/core/src";
+import {
+    ClientAction,
+    ConditionKind,
+    decodeClientRule,
+    encodeClientRule,
+    Environment,
+    newClient,
+    Struct
+} from "@brease/core/src";
 import t from 'tap'
 
 const brease = newClient({
@@ -66,6 +74,19 @@ t.test("create rule", async () => {
 t.test("retrieve created rule", async () => {
     const response = await brease.client.listRules({contextId})
     t.equal(response.rules.length, 1);
+
+    const clientRules = response.rules.map(r => decodeClientRule(r))
+    t.equal(clientRules.length, response.rules.length);
+    if (!('condition' in clientRules[0]!.expression)) {
+        t.fail("failed to decode rule");
+    } else {
+        const condition = clientRules[0]!.expression.condition
+        if (condition && 'base' in condition) {
+         t.equal(condition.value, sampleRule.query);
+        } else {
+            t.fail("failed to decode condition");
+        }
+    }
 });
 
 t.test("raw evaluate rule", async () => {

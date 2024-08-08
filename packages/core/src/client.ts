@@ -1,7 +1,7 @@
 import hash from "object-hash";
 import {LRUCache} from "lru-cache";
 import {CacheEntry, cachified} from "cachified";
-import {encode, encodeToUint8Array} from "./encoder.js";
+import {decode, decodeFromUint8Array, encode, encodeToUint8Array} from "./encoder.js";
 import {createPromiseClient, Interceptor, PromiseClient} from "@connectrpc/connect";
 import {AuthService} from "@buf/dot_brease.connectrpc_es/brease/auth/v1/service_connect.js";
 import {createConnectTransport} from "@connectrpc/connect-web";
@@ -178,6 +178,18 @@ export const encodeClientRule = (rule: ClientRule): Rule => {
     })
 };
 
+export const decodeClientRule = (rule: Rule): ClientRule => {
+    return {
+        id: rule.id,
+        description: rule.description,
+        actions: rule.actions.map(action => ({
+            kind: action.kind,
+            target: decodeTarget(action.target!), // there cannot be an action without a target
+        })),
+        expression: decodeExpression(rule.expression!), // there cannot be a rule without an expression
+    }
+};
+
 const encodeTarget = (t: ClientTarget): Target => {
     const {value, ...rest} = t;
     return new Target({
@@ -186,11 +198,17 @@ const encodeTarget = (t: ClientTarget): Target => {
     })
 };
 
-const encodeExpression = (
-    e?: ClientExpression,
-): Expression | undefined => {
-    if (!e) return undefined;
+const decodeTarget = (t: Target): ClientTarget => {
+    const {value, ...rest} = t;
+    return {
+        ...rest,
+        value: decode(decodeFromUint8Array(value)),
+    }
+};
 
+const encodeExpression = (
+    e: ClientExpression,
+): Expression | undefined => {
     if ("and" in e && e.and) {
         return new Expression({
             expr: {
@@ -224,6 +242,27 @@ const encodeExpression = (
     return undefined;
 };
 
+const decodeExpression = (e: Expression): ClientExpression => {
+    if (e.expr.case === 'and' && e.expr.value) {
+        return {
+            and: e.expr.value.expression.map(a => decodeExpression(a!)) // find a better way to make TS happy
+        };
+    } else if (e.expr.case === 'or' && e.expr.value) {
+        return {
+            or: e.expr.value.expression.map(o => decodeExpression(o!)) // find a better way to make TS happy
+        };
+    } else if (e.expr.case === 'condition' && e.expr.value) {
+        const condition = decodeCondition(e.expr.value);
+        if (!condition) throw new Error("failed to decode condition");
+
+        return {
+            condition
+        };
+    }
+    console.error("Unknown expression type:", e);
+    throw new Error(`Unknown expression type: ${e.expr.case}`);
+};
+
 const encodeCondition = (c?: ClientConditionKey | ClientConditionRef) => {
     if (!c) return undefined;
 
@@ -233,6 +272,29 @@ const encodeCondition = (c?: ClientConditionKey | ClientConditionRef) => {
             ...rest,
             value: encodeToUint8Array(encode(value)),
         })
+    }
+    console.error("Unknown condition type:", c);
+    return undefined;
+};
+
+const decodeCondition = (c?: Condition) => {
+    if (!c) return undefined;
+
+    if ("value" in c) {
+        const {value, ...rest} = c;
+        if (rest.base.case === 'ref') {
+            return {
+               kind: rest.kind,
+               base: rest.base,
+               value: decode(decodeFromUint8Array(value)),
+            } satisfies ClientConditionRef;
+        } else if (rest.base.case === 'key') {
+            return {
+                kind: rest.kind,
+                base: rest.base,
+                value: decode(decodeFromUint8Array(value)),
+            } satisfies ClientConditionKey;
+        }
     }
     console.error("Unknown condition type:", c);
     return undefined;

@@ -19,3 +19,4 @@ const { result: order2 } = useRules("checkout", user2, { objectID: "u2" });
 ```
 
 Otherwise both `order1` and `order2` end up share the refer to `user2` with applied actions. They would use the same rules store and the last execution wins.
+https://dotindustries.notion.site/Type-inheritance-0ac344df4a6c4821870c3fd6b374d0ed

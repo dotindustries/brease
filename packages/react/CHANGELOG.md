@@ -1,5 +1,12 @@
 # @brease/react
 
+## 0.1.5
+
+### Patch Changes
+
+- Updated dependencies [cfc78a5]
+  - @brease/core@0.2.3
+
 ## 0.1.4
 
 ### Patch Changes

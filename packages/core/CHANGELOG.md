@@ -1,5 +1,11 @@
 # @brease/core
 
+## 0.2.3
+
+### Patch Changes
+
+- cfc78a5: replace jsonpath
+
 ## 0.2.2
 
 ### Patch Changes

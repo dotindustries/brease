@@ -1,5 +1,11 @@
 # @brease/core
 
+## 0.3.0
+
+### Minor Changes
+
+- 2f7d9f7: add client side rule decoders
+
 ## 0.2.3
 
 ### Patch Changes

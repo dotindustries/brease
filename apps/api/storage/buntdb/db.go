@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go.dot.industries/brease/env"
 	"google.golang.org/protobuf/proto"
 	"sync"
 
@@ -67,11 +68,15 @@ func (b *buntdbContainer) AddRule(_ context.Context, ownerID string, contextID s
 	}
 	rk := storage.RuleKey(ownerID, contextID, vRule.Id)
 	vk := storage.VersionKey(ownerID, contextID, vRule.Id, vRule.Version)
-
 	ruleJSON, err := proto.Marshal(vRule)
 	if err != nil {
 		return nil, err
 	}
+
+	if env.IsDebug() {
+		b.logger.Debug("Adding rule", zap.String("ruleKey", rk), zap.String("versionKey", vk), zap.String("ruleJSON", string(ruleJSON)))
+	}
+
 	err = b.db.Update(func(tx *buntdb.Tx) error {
 		_, _, txErr := tx.Set(rk, vk, nil)
 		if txErr != nil {
@@ -90,6 +95,16 @@ func (b *buntdbContainer) AddRule(_ context.Context, ownerID string, contextID s
 func (b *buntdbContainer) Rules(_ context.Context, ownerID string, contextID string, pageSize int, pageToken string) (rules []*rulev1.VersionedRule, err error) {
 	rkSearch := storage.RuleKey(ownerID, contextID, "*")
 
+	if env.IsDebug() {
+		_ = b.db.View(func(tx *buntdb.Tx) error {
+			return tx.AscendKeys(rkSearch, func(key, val string) bool {
+				if storage.IsVersionKey(val) {
+					b.logger.Debug("rule key", zap.String("key", key), zap.String("val", val))
+				}
+				return true
+			})
+		})
+	}
 	var ruleKeys []string
 	err = b.db.View(func(tx *buntdb.Tx) error {
 		return tx.AscendKeys(rkSearch, func(key, val string) bool {
@@ -108,16 +123,23 @@ func (b *buntdbContainer) Rules(_ context.Context, ownerID string, contextID str
 				return vErr
 			}
 
-			rule := b.rulePool.Get().(*rulev1.VersionedRule)
+			rule := &rulev1.VersionedRule{}
+
 			umErr := proto.Unmarshal([]byte(latestVersionData), rule)
 			if umErr != nil {
 				return umErr
 			}
+			if env.IsDebug() {
+				b.logger.Debug("rule version", zap.String("versionKey", vk), zap.String("ruleID", rule.Id), zap.Any("version", rule), zap.String("latestVersion", latestVersionData))
+			}
 			rules = append(rules, rule)
-			b.rulePool.Put(rule)
 		}
 		return nil
 	})
+
+	if env.IsDebug() {
+		b.logger.Debug("Rules", zap.Any("rules", rules))
+	}
 
 	return
 }
@@ -134,13 +156,13 @@ func (b *buntdbContainer) RuleVersions(_ context.Context, ownerID string, contex
 
 	err = b.db.View(func(tx *buntdb.Tx) error {
 		for _, versionData := range ruleVersions {
-			rule := b.rulePool.Get().(*rulev1.VersionedRule)
+			rule := &rulev1.VersionedRule{}
+
 			umErr := proto.Unmarshal([]byte(versionData), rule)
 			if umErr != nil {
 				return umErr
 			}
 			rules = append(rules, rule)
-			b.rulePool.Put(rule)
 		}
 		return nil
 	})

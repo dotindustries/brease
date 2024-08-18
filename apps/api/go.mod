@@ -5,10 +5,10 @@ go 1.22
 toolchain go1.22.0
 
 require (
-	buf.build/gen/go/dot/brease/connectrpc/go v1.16.2-20240714091619-59a856dfa11f.1
-	buf.build/gen/go/dot/brease/grpc-ecosystem/gateway/v2 v2.20.0-20240714091619-59a856dfa11f.2
-	buf.build/gen/go/dot/brease/grpc/go v1.4.0-20240714091619-59a856dfa11f.2
-	buf.build/gen/go/dot/brease/protocolbuffers/go v1.34.2-20240714091619-59a856dfa11f.2
+	buf.build/gen/go/dot/brease/connectrpc/go v1.16.2-20240814183517-09f4042f97de.1
+	buf.build/gen/go/dot/brease/grpc-ecosystem/gateway/v2 v2.21.0-20240814183517-09f4042f97de.1
+	buf.build/gen/go/dot/brease/grpc/go v1.5.1-20240814183517-09f4042f97de.1
+	buf.build/gen/go/dot/brease/protocolbuffers/go v1.34.2-20240814183517-09f4042f97de.2
 	connectrpc.com/connect v1.16.2
 	connectrpc.com/grpchealth v1.3.0
 	github.com/PaesslerAG/jsonpath v0.1.2-0.20230323094847-3484786d6f97
@@ -31,7 +31,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/cel-go v0.20.1
 	github.com/google/go-cmp v0.6.0
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.20.0
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.21.0
 	github.com/joho/godotenv v1.5.1
 	github.com/juju/errors v1.0.0
 	github.com/newrelic/go-agent/v3 v3.33.1
@@ -126,8 +126,8 @@ require (
 	golang.org/x/sys v0.22.0 // indirect
 	golang.org/x/text v0.16.0 // indirect
 	google.golang.org/genproto v0.0.0-20240711142825-46eb208f015d // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20240711142825-46eb208f015d // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240711142825-46eb208f015d // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20240723171418-e6d459c13d2a // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240723171418-e6d459c13d2a // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )

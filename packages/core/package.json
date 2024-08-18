@@ -40,8 +40,8 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@buf/dot_brease.connectrpc_es": "^1.4.0-20240714091619-59a856dfa11f.3",
-    "@buf/dot_brease.bufbuild_es": "^1.4.2-20240714091619-59a856dfa11f.2",
+    "@buf/dot_brease.connectrpc_es": "^1.4.0-20240814183517-09f4042f97de.3",
+    "@buf/dot_brease.bufbuild_es": "^1.4.2-20240814183517-09f4042f97de.2",
     "@connectrpc/connect": "^1.4.0",
     "@connectrpc/connect-web": "^1.4.0",
     "@bufbuild/protobuf": "^1.10.0",
@@ -50,7 +50,7 @@
     "lodash-es": "^4.17.21",
     "lru-cache": "^10.0.0",
     "object-hash": "^3.0.0",
-    "zod": "^3.21.4",
+    "zod": "^3.23.8",
     "zustand": "^4.3.8"
   },
   "devDependencies": {

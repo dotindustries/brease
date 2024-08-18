@@ -161,6 +161,7 @@ export type ClientRule = {
     description?: string;
     expression: ClientExpression;
     id: string;
+    sequence: number;
 };
 
 export type ClientRuleRef = Pick<RuleRef, "id" | "description">
@@ -181,6 +182,7 @@ export const encodeClientRule = (rule: ClientRule): Rule => {
 export const decodeClientRule = (rule: Rule): ClientRule => {
     return {
         id: rule.id,
+        sequence: rule.sequence,
         description: rule.description,
         actions: rule.actions.map(action => ({
             kind: action.kind,

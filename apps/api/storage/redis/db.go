@@ -131,13 +131,12 @@ func (r *redisContainer) Rules(ctx context.Context, ownerID string, contextID st
 	}
 
 	for vk, versionData := range latestVersionData {
-		rule := r.rulePool.Get().(*rulev1.VersionedRule)
+		rule := &rulev1.VersionedRule{}
 		umErr := proto.Unmarshal([]byte(versionData), rule)
 		if umErr != nil {
 			return nil, errors2.Wrapf(umErr, "couldn't unmarshal versionData for %s", vk)
 		}
 		rules = append(rules, rule)
-		r.rulePool.Put(rule)
 	}
 
 	return
@@ -154,13 +153,12 @@ func (r *redisContainer) RuleVersions(ctx context.Context, ownerID string, conte
 		if slices.Contains(ruleFields, key) {
 			continue
 		}
-		rule := r.rulePool.Get().(*rulev1.VersionedRule)
+		rule := &rulev1.VersionedRule{}
 		umErr := proto.Unmarshal([]byte(jsonData), rule)
 		if umErr != nil {
 			return nil, umErr
 		}
 		rules = append(rules, rule)
-		r.rulePool.Put(rule)
 	}
 
 	return
@@ -199,6 +197,13 @@ func (r *redisContainer) RemoveRule(ctx context.Context, ownerID string, context
 		return err
 	}
 	r.logger.Info("Successfully removed rule from context.", zap.String("key", rk))
+
+	err = r.updateRuleIndices(ctx, ck)
+	if err != nil {
+		// TODO: technically we should roll back the removal
+		//   because we messed up the database, no rules can be removed
+		return err
+	}
 	return nil
 }
 
@@ -333,4 +338,19 @@ func (r *redisContainer) getLatestVersionData(ctx context.Context, latestVersion
 	}
 
 	return
+}
+
+func (r *redisContainer) updateRuleIndices(ctx context.Context, ck string) error {
+	rks := r.db.LRange(ctx, ck, 0, -1).Val()
+
+	pipe := r.db.Pipeline()
+	for idx, rk := range rks {
+		pipe.HSet(ctx, rk, kIndexField, idx)
+	}
+	_, err := pipe.Exec(ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

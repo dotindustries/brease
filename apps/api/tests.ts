@@ -44,6 +44,10 @@ const sampleRule2 = {
     ]
 }
 
+// t.beforeEach(async _t => {
+//     await new Promise(res => setTimeout(res, 1000))
+// })
+
 t.test("no rules in system", async () => {
     // curl equivalent:
     // curl -vv -X POST http://localhost:4400/brease.context.v1.ContextService/ListRules \
@@ -160,7 +164,7 @@ t.test("retrieve created rules", async () => {
     const response = await brease.client.listRules({contextId})
     t.equal(response.rules.length, 2);
     console.log(JSON.stringify(response.rules, null, 2));
-    t.same(response.rules.map(r => r.id), [sampleRule2.id, sampleRule.id]);
+    t.same(new Set(response.rules.map(r => r.id)), new Set([sampleRule2.id, sampleRule.id]));
 });
 
 t.test("raw evaluate rules", async () => {

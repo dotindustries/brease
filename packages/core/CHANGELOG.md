@@ -1,5 +1,11 @@
 # @brease/core
 
+## 0.4.0
+
+### Minor Changes
+
+- 9adb2c0: Add sequence number to rule object
+
 ## 0.3.0
 
 ### Minor Changes

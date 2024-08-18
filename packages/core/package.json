@@ -1,7 +1,7 @@
 {
   "name": "@brease/core",
   "description": "The framework agnostic core that powers Brease",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "author": "nadilas",
   "license": "MIT",
   "repository": {

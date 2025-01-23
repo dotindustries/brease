@@ -7,7 +7,7 @@ import {
     newClient,
     Struct
 } from "@brease/core/src";
-import t from 'tap'
+import { t } from 'tap'
 
 const brease = newClient({
     accessToken: "asdf",
@@ -54,7 +54,7 @@ t.test("no rules in system", async () => {
     //   -H "Authorization: Bearer asdf" \
     //   -H "x-org-id: org_01h89qgxe5e7wregw6gb94d5p6" \
     //   -H "Content-Type: application/json" --data '{"contextId": "asdf"}'
-    const response = await brease.client.listRules({contextId})
+    const response = await brease.client.listRules({ contextId })
     t.equal(response.rules.length, 0);
 })
 
@@ -70,6 +70,7 @@ t.test("create rule", async () => {
     const response = await brease.client.createRule({
         contextId,
         rule: encodeClientRule({
+            sequence: 0,
             id: sampleRule.id,
             actions,
             description: sampleRule.name,
@@ -89,7 +90,7 @@ t.test("create rule", async () => {
 });
 
 t.test("retrieve created rule", async () => {
-    const response = await brease.client.listRules({contextId})
+    const response = await brease.client.listRules({ contextId })
     t.equal(response.rules.length, 1);
 
     const clientRules = response.rules.map(r => decodeClientRule(r))
@@ -99,7 +100,7 @@ t.test("retrieve created rule", async () => {
     } else {
         const condition = clientRules[0]!.expression.condition
         if (condition && 'base' in condition) {
-         t.equal(condition.value, sampleRule.query);
+            t.equal(condition.value, sampleRule.query);
         } else {
             t.fail("failed to decode condition");
         }
@@ -118,7 +119,7 @@ t.test("raw evaluate rule", async () => {
         object: Struct.fromJson(obj),
     })
     t.ok(response);
-    console.log(response);
+    // console.log(response);
     t.equal(response.results.length, 1)
     t.equal(response.results[0]!.action, "hide-field")
 
@@ -142,6 +143,7 @@ t.test("create second rule", async () => {
     const response = await brease.client.createRule({
         contextId,
         rule: encodeClientRule({
+            sequence: 0,
             id: sampleRule2.id,
             actions,
             description: sampleRule2.name,
@@ -161,9 +163,9 @@ t.test("create second rule", async () => {
 });
 
 t.test("retrieve created rules", async () => {
-    const response = await brease.client.listRules({contextId})
+    const response = await brease.client.listRules({ contextId })
     t.equal(response.rules.length, 2);
-    console.log(JSON.stringify(response.rules, null, 2));
+    // console.log(JSON.stringify(response.rules, null, 2));
     t.same(new Set(response.rules.map(r => r.id)), new Set([sampleRule2.id, sampleRule.id]));
 });
 
@@ -179,7 +181,7 @@ t.test("raw evaluate rules", async () => {
         object: Struct.fromJson(obj),
     })
     t.ok(response);
-    console.log(response);
+    // console.log(response);
     t.equal(response.results.length, 2)
     t.equal(response.results[0]!.action, "hide-field")
     t.equal(response.results[1]!.action, "hide-field")
@@ -195,7 +197,7 @@ t.test("delete rule", async () => {
 });
 
 t.test("deleting one rule should not affect the other", async () => {
-    const response = await brease.client.listRules({contextId})
+    const response = await brease.client.listRules({ contextId })
     t.equal(response.rules.length, 1);
     t.equal(response.rules[0]!.id, sampleRule2.id);
 });
@@ -209,6 +211,8 @@ t.test("delete a rule", async () => {
 });
 
 t.test("no rules after all delete", async () => {
-    const response = await brease.client.listRules({contextId})
+    const response = await brease.client.listRules({ contextId })
     t.equal(response.rules.length, 0);
 });
+
+t.end()

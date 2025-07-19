@@ -11,7 +11,9 @@ RUN go build -v -o /brease .
 
 FROM debian:bookworm
 # Update package lists and install ca-certificates
-RUN apt-get update && apt-get install -y \
+RUN apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    apt-get update --fix-missing && apt-get install -y \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /brease /usr/local/bin/

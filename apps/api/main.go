@@ -1,17 +1,18 @@
 package main
 
 import (
-	"buf.build/gen/go/dot/brease/grpc-ecosystem/gateway/v2/brease/auth/v1/authv1gateway"
-	"buf.build/gen/go/dot/brease/grpc-ecosystem/gateway/v2/brease/context/v1/contextv1gateway"
 	"bytes"
+	"connectrpc.com/grpcreflect"
+	"connectrpc.com/vanguard"
 	"context"
 	"errors"
 	"fmt"
+	"github.com/arl/statsviz"
 	sentrygin "github.com/getsentry/sentry-go/gin"
 	"github.com/gin-contrib/static"
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	openapi2 "go.dot.industries/brease/openapi"
 	trace2 "go.dot.industries/brease/trace"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"io"
 	"log"
 	"net/http"
@@ -42,7 +43,6 @@ import (
 	"go.dot.industries/brease/storage"
 	"go.dot.industries/brease/storage/buntdb"
 
-	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -148,11 +148,15 @@ func newApp(db storage.Database, logger *zap.Logger) *gin.Engine {
 			})
 		}
 	}
-	r.Use(otelgin.Middleware(otelServiceName()))
 	r.Use(requestid.New())
+	r.Use(otelgin.Middleware(otelServiceName(), otelgin.WithSpanNameFormatter(trace2.SpanNameFormatter)))
 	r.Use(stats.RequestStats())
 	r.Use(ginzap.GinzapWithConfig(logger, ginLoggerConfig()))
-	r.Use(static.Serve("/", static.EmbedFolder(openapi2.OpenApiAssets, "assets")))
+	oaAssets, err := static.EmbedFolder(openapi2.OpenApiAssets, "assets")
+	if err != nil {
+		panic(err)
+	}
+	r.Use(static.Serve("/", oaAssets))
 	r.Use(gin.Recovery())
 	r.Use(auth.Middleware(logger, []*regexp.Regexp{regexp.MustCompile("^/(brease.*|v1.*)$")}))
 	r.Use(auditlog.Middleware(
@@ -180,6 +184,18 @@ func newApp(db storage.Database, logger *zap.Logger) *gin.Engine {
 	r.GET("/stats", func(c *gin.Context) {
 		c.IndentedJSON(http.StatusOK, stats.Report())
 	})
+	// region setup server stats
+	srv, _ := statsviz.NewServer()
+	statsWs := srv.Ws()
+	statsIndex := srv.Index()
+	r.GET("/debug/statsviz/*filepath", func(context *gin.Context) {
+		if context.Param("filepath") == "/ws" {
+			statsWs(context.Writer, context.Request)
+			return
+		}
+		statsIndex(context.Writer, context.Request)
+	})
+	// endregion
 
 	// health
 	checker := grpchealth.NewStaticChecker(
@@ -189,28 +205,44 @@ func newApp(db storage.Database, logger *zap.Logger) *gin.Engine {
 	healthPath, healthHandler := grpchealth.NewHandler(checker)
 	r.GET(healthPath+"/*path", gin.WrapH(healthHandler))
 
-	mux := runtime.NewServeMux(
-		auth.WithMetadataTransfer(),
-	)
 	bh := api.NewHandler(db, memory.New(), logger)
 
 	// openapi auth
-	err = authv1gateway.RegisterAuthServiceHandlerServer(context.Background(), mux, bh.OpenApi)
-	if err != nil {
-		logger.Fatal("Failed to set up grpc-gateway for auth")
-	}
+	//err = authv1gateway.RegisterAuthServiceHandlerServer(context.Background(), mux, bh.OpenApi)
+	//if err != nil {
+	//	logger.Fatal("Failed to set up grpc-gateway for auth")
+	//}
 	// connect auth
 	authPath, authHandler := authv1connect.NewAuthServiceHandler(bh)
+	authService := vanguard.NewService(authPath, authHandler)
 	r.Match([]string{"POST"}, authPath+"/*path", gin.WrapH(authHandler))
 
 	// openapi context
-	err = contextv1gateway.RegisterContextServiceHandlerServer(context.Background(), mux, bh.OpenApi)
-	if err != nil {
-		logger.Fatal("Failed to set up grpc-gateway for context")
-	}
+	//err = contextv1gateway.RegisterContextServiceHandlerServer(context.Background(), mux, bh.OpenApi)
+	//if err != nil {
+	//	logger.Fatal("Failed to set up grpc-gateway for context")
+	//}
 	// connect context
 	ctxPath, ctxHandler := contextv1connect.NewContextServiceHandler(bh, connect.WithInterceptors(auth.NewAuthInterceptor(logger)))
+	ctxService := vanguard.NewService(ctxPath, ctxHandler)
 	r.Match([]string{"POST", "GET", "PATCH", "DELETE"}, ctxPath+"/*path", gin.WrapH(ctxHandler))
+
+	transcoder, err := vanguard.NewTranscoder([]*vanguard.Service{
+		authService,
+		ctxService,
+	})
+	if err != nil {
+		logger.Fatal("Failed to set up vanguard transcoder")
+	}
+
+	//mux := runtime.NewServeMux(
+	//	auth.WithMetadataTransfer(),
+	//)
+	mux := http.NewServeMux()
+	mux.Handle("/", transcoder)
+
+	// add grpc reflection support for tools like `buf curl` or `grpcurl`
+	mux.Handle(grpcreflect.NewHandlerV1(grpcreflect.NewStaticReflector(authv1connect.AuthServiceName, contextv1connect.ContextServiceName)))
 
 	// register openapi handlers
 	r.Any("/v1/*any", gin.WrapF(mux.ServeHTTP))
@@ -299,5 +331,5 @@ func newOpenapi(r *gin.Engine) *fizz.Fizz {
 }
 
 func otelServiceName() string {
-	return env.Getenv("OTEL_SERVICE_NAME", "")
+	return env.Getenv("OTEL_SERVICE_NAME", "brease")
 }

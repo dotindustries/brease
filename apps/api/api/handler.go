@@ -8,6 +8,7 @@ import (
 	rulev1 "buf.build/gen/go/dot/brease/protocolbuffers/go/brease/rule/v1"
 	"connectrpc.com/connect"
 	"context"
+	"github.com/janvaclavik/govar"
 	"go.dot.industries/brease/auth"
 	"go.dot.industries/brease/cache"
 	"go.dot.industries/brease/code"
@@ -52,6 +53,24 @@ type openApiHandler struct {
 	handler *BreaseHandler
 }
 
+func (o *openApiHandler) GetObjectSchema(ctx context.Context, request *contextv1.GetObjectSchemaRequest) (*contextv1.GetObjectSchemaResponse, error) {
+	ctx = o.forwardMetadata(ctx)
+	r, err := o.handler.GetObjectSchema(ctx, connect.NewRequest(request))
+	if err != nil {
+		return nil, err
+	}
+	return r.Msg, nil
+}
+
+func (o *openApiHandler) ReplaceObjectSchema(ctx context.Context, request *contextv1.ReplaceObjectSchemaRequest) (*contextv1.ReplaceObjectSchemaResponse, error) {
+	ctx = o.forwardMetadata(ctx)
+	r, err := o.handler.ReplaceObjectSchema(ctx, connect.NewRequest(request))
+	if err != nil {
+		return nil, err
+	}
+	return r.Msg, nil
+}
+
 func (o *openApiHandler) GetToken(ctx context.Context, empty *emptypb.Empty) (*authv1.TokenPair, error) {
 	ctx = o.forwardMetadata(ctx)
 	r, err := o.handler.GetToken(ctx, connect.NewRequest(empty))
@@ -72,6 +91,7 @@ func (o *openApiHandler) RefreshToken(ctx context.Context, request *authv1.Refre
 
 func (o *openApiHandler) ListRules(ctx context.Context, request *contextv1.ListRulesRequest) (*contextv1.ListRulesResponse, error) {
 	ctx = o.forwardMetadata(ctx)
+	govar.Dump(ctx)
 	r, err := o.handler.ListRules(ctx, connect.NewRequest(request))
 	if err != nil {
 		return nil, err

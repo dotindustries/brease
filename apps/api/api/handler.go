@@ -53,6 +53,7 @@ type openApiHandler struct {
 }
 
 func (o *openApiHandler) GetToken(ctx context.Context, empty *emptypb.Empty) (*authv1.TokenPair, error) {
+	ctx = o.forwardMetadata(ctx)
 	r, err := o.handler.GetToken(ctx, connect.NewRequest(empty))
 	if err != nil {
 		return nil, err
@@ -61,6 +62,7 @@ func (o *openApiHandler) GetToken(ctx context.Context, empty *emptypb.Empty) (*a
 }
 
 func (o *openApiHandler) RefreshToken(ctx context.Context, request *authv1.RefreshTokenRequest) (*authv1.TokenPair, error) {
+	ctx = o.forwardMetadata(ctx)
 	r, err := o.handler.RefreshToken(ctx, connect.NewRequest(request))
 	if err != nil {
 		return nil, err
@@ -69,11 +71,7 @@ func (o *openApiHandler) RefreshToken(ctx context.Context, request *authv1.Refre
 }
 
 func (o *openApiHandler) ListRules(ctx context.Context, request *contextv1.ListRulesRequest) (*contextv1.ListRulesResponse, error) {
-	md, ok := metadata.FromIncomingContext(ctx)
-	if ok {
-		ctx = context.WithValue(ctx, auth.ContextOrgKey, md.Get(auth.ContextOrgKey))
-		ctx = context.WithValue(ctx, auth.ContextUserIDKey, md.Get(auth.ContextUserIDKey))
-	}
+	ctx = o.forwardMetadata(ctx)
 	r, err := o.handler.ListRules(ctx, connect.NewRequest(request))
 	if err != nil {
 		return nil, err
@@ -82,6 +80,7 @@ func (o *openApiHandler) ListRules(ctx context.Context, request *contextv1.ListR
 }
 
 func (o *openApiHandler) GetRule(ctx context.Context, request *contextv1.GetRuleRequest) (*rulev1.VersionedRule, error) {
+	ctx = o.forwardMetadata(ctx)
 	r, err := o.handler.GetRule(ctx, connect.NewRequest(request))
 	if err != nil {
 		return nil, err
@@ -90,6 +89,7 @@ func (o *openApiHandler) GetRule(ctx context.Context, request *contextv1.GetRule
 }
 
 func (o *openApiHandler) GetRuleVersions(ctx context.Context, request *contextv1.ListRuleVersionsRequest) (*contextv1.ListRuleVersionsResponse, error) {
+	ctx = o.forwardMetadata(ctx)
 	r, err := o.handler.GetRuleVersions(ctx, connect.NewRequest(request))
 	if err != nil {
 		return nil, err
@@ -98,6 +98,7 @@ func (o *openApiHandler) GetRuleVersions(ctx context.Context, request *contextv1
 }
 
 func (o *openApiHandler) CreateRule(ctx context.Context, request *contextv1.CreateRuleRequest) (*rulev1.VersionedRule, error) {
+	ctx = o.forwardMetadata(ctx)
 	r, err := o.handler.CreateRule(ctx, connect.NewRequest(request))
 	if err != nil {
 		return nil, err
@@ -106,6 +107,7 @@ func (o *openApiHandler) CreateRule(ctx context.Context, request *contextv1.Crea
 }
 
 func (o *openApiHandler) UpdateRule(ctx context.Context, request *contextv1.UpdateRuleRequest) (*rulev1.VersionedRule, error) {
+	ctx = o.forwardMetadata(ctx)
 	r, err := o.handler.UpdateRule(ctx, connect.NewRequest(request))
 	if err != nil {
 		return nil, err
@@ -114,6 +116,7 @@ func (o *openApiHandler) UpdateRule(ctx context.Context, request *contextv1.Upda
 }
 
 func (o *openApiHandler) DeleteRule(ctx context.Context, request *contextv1.DeleteRuleRequest) (*emptypb.Empty, error) {
+	ctx = o.forwardMetadata(ctx)
 	r, err := o.handler.DeleteRule(ctx, connect.NewRequest(request))
 	if err != nil {
 		return nil, err
@@ -122,9 +125,26 @@ func (o *openApiHandler) DeleteRule(ctx context.Context, request *contextv1.Dele
 }
 
 func (o *openApiHandler) Evaluate(ctx context.Context, request *contextv1.EvaluateRequest) (*contextv1.EvaluateResponse, error) {
+	ctx = o.forwardMetadata(ctx)
 	r, err := o.handler.Evaluate(ctx, connect.NewRequest(request))
 	if err != nil {
 		return nil, err
 	}
 	return r.Msg, nil
+}
+
+func (o *openApiHandler) forwardMetadata(ctx context.Context) context.Context {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return ctx
+	}
+
+	if orgIds := md.Get(auth.ContextOrgKey); len(orgIds) > 0 {
+		ctx = context.WithValue(ctx, auth.ContextOrgKey, orgIds[0])
+	}
+	if userIds := md.Get(auth.ContextUserIDKey); len(userIds) > 0 {
+		ctx = context.WithValue(ctx, auth.ContextUserIDKey, userIds[0])
+	}
+
+	return ctx
 }

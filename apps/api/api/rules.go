@@ -12,16 +12,14 @@ import (
 )
 
 func (b *BreaseHandler) ListRules(ctx context.Context, c *connect.Request[v1.ListRulesRequest]) (*connect.Response[v1.ListRulesResponse], error) {
-	orgID := auth.CtxString(ctx, auth.ContextOrgKey)
+	orgID, _, _, cErr := permissionCheck(ctx, auth.PermissionReadRule)
+	if cErr != nil {
+		b.logger.Warn("ListRules", zap.String("contextID", c.Msg.ContextId), zap.String("orgID", orgID))
+		return nil, cErr
+	}
 	pageToken := c.Msg.PageToken
 	pageSize := c.Msg.PageSize
-	if orgID == "" {
-		b.logger.Warn("ListRules", zap.String("contextID", c.Msg.ContextId), zap.String("orgID", orgID))
-		return nil, connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("missing orgID"))
-	}
-	if !auth.HasPermission(ctx, auth.PermissionReadRule) {
-		return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("permission denied"))
-	}
+
 	rules, err := b.db.Rules(ctx, orgID, c.Msg.ContextId, int(pageSize), pageToken)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to fetch rules: %v", err))

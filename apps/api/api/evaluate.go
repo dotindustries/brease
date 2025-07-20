@@ -40,7 +40,7 @@ func (b *BreaseHandler) Evaluate(ctx context.Context, c *connect.Request[context
 				}
 				errStr += e
 			}
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.Wrap(schemaErr, fmt.Errorf("invalid object shape: %s", errStr)))
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid object shape: %s", errStr))
 		}
 	}
 

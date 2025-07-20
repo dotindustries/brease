@@ -127,3 +127,11 @@ message ReplaceObjectSchemaRequest {
 message ReplaceObjectSchemaResponse {
 
 }
+
+message ListContextsReqeust {
+
+}
+
+message ListContextsResponse {
+  repeated string context_ids = 1;
+}

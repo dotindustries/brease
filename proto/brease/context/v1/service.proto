@@ -8,6 +8,13 @@ import "brease/rule/v1/model.proto";
 package brease.context.v1;
 
 service ContextService {
+  // Returns a list of the contexts within the organization
+  rpc ListContexts(ListContextsReqeust) returns (ListContextsResponse) {
+    option (google.api.http) = {
+      get: '/v1/context'
+    };
+  }
+
   // Returns the schema definition of the context
   rpc GetObjectSchema(GetObjectSchemaRequest) returns (GetObjectSchemaResponse) {
     option (google.api.http) = {
@@ -15,6 +22,7 @@ service ContextService {
     };
   }
 
+  // Updates the schema definition of the context
   rpc ReplaceObjectSchema(ReplaceObjectSchemaRequest) returns (ReplaceObjectSchemaResponse) {
     option (google.api.http) = {
       post: "/v1/{context_id}/schema"

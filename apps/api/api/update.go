@@ -6,14 +6,16 @@ import (
 	"connectrpc.com/connect"
 	"context"
 	"fmt"
+	"go.uber.org/zap"
 
 	"go.dot.industries/brease/auth"
 )
 
 func (b *BreaseHandler) UpdateRule(ctx context.Context, c *connect.Request[contextv1.UpdateRuleRequest]) (*connect.Response[rulev1.VersionedRule], error) {
-	orgID := auth.CtxString(ctx, auth.ContextOrgKey)
-	if !auth.HasPermission(ctx, auth.PermissionCreateRule) {
-		return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("permission denied"))
+	orgID, _, _, cErr := permissionCheck(ctx, auth.PermissionCreateRule)
+	if cErr != nil {
+		b.logger.Warn("UpdateRule", zap.String("contextID", c.Msg.ContextId), zap.String("orgID", orgID))
+		return nil, cErr
 	}
 	updatedRule, err := b.db.ReplaceRule(ctx, orgID, c.Msg.ContextId, c.Msg.Rule)
 	if err != nil {

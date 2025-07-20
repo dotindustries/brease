@@ -6,6 +6,7 @@ import (
 	"context"
 	"github.com/pkg/errors"
 	"go.dot.industries/brease/auth"
+	"go.dot.industries/brease/cache"
 	"go.uber.org/zap"
 )
 
@@ -32,10 +33,12 @@ func (b *BreaseHandler) ReplaceObjectSchema(ctx context.Context, c *connect.Requ
 	}
 
 	// verify schema validity
-	_, err := b.jsonSchemaCompiler.Compile([]byte(c.Msg.Schema))
+	compiledSchema, err := b.jsonSchemaCompiler.Compile([]byte(c.Msg.Schema))
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.Wrap(err, "invalid json schema"))
 	}
+	// if we can't set it to cache, at worst it's gonna cause a delay on the next call
+	_ = b.cache.Set(ctx, cache.SimpleHash(c.Msg.Schema), compiledSchema)
 
 	err = b.db.ReplaceObjectSchema(ctx, orgID, c.Msg.ContextId, c.Msg.Schema)
 	if err != nil {

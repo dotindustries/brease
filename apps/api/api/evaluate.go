@@ -6,6 +6,8 @@ import (
 	"connectrpc.com/connect"
 	"context"
 	"fmt"
+	"github.com/kaptinlin/jsonschema"
+	"go.dot.industries/brease/cache"
 	"go.dot.industries/brease/code"
 	"google.golang.org/protobuf/types/known/structpb"
 
@@ -14,10 +16,34 @@ import (
 )
 
 func (b *BreaseHandler) Evaluate(ctx context.Context, c *connect.Request[contextv1.EvaluateRequest]) (*connect.Response[contextv1.EvaluateResponse], error) {
-	orgID := auth.CtxString(ctx, auth.ContextOrgKey)
-	if !auth.HasPermission(ctx, auth.PermissionEvaluate) && !auth.HasPermission(ctx, auth.PermissionReadRule) {
-		return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("permission denied"))
+	orgID, _, _, cErr := permissionCheck(ctx, auth.PermissionEvaluate, auth.PermissionReadRule)
+	if cErr != nil {
+		return nil, cErr
 	}
+
+	schema, err := b.db.GetObjectSchema(ctx, orgID, c.Msg.ContextId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to fetch object schema: %v", err))
+	}
+	if schema != "" {
+		compiledSchema, schemaErr := b.compiledObjectSchema(ctx, schema)
+		if schemaErr != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.Wrap(schemaErr, fmt.Errorf("invalid json schema")))
+		}
+		res := compiledSchema.ValidateStruct(c.Msg.Object)
+		if !res.Valid {
+			es := res.ToList()
+			errStr := ""
+			for _, e := range es.Errors {
+				if len(errStr) > 0 {
+					errStr += ", "
+				}
+				errStr += e
+			}
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.Wrap(schemaErr, fmt.Errorf("invalid object shape: %s", errStr)))
+		}
+	}
+
 	codeBlock, err := b.findCode(ctx, c.Msg, orgID)
 	if err != nil {
 		return nil, err
@@ -31,6 +57,20 @@ func (b *BreaseHandler) Evaluate(ctx context.Context, c *connect.Request[context
 	return connect.NewResponse(&contextv1.EvaluateResponse{
 		Results: results,
 	}), nil
+}
+
+func (b *BreaseHandler) compiledObjectSchema(ctx context.Context, schema string) (*jsonschema.Schema, error) {
+	compiled := b.cache.Get(ctx, cache.SimpleHash(schema))
+	if compiled != nil && compiled != "" {
+		return compiled.(*jsonschema.Schema), nil
+	}
+	compiledSchema, err := b.jsonSchemaCompiler.Compile([]byte(schema))
+	if err != nil {
+		return nil, err
+	}
+	// if we can't set it to cache, at worst it's gonna cause a delay on the next call
+	_ = b.cache.Set(ctx, cache.SimpleHash(schema), compiledSchema)
+	return compiledSchema, err
 }
 
 func (b *BreaseHandler) run(ctx context.Context, codeBlock string, object *structpb.Struct) ([]*rulev1.EvaluationResult, error) {

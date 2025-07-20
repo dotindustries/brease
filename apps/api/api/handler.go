@@ -23,6 +23,7 @@ type BreaseHandler struct {
 	compiler           *code.Compiler
 	token              auth.Token
 	jsonSchemaCompiler *jsonschema.Compiler
+	cache              cache.Cache
 }
 
 func NewHandler(db storage.Database, c cache.Cache, logger *zap.Logger) *BreaseHandler {
@@ -36,6 +37,7 @@ func NewHandler(db storage.Database, c cache.Cache, logger *zap.Logger) *BreaseH
 		compiler:           code.NewCompiler(logger),
 		token:              auth.NewToken(logger),
 		jsonSchemaCompiler: jsonschema.NewCompiler(),
+		cache:              c,
 	}
 
 	return bh

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/janvaclavik/govar"
 	"github.com/unkeyed/unkey/sdks/golang/models/components"
 	"github.com/unkeyed/unkey/sdks/golang/models/sdkerrors"
 	"go.dot.industries/brease/trace"
@@ -68,6 +69,7 @@ func NewAuthInterceptor(logger *zap.Logger) connect.UnaryInterceptorFunc {
 			ctx context.Context,
 			req connect.AnyRequest,
 		) (connect.AnyResponse, error) {
+			govar.Dump(ctx, req.Header())
 			isClient := req.Spec().IsClient
 			if isClient {
 				// TODO: client side auth interceptor
@@ -115,7 +117,7 @@ func Middleware(logger *zap.Logger, protectPaths []*regexp.Regexp) gin.HandlerFu
 		if orgID := CtxString(ctx, ContextOrgKey); orgID != "" {
 			c.Set(ContextOrgKey, orgID)
 		}
-		if permissions := CtxString(ctx, ContextPermissionsKey); permissions != "" {
+		if permissions := CtxStringArr(ctx, ContextPermissionsKey); len(permissions) > 0 {
 			c.Set(ContextPermissionsKey, permissions)
 		}
 
@@ -471,8 +473,20 @@ func validateJWT(ctx context.Context, args interface{}) (interface{}, error) {
 	}
 	userID = uid.(string)
 
-	permissions := claims["permissions"].([]string)
-	// FIXME: do we have to look up the token under the orgID to be sure it's valid?
+	rawp, ok := claims[ContextPermissionsKey]
+	if !ok {
+		return validateAuthTokenResult{
+			error: &validationErr{
+				Status: http.StatusUnauthorized,
+				Error:  errors2.BadRequestf("Invalid JWT: '%s' missing", ContextPermissionsKey),
+			},
+		}, nil
+	}
+
+	permissions := make([]string, len(rawp.([]interface{})))
+	for i, p := range rawp.([]interface{}) {
+		permissions[i] = p.(string)
+	}
 
 	return validateAuthTokenResult{authed: true, token: token, userID: userID, orgID: orgID, permissions: permissions}, nil
 }

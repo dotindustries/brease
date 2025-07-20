@@ -158,7 +158,7 @@ func newApp(db storage.Database, logger *zap.Logger) *gin.Engine {
 	}
 	r.Use(static.Serve("/", oaAssets))
 	r.Use(gin.Recovery())
-	//r.Use(auth.Middleware(logger, []*regexp.Regexp{regexp.MustCompile("^/(brease.*|v1.*)$")}))
+	r.Use(auth.Middleware(logger, []*regexp.Regexp{regexp.MustCompile("^/(brease.*|v1.*)$")}))
 	r.Use(auditlog.Middleware(
 		auditLogStore(logger),
 		auditlog.WithSensitivePaths([]*regexp.Regexp{regexp.MustCompile("^/(token|refreshToken)$")}),
@@ -208,7 +208,7 @@ func newApp(db storage.Database, logger *zap.Logger) *gin.Engine {
 	bh := api.NewHandler(db, memory.New(), logger)
 
 	// connect auth
-	authPath, authHandler := authv1connect.NewAuthServiceHandler(bh)
+	authPath, authHandler := authv1connect.NewAuthServiceHandler(bh, connect.WithInterceptors(auth.NewAuthInterceptor(logger)))
 	authService := vanguard.NewService(authPath, authHandler)
 	r.Match([]string{"POST"}, authPath+"/*path", gin.WrapH(authHandler))
 
@@ -225,9 +225,6 @@ func newApp(db storage.Database, logger *zap.Logger) *gin.Engine {
 		logger.Fatal("Failed to set up vanguard transcoder")
 	}
 
-	//mux := runtime.NewServeMux(
-	//	auth.WithMetadataTransfer(),
-	//)
 	mux := http.NewServeMux()
 	mux.Handle("/", transcoder)
 

@@ -15,10 +15,14 @@ import (
 func (b *BreaseHandler) GetToken(ctx context.Context, c *connect.Request[emptypb.Empty]) (*connect.Response[authv1.TokenPair], error) {
 	ownerID := auth.CtxString(ctx, auth.ContextOrgKey)
 	userID := auth.CtxString(ctx, auth.ContextUserIDKey)
+	permissions := auth.CtxStringArr(ctx, auth.ContextPermissionsKey)
 	if !auth.HasPermission(ctx, auth.PermissionCreateRule) {
 		return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("permission denied"))
 	}
-	tp, err := b.generateTokenPair(ownerID, userID)
+	tp, err := b.generateTokenPair(ownerID, userID, auth.ClaimPair[any]{
+		Key:   auth.ContextPermissionsKey,
+		Value: permissions,
+	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to generate tokens: %w", err))
 	}
@@ -51,6 +55,16 @@ func (b *BreaseHandler) RefreshToken(ctx context.Context, c *connect.Request[aut
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("refreshToken not found"))
 	}
 
+	userId, ok := claims[auth.ContextUserIDKey].(string)
+	if !ok {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid refreshToken userId"))
+	}
+
+	permissions, ok := claims[auth.ContextPermissionsKey].([]string)
+	if !ok {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid refreshToken permissions"))
+	}
+
 	unknown := true
 	for _, tp := range oldTokenPairs {
 		if tp.RefreshToken == c.Msg.RefreshToken {
@@ -62,7 +76,10 @@ func (b *BreaseHandler) RefreshToken(ctx context.Context, c *connect.Request[aut
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown refreshToken"))
 	}
 
-	tp, err := b.generateTokenPair(orgID, "")
+	tp, err := b.generateTokenPair(orgID, userId, auth.ClaimPair[any]{
+		Key:   auth.ContextPermissionsKey,
+		Value: permissions,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -74,19 +91,21 @@ func (b *BreaseHandler) RefreshToken(ctx context.Context, c *connect.Request[aut
 	return connect.NewResponse(tp), nil
 }
 
-func (b *BreaseHandler) generateTokenPair(ownerID string, userID string) (tp *authv1.TokenPair, err error) {
-	t, err := b.token.Sign(ownerID, userID, 0)
+func (b *BreaseHandler) generateTokenPair(ownerID string, userID string, addClaims ...auth.ClaimPair[any]) (tp *authv1.TokenPair, err error) {
+	t, err := b.token.Sign(ownerID, userID, 0, addClaims...)
 	if err != nil {
 		return tp, fmt.Errorf("failed to generate accessToken: %w", err)
 	}
 
-	rt, err := b.token.Sign(ownerID, userID, time.Hour*24)
+	rt, err := b.token.Sign(ownerID, userID, time.Hour*24, addClaims...)
 	if err != nil {
 		return tp, fmt.Errorf("failed to generate refreshToken: %w", err)
 	}
 
-	tp.AccessToken = t
-	tp.RefreshToken = rt
+	tp = &authv1.TokenPair{
+		AccessToken:  t,
+		RefreshToken: rt,
+	}
 
 	return tp, nil
 }

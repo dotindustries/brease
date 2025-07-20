@@ -196,7 +196,9 @@ paths:
                     type: string
                 - name: updateMask
                   in: query
-                  description: The update mask applies to the resource. For the `FieldMask` definition, see https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#fieldmask
+                  description: |-
+                    The update mask applies to the resource. For the `FieldMask` definition,
+                     see https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#fieldmask
                   schema:
                     type: string
                     format: field-mask
@@ -322,6 +324,60 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /v1/{contextId}/schema:
+        get:
+            tags:
+                - ContextService
+            description: Returns the schema definition of the context
+            operationId: ContextService_GetObjectSchema
+            parameters:
+                - name: contextId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetObjectSchemaResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+        post:
+            tags:
+                - ContextService
+            operationId: ContextService_ReplaceObjectSchema
+            parameters:
+                - name: contextId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/ReplaceObjectSchemaRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ReplaceObjectSchemaResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
 components:
     schemas:
         Action:
@@ -329,9 +385,13 @@ components:
             properties:
                 kind:
                     type: string
-                    description: The name of the action example:"$set"
+                    description: |-
+                        The name of the action
+                         example:"$set"
                 target:
-                    $ref: '#/components/schemas/Target'
+                    allOf:
+                        - $ref: '#/components/schemas/Target'
+                    description: The target the action applies to
         And:
             type: object
             properties:
@@ -346,7 +406,9 @@ components:
                     type: string
                     description: Holds a direct object key to be used the value extraction
                 ref:
-                    $ref: '#/components/schemas/ConditionBaseRef'
+                    allOf:
+                        - $ref: '#/components/schemas/ConditionBaseRef'
+                    description: Holds a dref reference (see dalí project for details)
                 kind:
                     enum:
                         - e
@@ -383,7 +445,13 @@ components:
                 value:
                     type: string
                     format: bytes
-            description: 'A reference to point to third party data to be used as the value for the condition. Data retrieval requires dalí integration. Uses a dref format based on the dalí project. Stringified format: `$/map[0]/prop=>/~/datasource/table/searchExpr/selectExpr` Object format: { src: `$/map[0]/prop`, dst: `/~/datasource/table/searchExpr/selectExpr` }'
+            description: |-
+                A reference to point to third party data to be used as the value for the condition.
+
+                 Data retrieval requires dalí integration.
+                 Uses a dref format based on the dalí project.
+                 Stringified format: `$/map[0]/prop=>/~/datasource/table/searchExpr/selectExpr`
+                 Object format: { src: `$/map[0]/prop`, dst: `/~/datasource/table/searchExpr/selectExpr` }
         EvaluateRequest:
             type: object
             properties:
@@ -397,10 +465,16 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/Rule'
-                    description: Rules to be applied instead of the stored rules of the context. This is mostly useful for testing purposes or ad-hoc / one-off requests where there is not context set up prior to the evaluation.
+                    description: |-
+                        Rules to be applied instead of the stored rules of the context.
+                         This is mostly useful for testing purposes or
+                         ad-hoc / one-off requests where there is not context set up prior to the evaluation.
                 overrideCode:
                     type: string
-                    description: Assembled code can be provided, in this case the saved ruleset of the context is ignored. This is mostly useful for testing purposes or ad-hoc / one-off requests where there is not context set up prior to the evaluation.
+                    description: |-
+                        Assembled code can be provided, in this case the saved ruleset of the context is ignored.
+                         This is mostly useful for testing purposes or
+                         ad-hoc / one-off requests where there is not context set up prior to the evaluation.
         EvaluateResponse:
             type: object
             properties:
@@ -415,9 +489,15 @@ components:
                     type: string
                     description: The action to be applied
                 target:
-                    $ref: '#/components/schemas/Target'
+                    allOf:
+                        - $ref: '#/components/schemas/Target'
+                    description: The target the action needs to be applied to
                 by:
-                    $ref: '#/components/schemas/RuleRef'
+                    allOf:
+                        - $ref: '#/components/schemas/RuleRef'
+                    description: |-
+                        The truthy rule ID responsible for this result
+                         This field is used by the frontend devtools packages.
         Expression:
             type: object
             properties:
@@ -427,6 +507,11 @@ components:
                     $ref: '#/components/schemas/Or'
                 condition:
                     $ref: '#/components/schemas/Condition'
+        GetObjectSchemaResponse:
+            type: object
+            properties:
+                schema:
+                    type: string
         GoogleProtobufAny:
             type: object
             properties:
@@ -474,12 +559,26 @@ components:
             properties:
                 refreshToken:
                     type: string
+        ReplaceObjectSchemaRequest:
+            type: object
+            properties:
+                contextId:
+                    type: string
+                schema:
+                    type: string
+        ReplaceObjectSchemaResponse:
+            type: object
+            properties: {}
         Rule:
             type: object
             properties:
                 id:
                     type: string
                     description: example:"rule_01h89qfdhbejtb3jwqq1gazbm5"
+                sequence:
+                    type: integer
+                    description: The sequence number of the rule within the context
+                    format: uint32
                 description:
                     type: string
                 actions:
@@ -487,7 +586,16 @@ components:
                     items:
                         $ref: '#/components/schemas/Action'
                 expression:
-                    $ref: '#/components/schemas/Expression'
+                    allOf:
+                        - $ref: '#/components/schemas/Expression'
+                    description: |-
+                        A variadic condition expression
+                          Expression:
+                            type: object
+                            oneOf:
+                              - $ref: '#/components/schemas/And'
+                              - $ref: '#/components/schemas/Or'
+                              - $ref: '#/components/schemas/Condition'
         RuleRef:
             type: object
             properties:
@@ -518,10 +626,15 @@ components:
             properties:
                 kind:
                     type: string
-                    description: This is what determines the type of the id field's value example:"jsonpath" example:"myTargetKind"
+                    description: |-
+                        This is what determines the type of the id field's value
+                         example:"jsonpath" example:"myTargetKind"
                 id:
                     type: string
-                    description: The identifier for the target. It can be a jsonpath a simple property name or an arbitrary third party id example:"$.prop" example:"propKey" example:"target_01h89qgxe5e7wregw6gb94d5p6"
+                    description: |-
+                        The identifier for the target.
+                         It can be a jsonpath a simple property name or an arbitrary third party id
+                         example:"$.prop" example:"propKey" example:"target_01h89qgxe5e7wregw6gb94d5p6"
                 value:
                     type: string
                     description: The target value to be set (it is the json serialized representation of the value)
@@ -540,8 +653,11 @@ components:
                     type: string
                     description: example:"rule_01h89qfdhbejtb3jwqq1gazbm5"
                 version:
+                    type: string
+                sequence:
                     type: integer
-                    format: uint64
+                    description: The sequence number of the rule within the context
+                    format: uint32
                 description:
                     type: string
                 actions:
@@ -549,7 +665,16 @@ components:
                     items:
                         $ref: '#/components/schemas/Action'
                 expression:
-                    $ref: '#/components/schemas/Expression'
+                    allOf:
+                        - $ref: '#/components/schemas/Expression'
+                    description: |-
+                        A variadic condition expression
+                          Expression:
+                            type: object
+                            oneOf:
+                              - $ref: '#/components/schemas/And'
+                              - $ref: '#/components/schemas/Or'
+                              - $ref: '#/components/schemas/Condition'
     headers:
         X-ORG-ID:
             description: Make sure to include the X-ORG-ID header when using this API key.

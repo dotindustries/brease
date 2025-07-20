@@ -21,7 +21,7 @@ type Options struct {
 	Logger *zap.Logger
 }
 
-func NewDatabase(opts Options) (storage.Database, error) {
+func NewDatabase(opts Options) (*Container, error) {
 	if opts.Path == "" {
 		opts.Path = ":memory:"
 	}
@@ -33,7 +33,7 @@ func NewDatabase(opts Options) (storage.Database, error) {
 		return nil, err
 	}
 
-	b := &buntdbContainer{
+	b := &Container{
 		db:     db,
 		logger: opts.Logger,
 		rulePool: sync.Pool{
@@ -48,17 +48,17 @@ func NewDatabase(opts Options) (storage.Database, error) {
 	return b, nil
 }
 
-type buntdbContainer struct {
+type Container struct {
 	db       *buntdb.DB
 	logger   *zap.Logger
 	rulePool sync.Pool
 }
 
-func (b *buntdbContainer) Close() error {
+func (b *Container) Close() error {
 	return b.db.Close()
 }
 
-func (b *buntdbContainer) AddRule(_ context.Context, ownerID string, contextID string, rule *rulev1.Rule) (*rulev1.VersionedRule, error) {
+func (b *Container) AddRule(_ context.Context, ownerID string, contextID string, rule *rulev1.Rule) (*rulev1.VersionedRule, error) {
 	vRule := &rulev1.VersionedRule{
 		Id:          rule.Id,
 		Version:     1,
@@ -92,7 +92,7 @@ func (b *buntdbContainer) AddRule(_ context.Context, ownerID string, contextID s
 	return vRule, err
 }
 
-func (b *buntdbContainer) Rules(_ context.Context, ownerID string, contextID string, pageSize int, pageToken string) (rules []*rulev1.VersionedRule, err error) {
+func (b *Container) Rules(_ context.Context, ownerID string, contextID string, pageSize int, pageToken string) (rules []*rulev1.VersionedRule, err error) {
 	rkSearch := storage.RuleKey(ownerID, contextID, "*")
 
 	if env.IsDebug() {
@@ -144,7 +144,7 @@ func (b *buntdbContainer) Rules(_ context.Context, ownerID string, contextID str
 	return
 }
 
-func (b *buntdbContainer) RuleVersions(_ context.Context, ownerID string, contextID string, ruleID string, pageSize int, pageToken string) (rules []*rulev1.VersionedRule, err error) {
+func (b *Container) RuleVersions(_ context.Context, ownerID string, contextID string, ruleID string, pageSize int, pageToken string) (rules []*rulev1.VersionedRule, err error) {
 	vkSearch := storage.RuleKey(ownerID, contextID, ruleID) + ":v*"
 	var ruleVersions []string
 	err = b.db.View(func(tx *buntdb.Tx) error {
@@ -170,7 +170,7 @@ func (b *buntdbContainer) RuleVersions(_ context.Context, ownerID string, contex
 	return
 }
 
-func (b *buntdbContainer) RemoveRule(_ context.Context, ownerID string, contextID string, ruleID string) error {
+func (b *Container) RemoveRule(_ context.Context, ownerID string, contextID string, ruleID string) error {
 	rk := storage.RuleKey(ownerID, contextID, ruleID)
 	vkSearch := storage.RuleKey(ownerID, contextID, ruleID) + ":v*"
 	var ruleVersions []string
@@ -201,7 +201,7 @@ func (b *buntdbContainer) RemoveRule(_ context.Context, ownerID string, contextI
 	})
 }
 
-func (b *buntdbContainer) ruleLatestVersion(ruleKey string) (version uint64, err error) {
+func (b *Container) ruleLatestVersion(ruleKey string) (version uint64, err error) {
 	version = 0
 	err = b.db.View(func(tx *buntdb.Tx) error {
 		vk, gErr := tx.Get(ruleKey)
@@ -214,7 +214,7 @@ func (b *buntdbContainer) ruleLatestVersion(ruleKey string) (version uint64, err
 	return
 }
 
-func (b *buntdbContainer) ReplaceRule(_ context.Context, ownerID string, contextID string, rule *rulev1.Rule) (*rulev1.VersionedRule, error) {
+func (b *Container) ReplaceRule(_ context.Context, ownerID string, contextID string, rule *rulev1.Rule) (*rulev1.VersionedRule, error) {
 	rk := storage.RuleKey(ownerID, contextID, rule.Id)
 	currentVersion, err := b.ruleLatestVersion(rk)
 	if err != nil {
@@ -248,7 +248,7 @@ func (b *buntdbContainer) ReplaceRule(_ context.Context, ownerID string, context
 	return vRule, err
 }
 
-func (b *buntdbContainer) Exists(_ context.Context, ownerID string, contextID string, ruleID string) (exists bool, err error) {
+func (b *Container) Exists(_ context.Context, ownerID string, contextID string, ruleID string) (exists bool, err error) {
 	err = b.db.View(func(tx *buntdb.Tx) error {
 		_, ierr := tx.Get(storage.RuleKey(ownerID, contextID, ruleID), true)
 		switch {
@@ -264,7 +264,7 @@ func (b *buntdbContainer) Exists(_ context.Context, ownerID string, contextID st
 	return
 }
 
-func (b *buntdbContainer) SaveAccessToken(c context.Context, ownerID string, tokenPair *authv1.TokenPair) error {
+func (b *Container) SaveAccessToken(c context.Context, ownerID string, tokenPair *authv1.TokenPair) error {
 	atKey := fmt.Sprintf("access:%s", ownerID)
 
 	tokens, err := b.GetAccessTokens(c, ownerID)
@@ -284,7 +284,7 @@ func (b *buntdbContainer) SaveAccessToken(c context.Context, ownerID string, tok
 	})
 }
 
-func (b *buntdbContainer) GetAccessTokens(_ context.Context, ownerID string) (tp []*authv1.TokenPair, err error) {
+func (b *Container) GetAccessTokens(_ context.Context, ownerID string) (tp []*authv1.TokenPair, err error) {
 	atKey := fmt.Sprintf("access:%s", ownerID)
 
 	val := ""
@@ -312,7 +312,7 @@ func (b *buntdbContainer) GetAccessTokens(_ context.Context, ownerID string) (tp
 	return tp, nil
 }
 
-func (b *buntdbContainer) createIndices() {
+func (b *Container) createIndices() {
 	err := b.db.CreateIndex("contexts", storage.ContextKey("*", "*"))
 	if err != nil {
 		panic(err)
@@ -322,4 +322,30 @@ func (b *buntdbContainer) createIndices() {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func (b *Container) GetObjectSchema(ctx context.Context, ownerID string, contextID string) (string, error) {
+	ck := storage.ContextSchemaKey(ownerID, contextID)
+	schema := ""
+	err := b.db.View(func(tx *buntdb.Tx) error {
+		sch, e := tx.Get(ck)
+		if e != nil {
+			return e
+		}
+		schema = sch
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return schema, nil
+}
+
+func (b *Container) ReplaceObjectSchema(ctx context.Context, ownerID string, contextID string, schema string) error {
+	ck := storage.ContextSchemaKey(ownerID, contextID)
+	return b.db.Update(func(tx *buntdb.Tx) error {
+		_, _, e := tx.Set(ck, schema, nil)
+		return e
+	})
 }

@@ -5,6 +5,13 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+func CtxStringArr(c context.Context, key string) (s []string) {
+	if val := c.Value(key); val != nil {
+		s, _ = val.([]string)
+	}
+	return
+}
+
 func CtxString(c context.Context, key string) (s string) {
 	if val := c.Value(key); val != nil {
 		s, _ = val.(string)

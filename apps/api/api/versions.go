@@ -10,7 +10,7 @@ import (
 
 func (b *BreaseHandler) GetRuleVersions(ctx context.Context, c *connect.Request[contextv1.ListRuleVersionsRequest]) (*connect.Response[contextv1.ListRuleVersionsResponse], error) {
 	orgID := auth.CtxString(ctx, auth.ContextOrgKey)
-	if !auth.HasPermission(ctx, auth.PermissionRead) {
+	if !auth.HasPermission(ctx, auth.PermissionReadRule) {
 		return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("permission denied"))
 	}
 	ctxID := c.Msg.ContextId

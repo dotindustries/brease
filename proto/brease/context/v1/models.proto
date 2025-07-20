@@ -110,3 +110,20 @@ message EvaluateRequest {
 message EvaluateResponse {
   repeated rule.v1.EvaluationResult results = 1;
 }
+
+message GetObjectSchemaRequest {
+  string context_id = 1;
+}
+
+message GetObjectSchemaResponse {
+  string schema = 1;
+}
+
+message ReplaceObjectSchemaRequest {
+  string context_id = 1;
+  string schema = 2;
+}
+
+message ReplaceObjectSchemaResponse {
+
+}

@@ -13,7 +13,7 @@ import (
 
 func (b *BreaseHandler) DeleteRule(ctx context.Context, c *connect.Request[contextv1.DeleteRuleRequest]) (*connect.Response[emptypb.Empty], error) {
 	orgID := auth.CtxString(ctx, auth.ContextOrgKey)
-	if !auth.HasPermission(ctx, auth.PermissionWrite) {
+	if !auth.HasPermission(ctx, auth.PermissionCreateRule) {
 		return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("permission denied"))
 	}
 	err := b.db.RemoveRule(ctx, orgID, c.Msg.ContextId, c.Msg.RuleId)

@@ -12,6 +12,11 @@ func ContextKey(orgID string, contextID string) string {
 	return fmt.Sprintf("org:%s:context:%s", orgID, contextID)
 }
 
+// ContextSchemaKey creates an org:${orgID}:context:${contextID}:schema key
+func ContextSchemaKey(orgID string, contextID string) string {
+	return fmt.Sprintf("org:%s:context:%s:schema", orgID, contextID)
+}
+
 // RuleKey creates an org:${orgID}:context:${contextID}:rule:${ruleID} key
 func RuleKey(orgID, contextID, ruleID string) string {
 	return fmt.Sprintf("org:%s:context:%s:rule:%s", orgID, contextID, ruleID)

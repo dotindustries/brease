@@ -2,7 +2,6 @@ syntax = "proto3";
 
 package brease.auth.v1;
 
-import "google/api/annotations.proto";
 import "google/api/field_behavior.proto";
 
 message TokenPair {

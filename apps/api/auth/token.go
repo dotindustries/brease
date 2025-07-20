@@ -32,7 +32,12 @@ func NewToken(logger *zap.Logger) Token {
 	}
 }
 
-func (t Token) Sign(sub string, userID string, exp time.Duration) (string, error) {
+type ClaimPair[V any] struct {
+	Key   string
+	Value V
+}
+
+func (t Token) Sign(sub string, userID string, exp time.Duration, addClaims ...ClaimPair[any]) (string, error) {
 	if exp == 0 {
 		exp = t.duration // apply default duration
 	}
@@ -41,6 +46,9 @@ func (t Token) Sign(sub string, userID string, exp time.Duration) (string, error
 	claims["sub"] = sub
 	claims["exp"] = time.Now().Add(exp).Unix()
 	claims[ContextUserIDKey] = userID
+	for _, claim := range addClaims {
+		claims[claim.Key] = claim.Value
+	}
 
 	return token.SignedString([]byte(t.secret))
 }

@@ -28,7 +28,7 @@ type Options struct {
 	Logger *zap.Logger
 }
 
-func NewDatabase(opts Options) (storage.Database, error) {
+func NewDatabase(opts Options) (*Container, error) {
 	if opts.URL == "" {
 		opts.URL = "redis://default@localhost:6379"
 	}
@@ -42,7 +42,7 @@ func NewDatabase(opts Options) (storage.Database, error) {
 	db := redis.NewClient(opt)
 	db.AddHook(redisotel.NewTracingHook(redisotel.WithAttributes(semconv.NetSockPeerAddrKey.String(opt.Addr))))
 
-	r := &redisContainer{
+	r := &Container{
 		db:     db,
 		logger: opts.Logger,
 		rulePool: sync.Pool{
@@ -55,13 +55,13 @@ func NewDatabase(opts Options) (storage.Database, error) {
 	return r, nil
 }
 
-type redisContainer struct {
+type Container struct {
 	db       *redis.Client
 	logger   *zap.Logger
 	rulePool sync.Pool
 }
 
-func (r *redisContainer) Close() error {
+func (r *Container) Close() error {
 	return r.db.Close()
 }
 
@@ -70,7 +70,7 @@ func (r *redisContainer) Close() error {
 // key for rule index within the context - HSET org:${orgID}:context:${contextID}:rule:${ruleID}[index] = 0
 // key for rule version data - HSET org:${orgID}:context:${contextID}:rule:${ruleID}:v${version}[json_data] = ruleDATA
 // hash key for rule latest version - HSET  org:${orgID}:context:${contextID}:rule:${ruleID}[latest_version] = org:${orgID}:context:${contextID}:rule:${ruleID}:v${version}
-func (r *redisContainer) AddRule(ctx context.Context, ownerID string, contextID string, rule *rulev1.Rule) (*rulev1.VersionedRule, error) {
+func (r *Container) AddRule(ctx context.Context, ownerID string, contextID string, rule *rulev1.Rule) (*rulev1.VersionedRule, error) {
 	vRule := &rulev1.VersionedRule{
 		Id:          rule.Id,
 		Version:     1,
@@ -114,7 +114,7 @@ func (r *redisContainer) AddRule(ctx context.Context, ownerID string, contextID 
 	return vRule, nil
 }
 
-func (r *redisContainer) Rules(ctx context.Context, ownerID string, contextID string, pageSize int, pageToken string) (rules []*rulev1.VersionedRule, err error) {
+func (r *Container) Rules(ctx context.Context, ownerID string, contextID string, pageSize int, pageToken string) (rules []*rulev1.VersionedRule, err error) {
 	ck := storage.ContextKey(ownerID, contextID)
 	ruleKeys, err := r.db.LRange(ctx, ck, 0, -1).Result()
 	if err != nil {
@@ -142,7 +142,7 @@ func (r *redisContainer) Rules(ctx context.Context, ownerID string, contextID st
 	return
 }
 
-func (r *redisContainer) RuleVersions(ctx context.Context, ownerID string, contextID string, ruleID string, pageSize int, pageToken string) (rules []*rulev1.VersionedRule, err error) {
+func (r *Container) RuleVersions(ctx context.Context, ownerID string, contextID string, ruleID string, pageSize int, pageToken string) (rules []*rulev1.VersionedRule, err error) {
 	rk := storage.RuleKey(ownerID, contextID, ruleID)
 	ruleVersionKeys, err := r.db.HGetAll(ctx, rk).Result()
 	if err != nil {
@@ -164,7 +164,7 @@ func (r *redisContainer) RuleVersions(ctx context.Context, ownerID string, conte
 	return
 }
 
-func (r *redisContainer) RemoveRule(ctx context.Context, ownerID string, contextID string, ruleID string) error {
+func (r *Container) RemoveRule(ctx context.Context, ownerID string, contextID string, ruleID string) error {
 	ck := storage.ContextKey(ownerID, contextID)
 	rk := storage.RuleKey(ownerID, contextID, ruleID)
 	idx, err := r.db.HGet(ctx, rk, kIndexField).Int64()
@@ -207,7 +207,7 @@ func (r *redisContainer) RemoveRule(ctx context.Context, ownerID string, context
 	return nil
 }
 
-func (r *redisContainer) ruleLatestVersion(ctx context.Context, ruleKey string) (uint64, error) {
+func (r *Container) ruleLatestVersion(ctx context.Context, ruleKey string) (uint64, error) {
 	vk, err := r.db.HGet(ctx, ruleKey, kLatestVersionField).Result()
 	if err != nil {
 		return 0, err
@@ -216,7 +216,7 @@ func (r *redisContainer) ruleLatestVersion(ctx context.Context, ruleKey string) 
 	return version, nil
 }
 
-func (r *redisContainer) ReplaceRule(ctx context.Context, ownerID string, contextID string, rule *rulev1.Rule) (*rulev1.VersionedRule, error) {
+func (r *Container) ReplaceRule(ctx context.Context, ownerID string, contextID string, rule *rulev1.Rule) (*rulev1.VersionedRule, error) {
 	rk := storage.RuleKey(ownerID, contextID, rule.Id)
 	currentVersion, err := r.ruleLatestVersion(ctx, rk)
 	if err != nil {
@@ -248,12 +248,12 @@ func (r *redisContainer) ReplaceRule(ctx context.Context, ownerID string, contex
 	return vRule, nil
 }
 
-func (r *redisContainer) Exists(ctx context.Context, ownerID string, contextID string, ruleID string) (exists bool, err error) {
+func (r *Container) Exists(ctx context.Context, ownerID string, contextID string, ruleID string) (exists bool, err error) {
 	rk := storage.RuleKey(ownerID, contextID, ruleID)
 	return r.db.HExists(ctx, rk, kLatestVersionField).Result()
 }
 
-func (r *redisContainer) SaveAccessToken(ctx context.Context, ownerID string, tokenPair *authv1.TokenPair) error {
+func (r *Container) SaveAccessToken(ctx context.Context, ownerID string, tokenPair *authv1.TokenPair) error {
 	atKey := fmt.Sprintf("access:%s", ownerID)
 
 	tokens, err := r.GetAccessTokens(ctx, ownerID)
@@ -272,7 +272,7 @@ func (r *redisContainer) SaveAccessToken(ctx context.Context, ownerID string, to
 	return r.db.Set(ctx, atKey, bts, 0).Err()
 }
 
-func (r *redisContainer) GetAccessTokens(ctx context.Context, ownerID string) (tp []*authv1.TokenPair, err error) {
+func (r *Container) GetAccessTokens(ctx context.Context, ownerID string) (tp []*authv1.TokenPair, err error) {
 	atKey := fmt.Sprintf("access:%s", ownerID)
 
 	bts, err := r.db.Get(ctx, atKey).Bytes()
@@ -286,7 +286,7 @@ func (r *redisContainer) GetAccessTokens(ctx context.Context, ownerID string) (t
 	return tp, nil
 }
 
-func (r *redisContainer) getLatestVersionKeys(ctx context.Context, ruleKeys []string) (latestVersionKeys map[string]string, err error) {
+func (r *Container) getLatestVersionKeys(ctx context.Context, ruleKeys []string) (latestVersionKeys map[string]string, err error) {
 	pipe := r.db.Pipeline()
 	returnMap := make(map[int]string)
 	latestVersionKeys = make(map[string]string)
@@ -312,7 +312,7 @@ func (r *redisContainer) getLatestVersionKeys(ctx context.Context, ruleKeys []st
 	return
 }
 
-func (r *redisContainer) getLatestVersionData(ctx context.Context, latestVersionKeys map[string]string) (latestVersionData map[string]string, err error) {
+func (r *Container) getLatestVersionData(ctx context.Context, latestVersionKeys map[string]string) (latestVersionData map[string]string, err error) {
 	pipe := r.db.Pipeline()
 	returnMap := make(map[int]string)
 	latestVersionData = make(map[string]string)
@@ -340,7 +340,7 @@ func (r *redisContainer) getLatestVersionData(ctx context.Context, latestVersion
 	return
 }
 
-func (r *redisContainer) updateRuleIndices(ctx context.Context, ck string) error {
+func (r *Container) updateRuleIndices(ctx context.Context, ck string) error {
 	rks := r.db.LRange(ctx, ck, 0, -1).Val()
 
 	pipe := r.db.Pipeline()
@@ -353,4 +353,13 @@ func (r *redisContainer) updateRuleIndices(ctx context.Context, ck string) error
 	}
 
 	return nil
+}
+
+func (r *Container) GetObjectSchema(ctx context.Context, ownerID string, contextID string) (string, error) {
+	ck := storage.ContextSchemaKey(ownerID, contextID)
+	schema, err := r.db.Get(ctx, ck).Result()
+	if errors.Is(err, redis.Nil) {
+		return "", nil
+	}
+	return schema, err
 }

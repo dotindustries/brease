@@ -76,6 +76,25 @@ paths:
                                 $ref: '#/components/schemas/Status'
             security:
                 - ApiKeyAuth: []
+    /v1/context:
+        get:
+            tags:
+                - ContextService
+            description: Returns a list of the contexts within the organization
+            operationId: ContextService_ListContexts
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListContextsResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /v1/{contextId}/evaluate:
         post:
             tags:
@@ -352,6 +371,7 @@ paths:
         post:
             tags:
                 - ContextService
+            description: Updates the schema definition of the context
             operationId: ContextService_ReplaceObjectSchema
             parameters:
                 - name: contextId
@@ -520,6 +540,13 @@ components:
                     description: The type of the serialized message.
             additionalProperties: true
             description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
+        ListContextsResponse:
+            type: object
+            properties:
+                contextIds:
+                    type: array
+                    items:
+                        type: string
         ListRuleVersionsResponse:
             type: object
             properties:

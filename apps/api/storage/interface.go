@@ -18,4 +18,5 @@ type Database interface {
 	GetAccessTokens(ctx context.Context, ownerID string) ([]*authv1.TokenPair, error)
 	GetObjectSchema(ctx context.Context, ownerID string, contextID string) (string, error)
 	ReplaceObjectSchema(ctx context.Context, ownerID string, contextID string, schema string) error
+	ListContexts(ctx context.Context, ownerID string) ([]string, error)
 }

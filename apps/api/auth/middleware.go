@@ -36,10 +36,18 @@ const (
 	PermissionEvaluate    = "context.evaluate"
 	PermissionSchemaEdit  = "context.schema.edit"
 	PermissionSchemaRead  = "context.schema.read"
+	PermissionListContext = "context.list"
 )
 
 var (
-	allPermissions = []string{PermissionReadRule, PermissionCreateRule, PermissionEvaluate}
+	allPermissions = []string{
+		PermissionReadRule,
+		PermissionCreateRule,
+		PermissionEvaluate,
+		PermissionSchemaEdit,
+		PermissionSchemaRead,
+		PermissionListContext,
+	}
 )
 
 type validateAuthTokenArgs struct {
@@ -249,7 +257,7 @@ func getResult(pool worker.WorkerPool, logger *zap.Logger) (authed *validateAuth
 
 		// capture auth success
 		if res.authed && authed == nil {
-			logger.Debug("Successfully authenticated", zap.String("authenticator", string(r.Descriptor.ID)), zap.String("userId", res.userID), zap.String("orgID", res.orgID))
+			logger.Debug("Successfully authenticated", zap.String("authenticator", string(r.Descriptor.ID)), zap.String("userId", res.userID), zap.String("orgID", res.orgID), zap.Any("permissions", res.permissions))
 			authed = &res
 		}
 	}

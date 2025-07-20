@@ -368,3 +368,18 @@ func (r *Container) ReplaceObjectSchema(ctx context.Context, ownerID string, con
 	ck := storage.ContextSchemaKey(ownerID, contextID)
 	return r.db.Set(ctx, ck, schema, 0).Err()
 }
+
+func (r *Container) ListContexts(ctx context.Context, ownerID string) ([]string, error) {
+	ck := storage.ContextKey(ownerID, "*")
+	list, err := r.db.Keys(ctx, ck).Result()
+	if err != nil {
+		return nil, err
+	}
+	// slice up key
+	res := make([]string, len(list))
+	for i, k := range list {
+		_, ctxID := storage.SplitContextKey(k)
+		res[i] = ctxID
+	}
+	return res, nil
+}

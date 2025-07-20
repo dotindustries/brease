@@ -363,3 +363,8 @@ func (r *Container) GetObjectSchema(ctx context.Context, ownerID string, context
 	}
 	return schema, err
 }
+
+func (r *Container) ReplaceObjectSchema(ctx context.Context, ownerID string, contextID string, schema string) error {
+	ck := storage.ContextSchemaKey(ownerID, contextID)
+	return r.db.Set(ctx, ck, schema, 0).Err()
+}

@@ -3,6 +3,7 @@ package api
 import (
 	"buf.build/gen/go/dot/brease/grpc/go/brease/auth/v1/authv1grpc"
 	"buf.build/gen/go/dot/brease/grpc/go/brease/context/v1/contextv1grpc"
+	"github.com/kaptinlin/jsonschema"
 	"go.dot.industries/brease/auth"
 	"go.dot.industries/brease/cache"
 	"go.dot.industries/brease/code"
@@ -16,11 +17,12 @@ type OpenApiHandler interface {
 }
 
 type BreaseHandler struct {
-	db        storage.Database
-	logger    *zap.Logger
-	assembler *code.Assembler
-	compiler  *code.Compiler
-	token     auth.Token
+	db                 storage.Database
+	logger             *zap.Logger
+	assembler          *code.Assembler
+	compiler           *code.Compiler
+	token              auth.Token
+	jsonSchemaCompiler *jsonschema.Compiler
 }
 
 func NewHandler(db storage.Database, c cache.Cache, logger *zap.Logger) *BreaseHandler {
@@ -28,11 +30,12 @@ func NewHandler(db storage.Database, c cache.Cache, logger *zap.Logger) *BreaseH
 		panic("database cannot be nil")
 	}
 	bh := &BreaseHandler{
-		db:        db,
-		logger:    logger,
-		assembler: code.NewAssembler(logger, c),
-		compiler:  code.NewCompiler(logger),
-		token:     auth.NewToken(logger),
+		db:                 db,
+		logger:             logger,
+		assembler:          code.NewAssembler(logger, c),
+		compiler:           code.NewCompiler(logger),
+		token:              auth.NewToken(logger),
+		jsonSchemaCompiler: jsonschema.NewCompiler(),
 	}
 
 	return bh

@@ -341,3 +341,11 @@ func (b *Container) GetObjectSchema(ctx context.Context, ownerID string, context
 
 	return schema, nil
 }
+
+func (b *Container) ReplaceObjectSchema(ctx context.Context, ownerID string, contextID string, schema string) error {
+	ck := storage.ContextSchemaKey(ownerID, contextID)
+	return b.db.Update(func(tx *buntdb.Tx) error {
+		_, _, e := tx.Set(ck, schema, nil)
+		return e
+	})
+}

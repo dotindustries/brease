@@ -35,6 +35,7 @@ const (
 	PermissionCreateRule  = "context.rule.create"
 	PermissionEvaluate    = "context.evaluate"
 	PermissionSchemaEdit  = "context.schema.edit"
+	PermissionSchemaRead  = "context.schema.read"
 )
 
 var (

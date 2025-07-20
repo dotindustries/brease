@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/janvaclavik/govar"
 	"github.com/unkeyed/unkey/sdks/golang/models/components"
 	"github.com/unkeyed/unkey/sdks/golang/models/sdkerrors"
 	"go.dot.industries/brease/trace"
@@ -69,7 +68,6 @@ func NewAuthInterceptor(logger *zap.Logger) connect.UnaryInterceptorFunc {
 			ctx context.Context,
 			req connect.AnyRequest,
 		) (connect.AnyResponse, error) {
-			govar.Dump(ctx, req.Header())
 			isClient := req.Spec().IsClient
 			if isClient {
 				// TODO: client side auth interceptor

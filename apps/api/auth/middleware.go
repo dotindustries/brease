@@ -25,6 +25,7 @@ import (
 const (
 	ApiKeyHeader     = "X-API-KEY"
 	bearerAuthPrefix = "Bearer "
+	jwtAuthPrefix    = "JWT "
 
 	ContextJwtKey         = "jwt"
 	ContextUserIDKey      = "userId"
@@ -166,7 +167,6 @@ func authenticate(ctx context.Context, headers http.Header, logger *zap.Logger) 
 	pool := authPool(args)
 	pool.Run(ctx)
 	authed, valErr, err := getResult(pool, logger)
-
 	if authed == nil {
 		logger.Warn("All authenticators failed for request.", zap.Any("validationErr", valErr), zap.Error(err))
 		if valErr != nil {
@@ -235,6 +235,9 @@ func getResult(pool worker.WorkerPool, logger *zap.Logger) (authed *validateAuth
 			firstErr = r.Err
 		}
 		res := r.Value.(validateAuthTokenResult)
+		if res.error != nil && firstErr == nil {
+			firstErr = res.error.Error
+		}
 		res.authenticator = string(r.Descriptor.ID)
 
 		logger.Debug("Validation result", zap.String("authenticator", string(r.Descriptor.ID)), zap.Bool("success", res.authed))
@@ -307,7 +310,7 @@ func validateUnkey(ctx context.Context, args interface{}) (interface{}, error) {
 			return validateAuthTokenResult{
 				error: &validationErr{
 					Status: http.StatusForbidden,
-					Error:  errors2.NewForbidden(err, "invalid API key"),
+					Error:  errors2.NewForbidden(err, "access forbidden"),
 				},
 			}, nil
 		case errors.As(err, &errConflict):
@@ -327,12 +330,29 @@ func validateUnkey(ctx context.Context, args interface{}) (interface{}, error) {
 	}
 
 	if !resp.Valid {
-		return validateAuthTokenResult{
-			error: &validationErr{
-				Status: http.StatusUnauthorized,
-				Error:  errors2.Unauthorizedf("invalid API key"),
-			},
-		}, nil
+		switch resp.Code {
+		case components.CodeUsageExceeded:
+			return validateAuthTokenResult{
+				error: &validationErr{
+					Status: http.StatusTooManyRequests,
+					Error:  errors2.NewQuotaLimitExceeded(nil, "usage exceeded credits"),
+				},
+			}, nil
+		case components.CodeRateLimited:
+			return validateAuthTokenResult{
+				error: &validationErr{
+					Status: http.StatusTooManyRequests,
+					Error:  errors2.NewNotYetAvailable(nil, fmt.Sprintf("rate limit: %.2f remaining: %.2f reset: %v", resp.Ratelimit.Limit, resp.Ratelimit.Remaining, resp.Ratelimit.Reset)),
+				},
+			}, nil
+		default:
+			return validateAuthTokenResult{
+				error: &validationErr{
+					Status: http.StatusUnauthorized,
+					Error:  errors2.Unauthorizedf("invalid API key: %s", resp.Code),
+				},
+			}, nil
+		}
 	}
 
 	userID := ""
@@ -358,7 +378,6 @@ func validateUnkey(ctx context.Context, args interface{}) (interface{}, error) {
 		}, nil
 	}
 
-	// TODO: clean normalized takeover of permissions
 	permissions := resp.Permissions
 
 	return validateAuthTokenResult{authed: true, userID: userID, orgID: *orgID, permissions: permissions}, nil
@@ -370,7 +389,7 @@ func validateRootAPIKey(ctx context.Context, args interface{}) (interface{}, err
 	a := args.(validateAuthTokenArgs)
 
 	key := a.token
-	if a.rootAPIKey == "" || strings.HasPrefix(key, "JWT ") {
+	if a.rootAPIKey == "" || strings.HasPrefix(key, jwtAuthPrefix) || strings.HasPrefix(key, bearerAuthPrefix) {
 		// not configured to authenticate, but no errors
 		return validateAuthTokenResult{}, nil
 	}

@@ -5,9 +5,9 @@ go 1.23.1
 toolchain go1.23.4
 
 require (
-	buf.build/gen/go/dot/brease/connectrpc/go v1.18.1-20250719160720-820c2025b7ca.1
+	buf.build/gen/go/dot/brease/connectrpc/go v1.18.1-20250720130508-90cf55521032.1
 	buf.build/gen/go/dot/brease/grpc/go v1.5.1-20250719160720-820c2025b7ca.2
-	buf.build/gen/go/dot/brease/protocolbuffers/go v1.36.6-20250719160720-820c2025b7ca.1
+	buf.build/gen/go/dot/brease/protocolbuffers/go v1.36.6-20250720130508-90cf55521032.1
 	connectrpc.com/connect v1.18.1
 	connectrpc.com/grpchealth v1.4.0
 	github.com/PaesslerAG/jsonpath v0.1.2-0.20230323094847-3484786d6f97

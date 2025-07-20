@@ -18,7 +18,7 @@ service ContextService {
   rpc ReplaceObjectSchema(ReplaceObjectSchemaRequest) returns (ReplaceObjectSchemaResponse) {
     option (google.api.http) = {
       post: "/v1/{context_id}/schema"
-      body: "schema"
+      body: "*"
     };
   }
 

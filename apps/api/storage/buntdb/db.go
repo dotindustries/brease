@@ -349,3 +349,17 @@ func (b *Container) ReplaceObjectSchema(ctx context.Context, ownerID string, con
 		return e
 	})
 }
+
+func (b *Container) ListContexts(ctx context.Context, ownerID string) ([]string, error) {
+	var contexts []string
+	err := b.db.View(func(tx *buntdb.Tx) error {
+		return tx.AscendKeys(storage.ContextKey(ownerID, "*"), func(key, val string) bool {
+			contexts = append(contexts, key)
+			return true
+		})
+	})
+	if err != nil {
+		return nil, err
+	}
+	return contexts, nil
+}

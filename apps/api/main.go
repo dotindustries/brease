@@ -158,7 +158,7 @@ func newApp(db storage.Database, logger *zap.Logger) *gin.Engine {
 	}
 	r.Use(static.Serve("/", oaAssets))
 	r.Use(gin.Recovery())
-	r.Use(auth.Middleware(logger, []*regexp.Regexp{regexp.MustCompile("^/(brease.*|v1.*)$")}))
+	//r.Use(auth.Middleware(logger, []*regexp.Regexp{regexp.MustCompile("^/(brease.*|v1.*)$")}))
 	r.Use(auditlog.Middleware(
 		auditLogStore(logger),
 		auditlog.WithSensitivePaths([]*regexp.Regexp{regexp.MustCompile("^/(token|refreshToken)$")}),

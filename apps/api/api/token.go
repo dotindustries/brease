@@ -15,7 +15,7 @@ import (
 func (b *BreaseHandler) GetToken(ctx context.Context, c *connect.Request[emptypb.Empty]) (*connect.Response[authv1.TokenPair], error) {
 	ownerID := auth.CtxString(ctx, auth.ContextOrgKey)
 	userID := auth.CtxString(ctx, auth.ContextUserIDKey)
-	if !auth.HasPermission(ctx, auth.PermissionWrite) {
+	if !auth.HasPermission(ctx, auth.PermissionCreateRule) {
 		return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("permission denied"))
 	}
 	tp, err := b.generateTokenPair(ownerID, userID)

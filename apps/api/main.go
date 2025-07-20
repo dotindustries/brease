@@ -158,7 +158,7 @@ func newApp(db storage.Database, logger *zap.Logger) *gin.Engine {
 	}
 	r.Use(static.Serve("/", oaAssets))
 	r.Use(gin.Recovery())
-	r.Use(auth.Middleware(logger, []*regexp.Regexp{regexp.MustCompile("^/(brease.*|v1.*)$")}))
+	//r.Use(auth.Middleware(logger, []*regexp.Regexp{regexp.MustCompile("^/(brease.*|v1.*)$")}))
 	r.Use(auditlog.Middleware(
 		auditLogStore(logger),
 		auditlog.WithSensitivePaths([]*regexp.Regexp{regexp.MustCompile("^/(token|refreshToken)$")}),
@@ -207,21 +207,11 @@ func newApp(db storage.Database, logger *zap.Logger) *gin.Engine {
 
 	bh := api.NewHandler(db, memory.New(), logger)
 
-	// openapi auth
-	//err = authv1gateway.RegisterAuthServiceHandlerServer(context.Background(), mux, bh.OpenApi)
-	//if err != nil {
-	//	logger.Fatal("Failed to set up grpc-gateway for auth")
-	//}
 	// connect auth
 	authPath, authHandler := authv1connect.NewAuthServiceHandler(bh)
 	authService := vanguard.NewService(authPath, authHandler)
 	r.Match([]string{"POST"}, authPath+"/*path", gin.WrapH(authHandler))
 
-	// openapi context
-	//err = contextv1gateway.RegisterContextServiceHandlerServer(context.Background(), mux, bh.OpenApi)
-	//if err != nil {
-	//	logger.Fatal("Failed to set up grpc-gateway for context")
-	//}
 	// connect context
 	ctxPath, ctxHandler := contextv1connect.NewContextServiceHandler(bh, connect.WithInterceptors(auth.NewAuthInterceptor(logger)))
 	ctxService := vanguard.NewService(ctxPath, ctxHandler)

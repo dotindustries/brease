@@ -15,7 +15,7 @@ import (
 
 func (b *BreaseHandler) Evaluate(ctx context.Context, c *connect.Request[contextv1.EvaluateRequest]) (*connect.Response[contextv1.EvaluateResponse], error) {
 	orgID := auth.CtxString(ctx, auth.ContextOrgKey)
-	if !auth.HasPermission(ctx, auth.PermissionEvaluate) && !auth.HasPermission(ctx, auth.PermissionRead) {
+	if !auth.HasPermission(ctx, auth.PermissionEvaluate) && !auth.HasPermission(ctx, auth.PermissionReadRule) {
 		return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("permission denied"))
 	}
 	codeBlock, err := b.findCode(ctx, c.Msg, orgID)

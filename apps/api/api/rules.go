@@ -19,7 +19,7 @@ func (b *BreaseHandler) ListRules(ctx context.Context, c *connect.Request[v1.Lis
 		b.logger.Warn("ListRules", zap.String("contextID", c.Msg.ContextId), zap.String("orgID", orgID))
 		return nil, connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("missing orgID"))
 	}
-	if !auth.HasPermission(ctx, auth.PermissionRead) {
+	if !auth.HasPermission(ctx, auth.PermissionReadRule) {
 		return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("permission denied"))
 	}
 	rules, err := b.db.Rules(ctx, orgID, c.Msg.ContextId, int(pageSize), pageToken)

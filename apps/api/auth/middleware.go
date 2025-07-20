@@ -3,9 +3,13 @@ package auth
 import (
 	"connectrpc.com/connect"
 	"context"
+	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/unkeyed/unkey/sdks/golang/models/components"
+	"github.com/unkeyed/unkey/sdks/golang/models/sdkerrors"
+	"go.dot.industries/brease/trace"
 	"go.dot.industries/brease/worker"
 	"google.golang.org/grpc/metadata"
 	"net/http"
@@ -16,8 +20,6 @@ import (
 	errors2 "github.com/juju/errors"
 	"go.dot.industries/brease/env"
 	"go.uber.org/zap"
-
-	unkey "github.com/WilfredAlmeida/unkey-go/features"
 )
 
 const (
@@ -28,13 +30,14 @@ const (
 	ContextUserIDKey      = "userId"
 	ContextOrgKey         = "orgId"
 	ContextPermissionsKey = "permissions"
-	PermissionRead        = "read"
-	PermissionWrite       = "write"
-	PermissionEvaluate    = "evaluate"
+	PermissionReadRule    = "context.rule.read"
+	PermissionCreateRule  = "context.rule.create"
+	PermissionEvaluate    = "context.evaluate"
+	PermissionSchemaEdit  = "context.schema.edit"
 )
 
 var (
-	allPermissions = []string{PermissionRead, PermissionWrite, PermissionEvaluate}
+	allPermissions = []string{PermissionReadRule, PermissionCreateRule, PermissionEvaluate}
 )
 
 type validateAuthTokenArgs struct {
@@ -251,6 +254,8 @@ func getResult(pool worker.WorkerPool, logger *zap.Logger) (authed *validateAuth
 }
 
 func validateUnkey(ctx context.Context, args interface{}) (interface{}, error) {
+	ctx, span := trace.Tracer.Start(ctx, "auth:validateUnkey")
+	defer span.End()
 	a := args.(validateAuthTokenArgs)
 
 	key := a.token
@@ -267,15 +272,58 @@ func validateUnkey(ctx context.Context, args interface{}) (interface{}, error) {
 			},
 		}, nil
 	}
-
-	resp, err := unkey.KeyVerify(key)
+	apiID := env.Getenv("UNKEY_API_ID", "")
+	resp, err := unkeyClient.Keys.VerifyKey(ctx, components.V1KeysVerifyKeyRequest{
+		APIID: &apiID,
+		Key:   key,
+	})
 	if err != nil {
-		return validateAuthTokenResult{
-			error: &validationErr{
-				Status: http.StatusUnauthorized,
-				Error:  errors2.NewUnauthorized(err, "could not verify API key"),
-			},
-		}, nil
+		var errBadRequest *sdkerrors.ErrBadRequest
+		var errUnauthorized *sdkerrors.ErrUnauthorized
+		var errForbidden *sdkerrors.ErrForbidden
+		var errNotFound *sdkerrors.ErrNotFound
+		var errConflict *sdkerrors.ErrConflict
+		var errTooManyRequests *sdkerrors.ErrTooManyRequests
+		var errInternal *sdkerrors.ErrInternalServerError
+		var errSDK *sdkerrors.SDKError
+		switch {
+		case errors.As(err, &errUnauthorized):
+			fallthrough
+		case errors.As(err, &errNotFound):
+			return validateAuthTokenResult{
+				error: &validationErr{
+					Status: http.StatusUnauthorized,
+					Error:  errors2.NewUnauthorized(err, "could not find API key"),
+				},
+			}, nil
+		case errors.As(err, &errTooManyRequests):
+			return validateAuthTokenResult{
+				error: &validationErr{
+					Status: http.StatusTooManyRequests,
+					Error:  errors2.NewQuotaLimitExceeded(err, "too many requests"),
+				},
+			}, nil
+		case errors.As(err, &errForbidden):
+			return validateAuthTokenResult{
+				error: &validationErr{
+					Status: http.StatusForbidden,
+					Error:  errors2.NewForbidden(err, "invalid API key"),
+				},
+			}, nil
+		case errors.As(err, &errConflict):
+			fallthrough
+		case errors.As(err, &errInternal):
+			fallthrough
+		case errors.As(err, &errBadRequest):
+			fallthrough
+		case errors.As(err, &errSDK):
+			return validateAuthTokenResult{
+				error: &validationErr{
+					Status: http.StatusUnauthorized,
+					Error:  errors2.NewUnauthorized(err, "internal error"),
+				},
+			}, nil
+		}
 	}
 
 	if !resp.Valid {
@@ -300,8 +348,8 @@ func validateUnkey(ctx context.Context, args interface{}) (interface{}, error) {
 		}
 	}
 
-	orgID := resp.OwnerId
-	if orgID == "" {
+	orgID := resp.OwnerID
+	if orgID == nil {
 		return validateAuthTokenResult{
 			error: &validationErr{
 				Status: http.StatusUnauthorized,
@@ -313,10 +361,12 @@ func validateUnkey(ctx context.Context, args interface{}) (interface{}, error) {
 	// TODO: clean normalized takeover of permissions
 	permissions := resp.Permissions
 
-	return validateAuthTokenResult{authed: true, userID: userID, orgID: orgID, permissions: permissions}, nil
+	return validateAuthTokenResult{authed: true, userID: userID, orgID: *orgID, permissions: permissions}, nil
 }
 
-func validateRootAPIKey(_ context.Context, args interface{}) (interface{}, error) {
+func validateRootAPIKey(ctx context.Context, args interface{}) (interface{}, error) {
+	_, span := trace.Tracer.Start(ctx, "auth:validateRootAPIKey")
+	defer span.End()
 	a := args.(validateAuthTokenArgs)
 
 	key := a.token
@@ -355,7 +405,9 @@ func validateRootAPIKey(_ context.Context, args interface{}) (interface{}, error
 	return validateAuthTokenResult{authed: true, userID: "root", orgID: orgIDHeader, permissions: allPermissions}, nil
 }
 
-func validateJWT(_ context.Context, args interface{}) (interface{}, error) {
+func validateJWT(ctx context.Context, args interface{}) (interface{}, error) {
+	_, span := trace.Tracer.Start(ctx, "auth:validateJWT")
+	defer span.End()
 	a := args.(validateAuthTokenArgs)
 
 	if !strings.HasPrefix(a.token, "JWT ") {

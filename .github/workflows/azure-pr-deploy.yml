@@ -66,10 +66,15 @@ jobs:
 
       - name: Create Container App Environment
         run: |
-          az containerapp env create \
-            --name ${{ env.CONTAINER_APP_ENVIRONMENT }} \
-            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --location ${{ env.AZURE_LOCATION }}
+          if ! az containerapp env show --name ${{ env.CONTAINER_APP_ENVIRONMENT }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} > /dev/null 2>&1; then
+            echo "Creating Container App Environment: ${{ env.CONTAINER_APP_ENVIRONMENT }}"
+            az containerapp env create \
+              --name ${{ env.CONTAINER_APP_ENVIRONMENT }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --location ${{ env.AZURE_LOCATION }}
+          else
+            echo "Container App Environment ${{ env.CONTAINER_APP_ENVIRONMENT }} already exists, skipping creation"
+          fi
 
       - name: Deploy API service
         run: |

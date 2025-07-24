@@ -14,7 +14,6 @@ env:
   AZURE_RESOURCE_GROUP: rg-brease-pr-${{ github.event.number }}
   AZURE_LOCATION: westeurope
   API_APP_NAME: brease-api-pr-${{ github.event.number }}
-  CONTAINER_APP_ENVIRONMENT: brease-pr-${{ github.event.number }}-env
 
 jobs:
   deploy:
@@ -57,6 +56,8 @@ jobs:
           push: true
           file: ./apps/api/Dockerfile
           tags: ${{ env.AZURE_CONTAINER_REGISTRY }}/brease-api:pr-${{ github.event.number }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Create resource group
         run: |
@@ -64,30 +65,14 @@ jobs:
             --name ${{ env.AZURE_RESOURCE_GROUP }} \
             --location ${{ env.AZURE_LOCATION }}
 
-      - name: Create Container App Environment
-        run: |
-          if ! az containerapp env show --name ${{ env.CONTAINER_APP_ENVIRONMENT }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} > /dev/null 2>&1; then
-            echo "Creating Container App Environment: ${{ env.CONTAINER_APP_ENVIRONMENT }}"
-            az containerapp env create \
-              --name ${{ env.CONTAINER_APP_ENVIRONMENT }} \
-              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-              --location ${{ env.AZURE_LOCATION }}
-          else
-            echo "Container App Environment ${{ env.CONTAINER_APP_ENVIRONMENT }} already exists, skipping creation"
-          fi
-
       - name: Deploy API service
         run: |
-          az containerapp create \
+          az containerapp up \
             --name ${{ env.API_APP_NAME }} \
             --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --environment ${{ env.CONTAINER_APP_ENVIRONMENT }} \
+            --location ${{ env.AZURE_LOCATION }} \
             --image ${{ env.AZURE_CONTAINER_REGISTRY }}/brease-api:pr-${{ github.event.number }} \
             --registry-server ${{ env.AZURE_CONTAINER_REGISTRY }} \
-            --cpu 0.5 \
-            --memory 1Gi \
-            --min-replicas 1 \
-            --max-replicas 2 \
             --ingress external \
             --target-port 4400 \
             --env-vars \
@@ -121,8 +106,7 @@ jobs:
             
             **Resources Created:**
             - Resource Group: `${{ env.AZURE_RESOURCE_GROUP }}`
-            - Container App Environment: `${{ env.CONTAINER_APP_ENVIRONMENT }}`
-            - API Service: `${{ env.API_APP_NAME }}`
+            - API Service: `${{ env.API_APP_NAME }}` (with managed environment)
             
             **API Testing:**
             ```bash

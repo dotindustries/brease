@@ -10,11 +10,19 @@ RUN go build -v -o /brease .
 
 
 FROM debian:bookworm
-# Update package lists and install ca-certificates
+# Update package lists and install ca-certificates and Infisical CLI
 RUN apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     apt-get update --fix-missing && apt-get install -y \
     ca-certificates \
+    curl \
+    bash \
+    && curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
+    && apt-get update && apt-get install -y infisical \
     && rm -rf /var/lib/apt/lists/*
+
 COPY --from=builder /brease /usr/local/bin/
-CMD ["brease"]
+COPY start.sh /usr/local/bin/start.sh
+RUN chmod +x /usr/local/bin/start.sh
+
+CMD ["/usr/local/bin/start.sh"]

@@ -39,9 +39,9 @@ jobs:
       - name: Azure Login
         uses: azure/login@v2
         with:
-          client-id: 2bfd5f96-2fa1-44ff-af35-17722c04027f
-          tenant-id: 760d74d4-e9ad-46f8-bbae-e20bce9596ab
-          subscription-id: 5533053b-de97-432f-908a-c7018c458532
+          client-id: ${{ secrets.AZ_SP_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZ_SP_TENANT_ID }}
+          subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -75,13 +75,16 @@ jobs:
             --registry-server ${{ env.AZURE_CONTAINER_REGISTRY }} \
             --ingress external \
             --target-port 4400 \
+            --secrets \
+              infisicalClientId=${{ secrets.INFISICAL_CLIENT_ID }} \
+              infisicalClientSecret=${{ secrets.INFISICAL_CLIENT_SECRET }} \
             --env-vars \
               PORT=4400 \
               NODE_ENV=staging \
               INFISICAL_PROJECT_ID=642ed4939db25595ac7eb9cd \
               INFISICAL_ENVIRONMENT=staging \
-              INFISICAL_CLIENT_ID=cd3cc75e-d3bc-4b42-ba5d-6b68f56afa78 \
-              INFISICAL_CLIENT_SECRET=b8791a2f3571a3a24c8d938c627f31490427b7466ef7e335782bd1023d145b9a
+              INFISICAL_CLIENT_ID=secretref:infisicalClientId \
+              INFISICAL_CLIENT_SECRET=secretref:infisicalClientSecret
 
       - name: Get API URL
         id: get-api-url
@@ -126,9 +129,9 @@ jobs:
       - name: Azure Login
         uses: azure/login@v2
         with:
-          client-id: 2bfd5f96-2fa1-44ff-af35-17722c04027f
-          tenant-id: 760d74d4-e9ad-46f8-bbae-e20bce9596ab
-          subscription-id: 5533053b-de97-432f-908a-c7018c458532
+          client-id: ${{ secrets.AZ_SP_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZ_SP_TENANT_ID }}
+          subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
 
       - name: Delete resource group
         run: |

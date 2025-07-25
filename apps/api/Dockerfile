@@ -3,11 +3,11 @@ FROM golang:${GO_VERSION}-bookworm as builder
 # Update package lists and install ca-certificates
 
 WORKDIR /usr/src/app
+RUN go env -w GOMODCACHE=/root/.cache/go-build
 COPY go.mod go.sum ./
-RUN go mod download && go mod verify
+RUN --mount=type=cache,target=/root/.cache/go-build go mod download && go mod verify
 COPY . .
-RUN go build -v -o /brease .
-
+RUN --mount=type=cache,target=/root/.cache/go-build go build -v -o /brease .
 
 FROM debian:bookworm
 # Update package lists and install ca-certificates and Infisical CLI

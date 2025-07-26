@@ -87,16 +87,13 @@ jobs:
             --registry-server ${{ env.AZURE_CONTAINER_REGISTRY }} \
             --ingress external \
             --target-port 4400 \
-            --secrets \
-              infisicalClientId=${{ secrets.INFISICAL_CLIENT_ID }} \
-              infisicalClientSecret=${{ secrets.INFISICAL_CLIENT_SECRET }} \
             --env-vars \
               PORT=4400 \
               NODE_ENV=staging \
               INFISICAL_PROJECT_ID=642ed4939db25595ac7eb9cd \
               INFISICAL_ENVIRONMENT=staging \
-              INFISICAL_CLIENT_ID=secretref:infisicalClientId \
-              INFISICAL_CLIENT_SECRET=secretref:infisicalClientSecret
+              INFISICAL_CLIENT_ID=${{ secrets.INFISICAL_CLIENT_ID }} \
+              INFISICAL_CLIENT_SECRET=${{ secrets.INFISICAL_CLIENT_SECRET }} \
 
       - name: Get API URL
         id: get-api-url

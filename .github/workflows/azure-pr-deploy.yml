@@ -113,8 +113,8 @@ jobs:
             ## 🚀 Brease PR Environment Deployed Successfully!
             
             **API Service**: ${{ steps.get-api-url.outputs.url }}
-            **OpenAPI Docs**: ${{ steps.get-api-url.outputs.url }}/docs
-            **Health Check**: ${{ steps.get-api-url.outputs.url }}/health
+            **OpenAPI Docs**: ${{ steps.get-api-url.outputs.url }}/
+            **Stats**: ${{ steps.get-api-url.outputs.url }}/stats
             
             **Resources Created:**
             - Resource Group: `${{ env.AZURE_RESOURCE_GROUP }}`
@@ -123,10 +123,10 @@ jobs:
             **API Testing:**
             ```bash
             # Test the API endpoint
-            curl ${{ steps.get-api-url.outputs.url }}/health
+            curl ${{ steps.get-api-url.outputs.url }}/stats
             
             # View OpenAPI documentation
-            open ${{ steps.get-api-url.outputs.url }}/docs
+            open ${{ steps.get-api-url.outputs.url }}/
             ```
             
             > 💡 This environment will be automatically cleaned up when the PR is merged or closed.

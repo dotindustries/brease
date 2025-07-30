@@ -40,11 +40,11 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@buf/dot_brease.connectrpc_es": "^1.4.0-20240814183517-09f4042f97de.3",
-    "@buf/dot_brease.bufbuild_es": "^1.4.2-20240814183517-09f4042f97de.2",
-    "@connectrpc/connect": "^1.4.0",
-    "@connectrpc/connect-web": "^1.4.0",
-    "@bufbuild/protobuf": "^1.10.0",
+    "@buf/dot_brease.connectrpc_es": "^1.6.1-20250720134252-c94dcb25bb2e.2",
+    "@buf/dot_brease.bufbuild_es": "^2.6.2-20250720134252-c94dcb25bb2e.1",
+    "@connectrpc/connect": "^2.0.3",
+    "@connectrpc/connect-web": "^2.0.3",
+    "@bufbuild/protobuf": "^2.6.2",
     "cachified": "^3.5.4",
     "jsonpath-plus": "^9.0.0",
     "lodash-es": "^4.17.21",

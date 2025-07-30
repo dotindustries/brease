@@ -1,5 +1,11 @@
 # @brease/core
 
+## 0.5.0
+
+### Minor Changes
+
+- upgrade to latest connectrpc
+
 ## 0.4.0
 
 ### Minor Changes

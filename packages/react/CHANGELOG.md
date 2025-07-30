@@ -1,5 +1,16 @@
 # @brease/react
 
+## 0.2.0
+
+### Minor Changes
+
+- upgrade to latest connectrpc
+
+### Patch Changes
+
+- Updated dependencies
+  - @brease/core@0.5.0
+
 ## 0.1.7
 
 ### Patch Changes

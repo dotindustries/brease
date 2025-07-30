@@ -11,7 +11,7 @@ import {
   Expression, ExpressionSchema,
   OrSchema, Rule,
   RuleRef, RuleSchema,
-  Target, TargetSchema,
+  Target, TargetSchema, VersionedRule,
 } from "@buf/dot_brease.bufbuild_es/brease/rule/v1/model_pb.js";
 import { create, JsonObject } from "@bufbuild/protobuf";
 import { Result } from "./store.js";
@@ -95,7 +95,7 @@ export const newClient = (opts: ClientOptions): BreaseClient => {
               object: input,
               // overrideRules: [],
               // overrideCode: ''
-            }))
+            }));
             return results.map(({ by, target, action }) => ({
               action,
               target: target && {
@@ -180,7 +180,7 @@ export const encodeClientRule = (rule: ClientRule): Rule => {
   });
 };
 
-export const decodeClientRule = (rule: Rule): ClientRule => {
+export const decodeClientRule = (rule: Rule | VersionedRule): ClientRule => {
   return {
     id: rule.id,
     sequence: rule.sequence,

@@ -13,7 +13,7 @@ import {
   RuleRef, RuleSchema,
   Target, TargetSchema,
 } from "@buf/dot_brease.bufbuild_es/brease/rule/v1/model_pb.js";
-import { JsonValue, create } from "@bufbuild/protobuf";
+import { create, JsonObject } from "@bufbuild/protobuf";
 import { Result } from "./store.js";
 import { ContextService } from "@buf/dot_brease.bufbuild_es/brease/context/v1/service_pb.js";
 import { AuthService } from "@buf/dot_brease.bufbuild_es/brease/auth/v1/service_pb.js";
@@ -85,18 +85,17 @@ export const newClient = (opts: ClientOptions): BreaseClient => {
 
   const createEvaluateRules =
     (contextID: string, cacheTtl?: number) =>
-      (input: JsonValue) => {
+      (input: JsonObject) => {
         return cachified({
           key: `${contextID}-${hash(input)}`,
           cache,
           async getFreshValue() {
             const { results } = await client.evaluate(create(EvaluateRequestSchema, {
               contextId: contextID,
-              // TODO: JsonObject.from object
               object: input,
               // overrideRules: [],
               // overrideCode: ''
-            });
+            }))
             return results.map(({ by, target, action }) => ({
               action,
               target: target && {

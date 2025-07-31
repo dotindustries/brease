@@ -3,7 +3,7 @@ import type {
     EvaluateRequest,
     FunctionMap,
     ListRulesResponse,
-    PromiseClient,
+    Client,
     Resolve, Result,
     RuleStoreOptions,
     UnionToIntersection,
@@ -23,7 +23,7 @@ const useRuleStore = <T extends object, F extends FunctionMap<T>>(
 
 export default useRuleStore;
 
-export const useRulesClient = (): PromiseClient<typeof ContextService> => {
+export const useRulesClient = (): Client<typeof ContextService> => {
     return useContext(BreaseContext)?.client;
 };
 

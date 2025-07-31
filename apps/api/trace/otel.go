@@ -5,8 +5,7 @@ import (
 	"errors"
 	"github.com/getsentry/sentry-go"
 	sentryotel "github.com/getsentry/sentry-go/otel"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-
+	"github.com/go-logr/logr"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutlog"
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
@@ -16,6 +15,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/log"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/trace"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.uber.org/zap"
 	"os"
 )
@@ -71,6 +71,9 @@ func SetupOTelSDK(ctx context.Context, logger *zap.Logger) (shutdown func(contex
 		shutdownFuncs = append(shutdownFuncs, loggerProvider.Shutdown)
 		global.SetLoggerProvider(loggerProvider)
 	}
+
+	// env var instead: OTEL_LOG_LEVEL=none was not working
+	otel.SetLogger(logr.Discard())
 
 	return
 }

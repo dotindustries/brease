@@ -3,9 +3,13 @@ package auth
 import (
 	"connectrpc.com/connect"
 	"context"
+	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/unkeyed/unkey/sdks/golang/models/components"
+	"github.com/unkeyed/unkey/sdks/golang/models/sdkerrors"
+	"go.dot.industries/brease/trace"
 	"go.dot.industries/brease/worker"
 	"google.golang.org/grpc/metadata"
 	"net/http"
@@ -16,25 +20,34 @@ import (
 	errors2 "github.com/juju/errors"
 	"go.dot.industries/brease/env"
 	"go.uber.org/zap"
-
-	unkey "github.com/WilfredAlmeida/unkey-go/features"
 )
 
 const (
 	ApiKeyHeader     = "X-API-KEY"
 	bearerAuthPrefix = "Bearer "
+	jwtAuthPrefix    = "JWT "
 
 	ContextJwtKey         = "jwt"
 	ContextUserIDKey      = "userId"
 	ContextOrgKey         = "orgId"
 	ContextPermissionsKey = "permissions"
-	PermissionRead        = "read"
-	PermissionWrite       = "write"
-	PermissionEvaluate    = "evaluate"
+	PermissionReadRule    = "context.rule.read"
+	PermissionCreateRule  = "context.rule.create"
+	PermissionEvaluate    = "context.evaluate"
+	PermissionSchemaEdit  = "context.schema.edit"
+	PermissionSchemaRead  = "context.schema.read"
+	PermissionListContext = "context.list"
 )
 
 var (
-	allPermissions = []string{PermissionRead, PermissionWrite, PermissionEvaluate}
+	allPermissions = []string{
+		PermissionReadRule,
+		PermissionCreateRule,
+		PermissionEvaluate,
+		PermissionSchemaEdit,
+		PermissionSchemaRead,
+		PermissionListContext,
+	}
 )
 
 type validateAuthTokenArgs struct {
@@ -112,7 +125,7 @@ func Middleware(logger *zap.Logger, protectPaths []*regexp.Regexp) gin.HandlerFu
 		if orgID := CtxString(ctx, ContextOrgKey); orgID != "" {
 			c.Set(ContextOrgKey, orgID)
 		}
-		if permissions := CtxString(ctx, ContextPermissionsKey); permissions != "" {
+		if permissions := CtxStringArr(ctx, ContextPermissionsKey); len(permissions) > 0 {
 			c.Set(ContextPermissionsKey, permissions)
 		}
 
@@ -163,7 +176,6 @@ func authenticate(ctx context.Context, headers http.Header, logger *zap.Logger) 
 	pool := authPool(args)
 	pool.Run(ctx)
 	authed, valErr, err := getResult(pool, logger)
-
 	if authed == nil {
 		logger.Warn("All authenticators failed for request.", zap.Any("validationErr", valErr), zap.Error(err))
 		if valErr != nil {
@@ -232,6 +244,9 @@ func getResult(pool worker.WorkerPool, logger *zap.Logger) (authed *validateAuth
 			firstErr = r.Err
 		}
 		res := r.Value.(validateAuthTokenResult)
+		if res.error != nil && firstErr == nil {
+			firstErr = res.error.Error
+		}
 		res.authenticator = string(r.Descriptor.ID)
 
 		logger.Debug("Validation result", zap.String("authenticator", string(r.Descriptor.ID)), zap.Bool("success", res.authed))
@@ -242,7 +257,7 @@ func getResult(pool worker.WorkerPool, logger *zap.Logger) (authed *validateAuth
 
 		// capture auth success
 		if res.authed && authed == nil {
-			logger.Debug("Successfully authenticated", zap.String("authenticator", string(r.Descriptor.ID)), zap.String("userId", res.userID), zap.String("orgID", res.orgID))
+			logger.Debug("Successfully authenticated", zap.String("authenticator", string(r.Descriptor.ID)), zap.String("userId", res.userID), zap.String("orgID", res.orgID), zap.Any("permissions", res.permissions))
 			authed = &res
 		}
 	}
@@ -251,6 +266,8 @@ func getResult(pool worker.WorkerPool, logger *zap.Logger) (authed *validateAuth
 }
 
 func validateUnkey(ctx context.Context, args interface{}) (interface{}, error) {
+	ctx, span := trace.Tracer.Start(ctx, "auth:validateUnkey")
+	defer span.End()
 	a := args.(validateAuthTokenArgs)
 
 	key := a.token
@@ -267,24 +284,84 @@ func validateUnkey(ctx context.Context, args interface{}) (interface{}, error) {
 			},
 		}, nil
 	}
-
-	resp, err := unkey.KeyVerify(key)
+	apiID := env.Getenv("UNKEY_API_ID", "")
+	resp, err := unkeyClient.Keys.VerifyKey(ctx, components.V1KeysVerifyKeyRequest{
+		APIID: &apiID,
+		Key:   key,
+	})
 	if err != nil {
-		return validateAuthTokenResult{
-			error: &validationErr{
-				Status: http.StatusUnauthorized,
-				Error:  errors2.NewUnauthorized(err, "could not verify API key"),
-			},
-		}, nil
+		var errBadRequest *sdkerrors.ErrBadRequest
+		var errUnauthorized *sdkerrors.ErrUnauthorized
+		var errForbidden *sdkerrors.ErrForbidden
+		var errNotFound *sdkerrors.ErrNotFound
+		var errConflict *sdkerrors.ErrConflict
+		var errTooManyRequests *sdkerrors.ErrTooManyRequests
+		var errInternal *sdkerrors.ErrInternalServerError
+		var errSDK *sdkerrors.SDKError
+		switch {
+		case errors.As(err, &errUnauthorized):
+			fallthrough
+		case errors.As(err, &errNotFound):
+			return validateAuthTokenResult{
+				error: &validationErr{
+					Status: http.StatusUnauthorized,
+					Error:  errors2.NewUnauthorized(err, "could not find API key"),
+				},
+			}, nil
+		case errors.As(err, &errTooManyRequests):
+			return validateAuthTokenResult{
+				error: &validationErr{
+					Status: http.StatusTooManyRequests,
+					Error:  errors2.NewQuotaLimitExceeded(err, "too many requests"),
+				},
+			}, nil
+		case errors.As(err, &errForbidden):
+			return validateAuthTokenResult{
+				error: &validationErr{
+					Status: http.StatusForbidden,
+					Error:  errors2.NewForbidden(err, "access forbidden"),
+				},
+			}, nil
+		case errors.As(err, &errConflict):
+			fallthrough
+		case errors.As(err, &errInternal):
+			fallthrough
+		case errors.As(err, &errBadRequest):
+			fallthrough
+		case errors.As(err, &errSDK):
+			return validateAuthTokenResult{
+				error: &validationErr{
+					Status: http.StatusUnauthorized,
+					Error:  errors2.NewUnauthorized(err, "internal error"),
+				},
+			}, nil
+		}
 	}
 
 	if !resp.Valid {
-		return validateAuthTokenResult{
-			error: &validationErr{
-				Status: http.StatusUnauthorized,
-				Error:  errors2.Unauthorizedf("invalid API key"),
-			},
-		}, nil
+		switch resp.Code {
+		case components.CodeUsageExceeded:
+			return validateAuthTokenResult{
+				error: &validationErr{
+					Status: http.StatusTooManyRequests,
+					Error:  errors2.NewQuotaLimitExceeded(nil, "usage exceeded credits"),
+				},
+			}, nil
+		case components.CodeRateLimited:
+			return validateAuthTokenResult{
+				error: &validationErr{
+					Status: http.StatusTooManyRequests,
+					Error:  errors2.NewNotYetAvailable(nil, fmt.Sprintf("rate limit: %.2f remaining: %.2f reset: %v", resp.Ratelimit.Limit, resp.Ratelimit.Remaining, resp.Ratelimit.Reset)),
+				},
+			}, nil
+		default:
+			return validateAuthTokenResult{
+				error: &validationErr{
+					Status: http.StatusUnauthorized,
+					Error:  errors2.Unauthorizedf("invalid API key: %s", resp.Code),
+				},
+			}, nil
+		}
 	}
 
 	userID := ""
@@ -300,8 +377,8 @@ func validateUnkey(ctx context.Context, args interface{}) (interface{}, error) {
 		}
 	}
 
-	orgID := resp.OwnerId
-	if orgID == "" {
+	orgID := resp.OwnerID
+	if orgID == nil {
 		return validateAuthTokenResult{
 			error: &validationErr{
 				Status: http.StatusUnauthorized,
@@ -310,17 +387,18 @@ func validateUnkey(ctx context.Context, args interface{}) (interface{}, error) {
 		}, nil
 	}
 
-	// TODO: clean normalized takeover of permissions
 	permissions := resp.Permissions
 
-	return validateAuthTokenResult{authed: true, userID: userID, orgID: orgID, permissions: permissions}, nil
+	return validateAuthTokenResult{authed: true, userID: userID, orgID: *orgID, permissions: permissions}, nil
 }
 
-func validateRootAPIKey(_ context.Context, args interface{}) (interface{}, error) {
+func validateRootAPIKey(ctx context.Context, args interface{}) (interface{}, error) {
+	_, span := trace.Tracer.Start(ctx, "auth:validateRootAPIKey")
+	defer span.End()
 	a := args.(validateAuthTokenArgs)
 
 	key := a.token
-	if a.rootAPIKey == "" || strings.HasPrefix(key, "JWT ") {
+	if a.rootAPIKey == "" || strings.HasPrefix(key, jwtAuthPrefix) || strings.HasPrefix(key, bearerAuthPrefix) {
 		// not configured to authenticate, but no errors
 		return validateAuthTokenResult{}, nil
 	}
@@ -355,7 +433,9 @@ func validateRootAPIKey(_ context.Context, args interface{}) (interface{}, error
 	return validateAuthTokenResult{authed: true, userID: "root", orgID: orgIDHeader, permissions: allPermissions}, nil
 }
 
-func validateJWT(_ context.Context, args interface{}) (interface{}, error) {
+func validateJWT(ctx context.Context, args interface{}) (interface{}, error) {
+	_, span := trace.Tracer.Start(ctx, "auth:validateJWT")
+	defer span.End()
 	a := args.(validateAuthTokenArgs)
 
 	if !strings.HasPrefix(a.token, "JWT ") {
@@ -419,8 +499,20 @@ func validateJWT(_ context.Context, args interface{}) (interface{}, error) {
 	}
 	userID = uid.(string)
 
-	permissions := claims["permissions"].([]string)
-	// FIXME: do we have to look up the token under the orgID to be sure it's valid?
+	rawp, ok := claims[ContextPermissionsKey]
+	if !ok {
+		return validateAuthTokenResult{
+			error: &validationErr{
+				Status: http.StatusUnauthorized,
+				Error:  errors2.BadRequestf("Invalid JWT: '%s' missing", ContextPermissionsKey),
+			},
+		}, nil
+	}
+
+	permissions := make([]string, len(rawp.([]interface{})))
+	for i, p := range rawp.([]interface{}) {
+		permissions[i] = p.(string)
+	}
 
 	return validateAuthTokenResult{authed: true, token: token, userID: userID, orgID: orgID, permissions: permissions}, nil
 }

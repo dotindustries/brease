@@ -30,11 +30,11 @@ grpc-install:
 
 buf-install:
 	printf $(COLOR) "Install/update buf..."
-	go install github.com/bufbuild/buf/cmd/buf@v1.6.0
+	go install github.com/bufbuild/buf/cmd/buf@latest
 
 api-linter-install:
 	printf $(COLOR) "Install/update api-linter..."
-	go install github.com/googleapis/api-linter/cmd/api-linter@v1.32.3
+	go install github.com/googleapis/api-linter/cmd/api-linter@latest
 
 ##### Linters #####
 api-linter:

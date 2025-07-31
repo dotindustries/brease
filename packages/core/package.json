@@ -1,7 +1,7 @@
 {
   "name": "@brease/core",
   "description": "The framework agnostic core that powers Brease",
-  "version": "0.2.1",
+  "version": "0.5.0",
   "author": "nadilas",
   "license": "MIT",
   "repository": {
@@ -15,6 +15,7 @@
     "url": "https://github.com/sponsors/dotindustries"
   },
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
       "require": "./dist/index.cjs",
@@ -25,8 +26,8 @@
       "default": "./src/index.ts"
     }
   },
-  "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
     "dist",
@@ -39,17 +40,17 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@buf/dot_brease.connectrpc_es": "^1.4.0-20240714091619-59a856dfa11f.3",
-    "@buf/dot_brease.bufbuild_es": "^1.4.2-20240714091619-59a856dfa11f.2",
-    "@connectrpc/connect": "^1.4.0",
-    "@connectrpc/connect-web": "^1.4.0",
-    "@bufbuild/protobuf": "^1.10.0",
+    "@buf/dot_brease.connectrpc_es": "^1.6.1-20250720134252-c94dcb25bb2e.2",
+    "@buf/dot_brease.bufbuild_es": "^2.6.2-20250720134252-c94dcb25bb2e.1",
+    "@connectrpc/connect": "^2.0.3",
+    "@connectrpc/connect-web": "^2.0.3",
+    "@bufbuild/protobuf": "^2.6.2",
     "cachified": "^3.5.4",
-    "jsonpath": "^1.1.1",
+    "jsonpath-plus": "^9.0.0",
     "lodash-es": "^4.17.21",
     "lru-cache": "^10.0.0",
     "object-hash": "^3.0.0",
-    "zod": "^3.21.4",
+    "zod": "^3.23.8",
     "zustand": "^4.3.8"
   },
   "devDependencies": {

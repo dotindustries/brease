@@ -5,7 +5,7 @@ modules:
 deps:
   - buf.build/gnostic/gnostic
   - buf.build/googleapis/googleapis
-  - buf.build/grpc-ecosystem/grpc-gateway
+#  - buf.build/grpc-ecosystem/grpc-gateway
 lint:
   use:
     - DEFAULT

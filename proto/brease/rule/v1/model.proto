@@ -23,6 +23,9 @@ message Rule {
   // example:"rule_01h89qfdhbejtb3jwqq1gazbm5"
   string id = 1;
 
+  // The sequence number of the rule within the context
+  uint32 sequence = 5;
+
   string description = 2;
 
   repeated Action actions = 3;
@@ -41,6 +44,9 @@ message VersionedRule {
   // example:"rule_01h89qfdhbejtb3jwqq1gazbm5"
   string id = 1;
   uint64 version = 5;
+
+  // The sequence number of the rule within the context
+  uint32 sequence = 6;
 
   string description = 2;
 

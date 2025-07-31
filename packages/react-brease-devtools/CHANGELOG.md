@@ -1,5 +1,40 @@
 # @brease/react-devtools
 
+## 2.0.0
+
+### Minor Changes
+
+- upgrade to latest connectrpc
+
+### Patch Changes
+
+- Updated dependencies
+  - @brease/react@0.2.0
+
+## 1.0.7
+
+### Patch Changes
+
+- @brease/react@0.1.7
+
+## 1.0.6
+
+### Patch Changes
+
+- @brease/react@0.1.6
+
+## 1.0.5
+
+### Patch Changes
+
+- @brease/react@0.1.5
+
+## 1.0.4
+
+### Patch Changes
+
+- @brease/react@0.1.4
+
 ## 1.0.3
 
 ### Patch Changes

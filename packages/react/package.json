@@ -4,6 +4,7 @@
   "description": "Hooks and headless client library for managing and executing business rules in domain contexts.",
   "author": "nadilas",
   "license": "MIT",
+  "type": "module",
   "repository": {
     "type": "git",
     "url": "https://github.com/dotindustries/brease",
@@ -16,18 +17,17 @@
   },
   "exports": {
     ".": {
-      "require": "./dist/index.js",
+      "require": "./dist/index.cjs",
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs"
+      "import": "./dist/index.js"
     },
     "./src": {
       "default": "./src/index.ts"
     }
   },
-  "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "type": "module",
   "files": [
     "dist",
     "src"

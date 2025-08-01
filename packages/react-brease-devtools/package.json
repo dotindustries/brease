@@ -1,6 +1,6 @@
 {
   "name": "@brease/react-devtools",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Developer tools to interact with and visualize the brease/react",
   "author": "nadilas",
   "license": "MIT",

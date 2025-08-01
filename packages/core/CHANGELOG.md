@@ -1,5 +1,11 @@
 # @brease/core
 
+## 0.5.1
+
+### Patch Changes
+
+- 18c4e7d: fix decodeRule typings
+
 ## 0.5.0
 
 ### Minor Changes

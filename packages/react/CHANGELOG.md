@@ -1,5 +1,11 @@
 # @brease/react
 
+## 0.2.2
+
+### Patch Changes
+
+- e445647: Fixed package exports
+
 ## 0.2.1
 
 ### Patch Changes

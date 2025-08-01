@@ -1,5 +1,12 @@
 # @brease/react-devtools
 
+## 2.0.2
+
+### Patch Changes
+
+- Updated dependencies [e445647]
+  - @brease/react@0.2.2
+
 ## 2.0.1
 
 ### Patch Changes

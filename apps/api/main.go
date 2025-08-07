@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/arl/statsviz"
 	sentrygin "github.com/getsentry/sentry-go/gin"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/static"
 	openapi2 "go.dot.industries/brease/openapi"
 	trace2 "go.dot.industries/brease/trace"
@@ -18,6 +19,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strings"
 	"time"
 
 	"buf.build/gen/go/dot/brease/connectrpc/go/brease/auth/v1/authv1connect"
@@ -148,6 +150,22 @@ func newApp(db storage.Database, logger *zap.Logger) *gin.Engine {
 			})
 		}
 	}
+
+	// config CORS
+	config := cors.DefaultConfig()
+	originsStr := env.Getenv("CORS_ALLOW_ORIGINS", "*")
+	if originsStr == "*" {
+		config.AllowAllOrigins = true
+	} else {
+		origins := strings.Split(originsStr, ",")
+		config.AllowOrigins = append(config.AllowOrigins, origins...)
+		logger.Info(
+			"CORS origins",
+			zap.Strings("origins", origins),
+		)
+	}
+
+	r.Use(cors.New(config))
 	r.Use(requestid.New())
 	r.Use(otelgin.Middleware(otelServiceName(), otelgin.WithSpanNameFormatter(trace2.SpanNameFormatter)))
 	r.Use(stats.RequestStats())

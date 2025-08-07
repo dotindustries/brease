@@ -154,7 +154,7 @@ func newApp(db storage.Database, logger *zap.Logger) *gin.Engine {
 
 	// config CORS
 	config := cors.DefaultConfig()
-	originsStr := env.Getenv("CORS_ALLOW_ORIGINS", "*")
+	originsStr := env.Getenv("BREASE_CORS_ALLOW_ORIGINS", "*")
 	if originsStr == "*" {
 		config.AllowAllOrigins = true
 	} else {

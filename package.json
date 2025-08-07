@@ -12,7 +12,7 @@
     "publish-packages": "turbo run build && changeset version && changeset publish"
   },
   "namespace": "@brease",
-  "packageManager": "pnpm@8.6.0",
+  "packageManager": "pnpm@10.14.0",
   "engines": {
     "node": ">=20.0.0"
   },

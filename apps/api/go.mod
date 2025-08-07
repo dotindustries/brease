@@ -22,7 +22,7 @@ require (
 	github.com/getsentry/sentry-go v0.34.1
 	github.com/getsentry/sentry-go/gin v0.34.1
 	github.com/getsentry/sentry-go/otel v0.34.1
-	github.com/gin-contrib/cors v1.3.0
+	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-contrib/requestid v1.0.5
 	github.com/gin-contrib/static v1.1.5
 	github.com/gin-contrib/zap v1.1.5

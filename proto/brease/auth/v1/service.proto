@@ -43,4 +43,11 @@ service AuthService {
       body: "*"
     };
   }
+
+  rpc AddCredit(AddCreditRequest) returns (AddCreditRequest) {
+    option (google.api.http) = {
+      post: "/v1/auth/addCredit"
+      body: "*"
+    };
+  }
 }

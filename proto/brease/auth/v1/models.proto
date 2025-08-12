@@ -12,3 +12,12 @@ message TokenPair {
 message RefreshTokenRequest {
   string refreshToken = 1 [(google.api.field_behavior) = REQUIRED];
 }
+
+message AddCreditRequest {
+  string rootKey = 1 [(google.api.field_behavior) = REQUIRED];
+  string targetKey = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message AddCreditResponse {
+
+}

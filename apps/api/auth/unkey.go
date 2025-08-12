@@ -1,7 +1,7 @@
 package auth
 
 import (
-	unkey "github.com/unkeyed/unkey/sdks/golang"
+	unkey "github.com/unkeyed/sdks/api/go/v2"
 	"go.dot.industries/brease/env"
 )
 

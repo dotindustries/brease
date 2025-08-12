@@ -1,20 +1,22 @@
 package auth
 
 import (
-	"connectrpc.com/connect"
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
+	"regexp"
+	"strconv"
+	"strings"
+
+	"connectrpc.com/connect"
 	"github.com/gin-gonic/gin"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/unkeyed/unkey/sdks/golang/models/components"
+	components2 "github.com/unkeyed/sdks/api/go/v2/models/components"
 	"github.com/unkeyed/unkey/sdks/golang/models/sdkerrors"
 	"go.dot.industries/brease/trace"
 	"go.dot.industries/brease/worker"
 	"google.golang.org/grpc/metadata"
-	"net/http"
-	"regexp"
-	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
 	errors2 "github.com/juju/errors"
@@ -31,6 +33,7 @@ const (
 	ContextUserIDKey      = "userId"
 	ContextOrgKey         = "orgId"
 	ContextPermissionsKey = "permissions"
+	ContextCreditsKey     = "credits"
 	PermissionReadRule    = "context.rule.read"
 	PermissionCreateRule  = "context.rule.create"
 	PermissionEvaluate    = "context.evaluate"
@@ -70,6 +73,7 @@ type validateAuthTokenResult struct {
 	orgID         string
 	authenticator string
 	permissions   []string
+	credits       *int
 }
 
 func NewAuthInterceptor(logger *zap.Logger) connect.UnaryInterceptorFunc {
@@ -92,7 +96,22 @@ func NewAuthInterceptor(logger *zap.Logger) connect.UnaryInterceptorFunc {
 				}
 			}
 
-			return next(ctx, req)
+			resp, err := next(ctx, req)
+			if err != nil {
+				return nil, err
+			}
+			if resp != nil {
+				if userID := CtxString(ctx, ContextUserIDKey); userID != "" {
+					resp.Header().Set("X-User-Id", userID)
+				}
+				if orgID := CtxString(ctx, ContextOrgKey); orgID != "" {
+					resp.Header().Set("X-Org-Id", orgID)
+				}
+				if credits := CtxInt(ctx, ContextCreditsKey); credits != 0 {
+					resp.Header().Set("X-Credits", strconv.Itoa(credits))
+				}
+			}
+			return resp, nil
 		}
 	}
 	return interceptor
@@ -211,6 +230,9 @@ func authenticate(ctx context.Context, headers http.Header, logger *zap.Logger) 
 	if authed.permissions != nil {
 		ctx = context.WithValue(ctx, ContextPermissionsKey, authed.permissions)
 	}
+	if authed.credits != nil {
+		ctx = context.WithValue(ctx, ContextCreditsKey, *authed.credits)
+	}
 
 	return ctx, nil
 }
@@ -284,10 +306,8 @@ func validateUnkey(ctx context.Context, args interface{}) (interface{}, error) {
 			},
 		}, nil
 	}
-	apiID := env.Getenv("UNKEY_API_ID", "")
-	resp, err := unkeyClient.Keys.VerifyKey(ctx, components.V1KeysVerifyKeyRequest{
-		APIID: &apiID,
-		Key:   key,
+	resp, err := unkeyClient.Keys.VerifyKey(ctx, components2.V2KeysVerifyKeyRequestBody{
+		Key: key,
 	})
 	if err != nil {
 		var errBadRequest *sdkerrors.ErrBadRequest
@@ -338,34 +358,56 @@ func validateUnkey(ctx context.Context, args interface{}) (interface{}, error) {
 		}
 	}
 
-	if !resp.Valid {
-		switch resp.Code {
-		case components.CodeUsageExceeded:
+	if resp.V2KeysVerifyKeyResponseBody == nil {
+		return validateAuthTokenResult{
+			error: &validationErr{
+				Status: http.StatusUnauthorized,
+				Error:  errors2.Unauthorizedf("invalid API response: %v", resp.GetV2KeysVerifyKeyResponseBody()),
+			},
+		}, nil
+	}
+	if resp.V2KeysVerifyKeyResponseBody.Data.Valid != true {
+		r := resp.V2KeysVerifyKeyResponseBody.Data
+		switch r.Code {
+		case components2.CodeUsageExceeded:
 			return validateAuthTokenResult{
 				error: &validationErr{
 					Status: http.StatusTooManyRequests,
 					Error:  errors2.NewQuotaLimitExceeded(nil, "usage exceeded credits"),
 				},
 			}, nil
-		case components.CodeRateLimited:
+		case components2.CodeRateLimited:
+			str := ""
+			for _, rl := range r.Ratelimits {
+				if str != "" {
+					str += "\n"
+				}
+				str += fmt.Sprintf(
+					"rate limit: %d remaining: %d reset: %v, duration: %d",
+					rl.Limit,
+					rl.Remaining,
+					rl.Reset,
+					rl.Duration,
+				)
+			}
 			return validateAuthTokenResult{
 				error: &validationErr{
 					Status: http.StatusTooManyRequests,
-					Error:  errors2.NewNotYetAvailable(nil, fmt.Sprintf("rate limit: %.2f remaining: %.2f reset: %v", resp.Ratelimit.Limit, resp.Ratelimit.Remaining, resp.Ratelimit.Reset)),
+					Error:  errors2.NewNotYetAvailable(nil, str),
 				},
 			}, nil
 		default:
 			return validateAuthTokenResult{
 				error: &validationErr{
 					Status: http.StatusUnauthorized,
-					Error:  errors2.Unauthorizedf("invalid API key: %s", resp.Code),
+					Error:  errors2.Unauthorizedf("invalid API key: %s", r.Code),
 				},
 			}, nil
 		}
 	}
 
 	userID := ""
-	if uid, ok := resp.Meta[ContextUserIDKey]; ok && uid != nil {
+	if uid, ok := resp.V2KeysVerifyKeyResponseBody.Data.Meta[ContextUserIDKey]; ok && uid != nil {
 		userID, ok = uid.(string)
 		if !ok || userID == "" {
 			return validateAuthTokenResult{
@@ -377,8 +419,8 @@ func validateUnkey(ctx context.Context, args interface{}) (interface{}, error) {
 		}
 	}
 
-	orgID := resp.OwnerID
-	if orgID == nil {
+	orgID := resp.V2KeysVerifyKeyResponseBody.Data.Identity.ExternalID
+	if orgID == "" {
 		return validateAuthTokenResult{
 			error: &validationErr{
 				Status: http.StatusUnauthorized,
@@ -387,9 +429,9 @@ func validateUnkey(ctx context.Context, args interface{}) (interface{}, error) {
 		}, nil
 	}
 
-	permissions := resp.Permissions
-
-	return validateAuthTokenResult{authed: true, userID: userID, orgID: *orgID, permissions: permissions}, nil
+	permissions := resp.V2KeysVerifyKeyResponseBody.Data.Permissions
+	credits := resp.V2KeysVerifyKeyResponseBody.Data.Credits
+	return validateAuthTokenResult{authed: true, userID: userID, orgID: orgID, permissions: permissions, credits: credits}, nil
 }
 
 func validateRootAPIKey(ctx context.Context, args interface{}) (interface{}, error) {

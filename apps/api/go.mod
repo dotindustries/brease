@@ -276,6 +276,7 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.7 // indirect
 	github.com/spf13/viper v1.20.1 // indirect
+	github.com/spyzhov/ajson v0.8.0 // indirect
 	github.com/ssgreg/nlreturn/v2 v2.2.1 // indirect
 	github.com/stbenjam/no-sprintf-host-port v0.2.0 // indirect
 	github.com/stoewer/go-strcase v1.3.1 // indirect
@@ -299,6 +300,7 @@ require (
 	github.com/ugorji/go/codec v1.3.0 // indirect
 	github.com/ultraware/funlen v0.2.0 // indirect
 	github.com/ultraware/whitespace v0.2.0 // indirect
+	github.com/unkeyed/sdks/api/go/v2 v2.0.8 // indirect
 	github.com/unkeyed/unkey/sdks/golang v0.0.0-20240511174648-cb4d63d1f083 // indirect
 	github.com/uudashr/gocognit v1.2.0 // indirect
 	github.com/uudashr/iface v1.4.1 // indirect

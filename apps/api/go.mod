@@ -5,9 +5,9 @@ go 1.23.1
 toolchain go1.23.4
 
 require (
-	buf.build/gen/go/dot/brease/connectrpc/go v1.18.1-20250720134252-c94dcb25bb2e.1
-	buf.build/gen/go/dot/brease/grpc/go v1.5.1-20250719160720-820c2025b7ca.2
-	buf.build/gen/go/dot/brease/protocolbuffers/go v1.36.6-20250720134252-c94dcb25bb2e.1
+	buf.build/gen/go/dot/brease/connectrpc/go v1.18.1-20250812194439-759e5012e1cf.1
+	buf.build/gen/go/dot/brease/grpc/go v1.5.1-20250812194439-759e5012e1cf.2
+	buf.build/gen/go/dot/brease/protocolbuffers/go v1.36.7-20250812194439-759e5012e1cf.1
 	connectrpc.com/connect v1.18.1
 	connectrpc.com/grpchealth v1.4.0
 	github.com/PaesslerAG/jsonpath v0.1.2-0.20230323094847-3484786d6f97
@@ -55,14 +55,14 @@ require (
 	go.uber.org/zap v1.27.0
 	golang.org/x/exp v0.0.0-20250718183923-645b1fa84792
 	google.golang.org/grpc v1.73.0
-	google.golang.org/protobuf v1.36.6
+	google.golang.org/protobuf v1.36.7
 	gotest.tools/v3 v3.5.2
 )
 
 require (
 	4d63.com/gocheckcompilerdirectives v1.3.0 // indirect
 	4d63.com/gochecknoglobals v0.2.2 // indirect
-	buf.build/gen/go/gnostic/gnostic/protocolbuffers/go v1.36.6-20230414000709-087bc8072ce4.1 // indirect
+	buf.build/gen/go/gnostic/gnostic/protocolbuffers/go v1.36.7-20230414000709-087bc8072ce4.1 // indirect
 	cel.dev/expr v0.24.0 // indirect
 	codeberg.org/chavacava/garif v0.2.0 // indirect
 	connectrpc.com/grpcreflect v1.3.0 // indirect

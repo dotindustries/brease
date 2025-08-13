@@ -2,18 +2,9 @@ package main
 
 import (
 	"bytes"
-	"connectrpc.com/grpcreflect"
-	"connectrpc.com/vanguard"
 	"context"
 	"errors"
 	"fmt"
-	"github.com/arl/statsviz"
-	sentrygin "github.com/getsentry/sentry-go/gin"
-	"github.com/gin-contrib/cors"
-	"github.com/gin-contrib/static"
-	openapi2 "go.dot.industries/brease/openapi"
-	trace2 "go.dot.industries/brease/trace"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"io"
 	"log"
 	"net/http"
@@ -21,6 +12,16 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"connectrpc.com/grpcreflect"
+	"connectrpc.com/vanguard"
+	"github.com/arl/statsviz"
+	sentrygin "github.com/getsentry/sentry-go/gin"
+	"github.com/gin-contrib/cors"
+	"github.com/gin-contrib/static"
+	openapi2 "go.dot.industries/brease/openapi"
+	trace2 "go.dot.industries/brease/trace"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 
 	"buf.build/gen/go/dot/brease/connectrpc/go/brease/auth/v1/authv1connect"
 	"buf.build/gen/go/dot/brease/connectrpc/go/brease/context/v1/contextv1connect"
@@ -179,7 +180,7 @@ func newApp(db storage.Database, logger *zap.Logger) *gin.Engine {
 	//r.Use(auth.Middleware(logger, []*regexp.Regexp{regexp.MustCompile("^/(brease.*|v1.*)$")}))
 	r.Use(auditlog.Middleware(
 		auditLogStore(logger),
-		auditlog.WithSensitivePaths([]*regexp.Regexp{regexp.MustCompile("^/(token|refreshToken)$")}),
+		auditlog.WithSensitivePaths([]*regexp.Regexp{regexp.MustCompile("^/(token|refreshToken|updateCredit)$")}),
 		auditlog.WithIgnorePaths([]*regexp.Regexp{regexp.MustCompile("^/(stats)$")}),
 		auditlog.WithIDExtractor(func(c *gin.Context) (contextID, ownerID, userID string) {
 			ownerID = c.GetString(auth.ContextOrgKey)

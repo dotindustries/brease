@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -15,6 +16,13 @@ func CtxStringArr(c context.Context, key string) (s []string) {
 func CtxString(c context.Context, key string) (s string) {
 	if val := c.Value(key); val != nil {
 		s, _ = val.(string)
+	}
+	return
+}
+
+func CtxInt(c context.Context, key string) (i int) {
+	if val := c.Value(key); val != nil {
+		i, _ = val.(int)
 	}
 	return
 }

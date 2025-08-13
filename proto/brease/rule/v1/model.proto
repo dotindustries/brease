@@ -9,6 +9,8 @@ message Action {
 
   // The target the action applies to
   Target target = 2;
+
+  string id = 3;
 }
 
 message RuleRef {

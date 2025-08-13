@@ -40,11 +40,11 @@ importers:
   packages/core:
     dependencies:
       '@buf/dot_brease.bufbuild_es':
-        specifier: ^2.6.2-20250720134252-c94dcb25bb2e.1
-        version: 2.6.2-20250720134252-c94dcb25bb2e.1(@bufbuild/protobuf@2.6.3)
+        specifier: ^2.6.3-20250813170839-3ed1f1797b5e.1
+        version: 2.6.3-20250813170839-3ed1f1797b5e.1(@bufbuild/protobuf@2.6.3)
       '@buf/dot_brease.connectrpc_es':
-        specifier: ^1.6.1-20250720134252-c94dcb25bb2e.2
-        version: 1.6.1-20250720134252-c94dcb25bb2e.2(@bufbuild/protobuf@2.6.3)(@connectrpc/connect@2.0.3(@bufbuild/protobuf@2.6.3))
+        specifier: ^1.6.1-20250813170839-3ed1f1797b5e.2
+        version: 1.6.1-20250813170839-3ed1f1797b5e.2(@bufbuild/protobuf@2.6.3)(@connectrpc/connect@2.0.3(@bufbuild/protobuf@2.6.3))
       '@bufbuild/protobuf':
         specifier: ^2.6.2
         version: 2.6.3
@@ -171,18 +171,18 @@ packages:
     resolution: {integrity: sha512-6zABk/ECA/QYSCQ1NGiVwwbQerUCZ+TQbp64Q3AgmfNvurHH0j8TtXa1qbShXA6qqkpAj4V5W8pP6mLe1mcMqA==}
     engines: {node: '>=18'}
 
-  '@buf/dot_brease.bufbuild_es@1.10.0-20250720134252-c94dcb25bb2e.1':
-    resolution: {tarball: https://buf.build/gen/npm/v1/@buf/dot_brease.bufbuild_es/-/dot_brease.bufbuild_es-1.10.0-20250720134252-c94dcb25bb2e.1.tgz}
+  '@buf/dot_brease.bufbuild_es@1.10.0-20250813170839-3ed1f1797b5e.1':
+    resolution: {tarball: https://buf.build/gen/npm/v1/@buf/dot_brease.bufbuild_es/-/dot_brease.bufbuild_es-1.10.0-20250813170839-3ed1f1797b5e.1.tgz}
     peerDependencies:
       '@bufbuild/protobuf': ^1.10.0
 
-  '@buf/dot_brease.bufbuild_es@2.6.2-20250720134252-c94dcb25bb2e.1':
-    resolution: {tarball: https://buf.build/gen/npm/v1/@buf/dot_brease.bufbuild_es/-/dot_brease.bufbuild_es-2.6.2-20250720134252-c94dcb25bb2e.1.tgz}
+  '@buf/dot_brease.bufbuild_es@2.6.3-20250813170839-3ed1f1797b5e.1':
+    resolution: {tarball: https://buf.build/gen/npm/v1/@buf/dot_brease.bufbuild_es/-/dot_brease.bufbuild_es-2.6.3-20250813170839-3ed1f1797b5e.1.tgz}
     peerDependencies:
-      '@bufbuild/protobuf': ^2.6.2
+      '@bufbuild/protobuf': ^2.6.3
 
-  '@buf/dot_brease.connectrpc_es@1.6.1-20250720134252-c94dcb25bb2e.2':
-    resolution: {tarball: https://buf.build/gen/npm/v1/@buf/dot_brease.connectrpc_es/-/dot_brease.connectrpc_es-1.6.1-20250720134252-c94dcb25bb2e.2.tgz}
+  '@buf/dot_brease.connectrpc_es@1.6.1-20250813170839-3ed1f1797b5e.2':
+    resolution: {tarball: https://buf.build/gen/npm/v1/@buf/dot_brease.connectrpc_es/-/dot_brease.connectrpc_es-1.6.1-20250813170839-3ed1f1797b5e.2.tgz}
     peerDependencies:
       '@connectrpc/connect': ^1.6.1
 
@@ -191,10 +191,10 @@ packages:
     peerDependencies:
       '@bufbuild/protobuf': ^1.10.0
 
-  '@buf/gnostic_gnostic.bufbuild_es@2.6.2-20230414000709-087bc8072ce4.1':
-    resolution: {tarball: https://buf.build/gen/npm/v1/@buf/gnostic_gnostic.bufbuild_es/-/gnostic_gnostic.bufbuild_es-2.6.2-20230414000709-087bc8072ce4.1.tgz}
+  '@buf/gnostic_gnostic.bufbuild_es@2.6.3-20230414000709-087bc8072ce4.1':
+    resolution: {tarball: https://buf.build/gen/npm/v1/@buf/gnostic_gnostic.bufbuild_es/-/gnostic_gnostic.bufbuild_es-2.6.3-20230414000709-087bc8072ce4.1.tgz}
     peerDependencies:
-      '@bufbuild/protobuf': ^2.6.2
+      '@bufbuild/protobuf': ^2.6.3
 
   '@buf/gnostic_gnostic.connectrpc_es@1.6.1-20230414000709-087bc8072ce4.2':
     resolution: {tarball: https://buf.build/gen/npm/v1/@buf/gnostic_gnostic.connectrpc_es/-/gnostic_gnostic.connectrpc_es-1.6.1-20230414000709-087bc8072ce4.2.tgz}
@@ -206,10 +206,10 @@ packages:
     peerDependencies:
       '@bufbuild/protobuf': ^1.10.0
 
-  '@buf/googleapis_googleapis.bufbuild_es@2.6.2-20250411203938-61b203b9a916.1':
-    resolution: {tarball: https://buf.build/gen/npm/v1/@buf/googleapis_googleapis.bufbuild_es/-/googleapis_googleapis.bufbuild_es-2.6.2-20250411203938-61b203b9a916.1.tgz}
+  '@buf/googleapis_googleapis.bufbuild_es@2.6.3-20250411203938-61b203b9a916.1':
+    resolution: {tarball: https://buf.build/gen/npm/v1/@buf/googleapis_googleapis.bufbuild_es/-/googleapis_googleapis.bufbuild_es-2.6.3-20250411203938-61b203b9a916.1.tgz}
     peerDependencies:
-      '@bufbuild/protobuf': ^2.6.2
+      '@bufbuild/protobuf': ^2.6.3
 
   '@buf/googleapis_googleapis.connectrpc_es@1.6.1-20250411203938-61b203b9a916.2':
     resolution: {tarball: https://buf.build/gen/npm/v1/@buf/googleapis_googleapis.connectrpc_es/-/googleapis_googleapis.connectrpc_es-1.6.1-20250411203938-61b203b9a916.2.tgz}
@@ -2210,21 +2210,21 @@ snapshots:
 
   '@bcoe/v8-coverage@1.0.2': {}
 
-  '@buf/dot_brease.bufbuild_es@1.10.0-20250720134252-c94dcb25bb2e.1(@bufbuild/protobuf@2.6.3)':
+  '@buf/dot_brease.bufbuild_es@1.10.0-20250813170839-3ed1f1797b5e.1(@bufbuild/protobuf@2.6.3)':
     dependencies:
       '@buf/gnostic_gnostic.bufbuild_es': 1.10.0-20230414000709-087bc8072ce4.1(@bufbuild/protobuf@2.6.3)
       '@buf/googleapis_googleapis.bufbuild_es': 1.10.0-20250411203938-61b203b9a916.1(@bufbuild/protobuf@2.6.3)
       '@bufbuild/protobuf': 2.6.3
 
-  '@buf/dot_brease.bufbuild_es@2.6.2-20250720134252-c94dcb25bb2e.1(@bufbuild/protobuf@2.6.3)':
+  '@buf/dot_brease.bufbuild_es@2.6.3-20250813170839-3ed1f1797b5e.1(@bufbuild/protobuf@2.6.3)':
     dependencies:
-      '@buf/gnostic_gnostic.bufbuild_es': 2.6.2-20230414000709-087bc8072ce4.1(@bufbuild/protobuf@2.6.3)
-      '@buf/googleapis_googleapis.bufbuild_es': 2.6.2-20250411203938-61b203b9a916.1(@bufbuild/protobuf@2.6.3)
+      '@buf/gnostic_gnostic.bufbuild_es': 2.6.3-20230414000709-087bc8072ce4.1(@bufbuild/protobuf@2.6.3)
+      '@buf/googleapis_googleapis.bufbuild_es': 2.6.3-20250411203938-61b203b9a916.1(@bufbuild/protobuf@2.6.3)
       '@bufbuild/protobuf': 2.6.3
 
-  '@buf/dot_brease.connectrpc_es@1.6.1-20250720134252-c94dcb25bb2e.2(@bufbuild/protobuf@2.6.3)(@connectrpc/connect@2.0.3(@bufbuild/protobuf@2.6.3))':
+  '@buf/dot_brease.connectrpc_es@1.6.1-20250813170839-3ed1f1797b5e.2(@bufbuild/protobuf@2.6.3)(@connectrpc/connect@2.0.3(@bufbuild/protobuf@2.6.3))':
     dependencies:
-      '@buf/dot_brease.bufbuild_es': 1.10.0-20250720134252-c94dcb25bb2e.1(@bufbuild/protobuf@2.6.3)
+      '@buf/dot_brease.bufbuild_es': 1.10.0-20250813170839-3ed1f1797b5e.1(@bufbuild/protobuf@2.6.3)
       '@buf/gnostic_gnostic.connectrpc_es': 1.6.1-20230414000709-087bc8072ce4.2(@bufbuild/protobuf@2.6.3)(@connectrpc/connect@2.0.3(@bufbuild/protobuf@2.6.3))
       '@buf/googleapis_googleapis.connectrpc_es': 1.6.1-20250411203938-61b203b9a916.2(@bufbuild/protobuf@2.6.3)(@connectrpc/connect@2.0.3(@bufbuild/protobuf@2.6.3))
       '@connectrpc/connect': 2.0.3(@bufbuild/protobuf@2.6.3)
@@ -2235,7 +2235,7 @@ snapshots:
     dependencies:
       '@bufbuild/protobuf': 2.6.3
 
-  '@buf/gnostic_gnostic.bufbuild_es@2.6.2-20230414000709-087bc8072ce4.1(@bufbuild/protobuf@2.6.3)':
+  '@buf/gnostic_gnostic.bufbuild_es@2.6.3-20230414000709-087bc8072ce4.1(@bufbuild/protobuf@2.6.3)':
     dependencies:
       '@bufbuild/protobuf': 2.6.3
 
@@ -2250,7 +2250,7 @@ snapshots:
     dependencies:
       '@bufbuild/protobuf': 2.6.3
 
-  '@buf/googleapis_googleapis.bufbuild_es@2.6.2-20250411203938-61b203b9a916.1(@bufbuild/protobuf@2.6.3)':
+  '@buf/googleapis_googleapis.bufbuild_es@2.6.3-20250411203938-61b203b9a916.1(@bufbuild/protobuf@2.6.3)':
     dependencies:
       '@bufbuild/protobuf': 2.6.3
 

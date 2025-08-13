@@ -76,6 +76,30 @@ paths:
                                 $ref: '#/components/schemas/Status'
             security:
                 - ApiKeyAuth: []
+    /v1/auth/updateCredit:
+        post:
+            tags:
+                - AuthService
+            operationId: AuthService_UpdateCredit
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/UpdateCreditRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/UpdateCreditResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /v1/context:
         get:
             tags:
@@ -412,6 +436,8 @@ components:
                     allOf:
                         - $ref: '#/components/schemas/Target'
                     description: The target the action applies to
+                id:
+                    type: string
         And:
             type: object
             properties:
@@ -673,6 +699,28 @@ components:
                     type: string
                 refreshToken:
                     type: string
+        UpdateCreditRequest:
+            required:
+                - rootKey
+                - targetKey
+                - operation
+                - value
+            type: object
+            properties:
+                rootKey:
+                    type: string
+                targetKey:
+                    type: string
+                operation:
+                    type: string
+                    description: |-
+                        Defines how to modify the key's remaining credits. Use 'set' to replace current credits with a specific value or
+                         unlimited usage, 'increment' to add credits for plan upgrades or credit purchases, and 'decrement' to reduce credits for refunds or policy violations.
+                value:
+                    type: string
+        UpdateCreditResponse:
+            type: object
+            properties: {}
         VersionedRule:
             type: object
             properties:

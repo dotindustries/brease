@@ -13,11 +13,15 @@ message RefreshTokenRequest {
   string refreshToken = 1 [(google.api.field_behavior) = REQUIRED];
 }
 
-message AddCreditRequest {
+message UpdateCreditRequest {
   string rootKey = 1 [(google.api.field_behavior) = REQUIRED];
   string targetKey = 2 [(google.api.field_behavior) = REQUIRED];
+  // Defines how to modify the key's remaining credits. Use 'set' to replace current credits with a specific value or
+  // unlimited usage, 'increment' to add credits for plan upgrades or credit purchases, and 'decrement' to reduce credits for refunds or policy violations.
+  string operation = 3 [(google.api.field_behavior) = REQUIRED];
+  int64 value = 4 [(google.api.field_behavior) = REQUIRED];
 }
 
-message AddCreditResponse {
+message UpdateCreditResponse {
 
 }

@@ -1,5 +1,11 @@
 # @brease/core
 
+## 0.6.0
+
+### Minor Changes
+
+- 26afb09: Updated action with new id field
+
 ## 0.5.1
 
 ### Patch Changes

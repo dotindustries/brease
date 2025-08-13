@@ -154,16 +154,27 @@ func newApp(db storage.Database, logger *zap.Logger) *gin.Engine {
 
 	// config CORS
 	config := cors.DefaultConfig()
-	originsStr := env.Getenv("CORS_ALLOW_ORIGINS", "*")
+	config.AllowCredentials = true
+	config.AllowMethods = append(connectcors.AllowedMethods(), "OPTIONS")
+	config.AllowHeaders = connectcors.AllowedHeaders()
+	config.ExposeHeaders = connectcors.ExposedHeaders()
+	var allowedOrigins []string
+	originsStr := env.Getenv("BREASE_CORS_ALLOW_ORIGINS", "*")
 	if originsStr == "*" {
 		config.AllowAllOrigins = true
+		allowedOrigins = append(allowedOrigins, "*")
 	} else {
 		origins := strings.Split(originsStr, ",")
 		config.AllowOrigins = append(config.AllowOrigins, origins...)
+		allowedOrigins = append(allowedOrigins, origins...)
 		logger.Info(
 			"CORS origins",
 			zap.Strings("origins", origins),
 		)
+		config.AllowOriginFunc = func(origin string) bool {
+			slog.Error("Trying origin check", "origin", origin, "allowedOrigin", origins)
+			return true
+		}
 	}
 
 	r.Use(cors.New(config))
@@ -245,7 +256,7 @@ func newApp(db storage.Database, logger *zap.Logger) *gin.Engine {
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/", transcoder)
+	mux.Handle("/", withCORS(transcoder, allowedOrigins))
 
 	// add grpc reflection support for tools like `buf curl` or `grpcurl`
 	mux.Handle(grpcreflect.NewHandlerV1(grpcreflect.NewStaticReflector(authv1connect.AuthServiceName, contextv1connect.ContextServiceName)))
@@ -254,6 +265,22 @@ func newApp(db storage.Database, logger *zap.Logger) *gin.Engine {
 	r.Any("/v1/*any", gin.WrapF(mux.ServeHTTP))
 
 	return r
+}
+
+// withCORS adds CORS support to a Connect HTTP handler.
+func withCORS(h http.Handler, origins []string) http.Handler {
+	middleware := cors2.New(cors2.Options{
+		AllowedOrigins:   origins,
+		AllowCredentials: true,
+		AllowedMethods:   connectcors.AllowedMethods(),
+		AllowedHeaders:   connectcors.AllowedHeaders(),
+		ExposedHeaders:   connectcors.ExposedHeaders(),
+		AllowOriginFunc: func(origin string) bool {
+			slog.Info("Trying origin check", "origin", origin, "allowedOrigin", origins)
+			return true
+		},
+	})
+	return middleware.Handler(h)
 }
 
 func auditLogStore(logger *zap.Logger) auditlog.Store {

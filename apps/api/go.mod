@@ -22,7 +22,7 @@ require (
 	github.com/getsentry/sentry-go v0.34.1
 	github.com/getsentry/sentry-go/gin v0.34.1
 	github.com/getsentry/sentry-go/otel v0.34.1
-	github.com/gin-contrib/cors v1.3.0
+	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-contrib/requestid v1.0.5
 	github.com/gin-contrib/static v1.1.5
 	github.com/gin-contrib/zap v1.1.5
@@ -68,6 +68,7 @@ require (
 require (
 	buf.build/gen/go/gnostic/gnostic/protocolbuffers/go v1.36.7-20230414000709-087bc8072ce4.1 // indirect
 	cel.dev/expr v0.24.0 // indirect
+	connectrpc.com/cors v0.1.0 // indirect
 	github.com/PaesslerAG/gval v1.2.4 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/bytedance/sonic v1.13.3 // indirect
@@ -110,6 +111,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9 // indirect
+	github.com/rs/cors v1.11.1 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/spyzhov/ajson v0.8.0 // indirect
 	github.com/stoewer/go-strcase v1.3.1 // indirect

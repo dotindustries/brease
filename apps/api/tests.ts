@@ -4,8 +4,7 @@ import {
     decodeClientRule,
     encodeClientRule,
     Environment,
-    newClient,
-    Struct
+    newClient
 } from "@brease/core/src";
 import { t } from 'tap'
 
@@ -65,7 +64,7 @@ t.test("create rule", async () => {
             id: a.target,
             kind: 'jsonpath'
         },
-
+        id: a.id,
     } satisfies ClientAction))
     const response = await brease.client.createRule({
         contextId,
@@ -116,7 +115,7 @@ t.test("raw evaluate rule", async () => {
 
     const response = await brease.client.evaluate({
         contextId,
-        object: Struct.fromJson(obj),
+        object: obj,
     })
     t.ok(response);
     // console.log(response);
@@ -126,7 +125,7 @@ t.test("raw evaluate rule", async () => {
 
     const response2 = await brease.client.evaluate({
         contextId,
-        object: Struct.fromJson(obj),
+        object: obj,
     })
     t.ok(response2)
 })
@@ -138,7 +137,7 @@ t.test("create second rule", async () => {
             id: a.target,
             kind: 'jsonpath'
         },
-
+        id: a.id,
     } satisfies ClientAction))
     const response = await brease.client.createRule({
         contextId,
@@ -178,7 +177,7 @@ t.test("raw evaluate rules", async () => {
 
     const response = await brease.client.evaluate({
         contextId,
-        object: Struct.fromJson(obj),
+        object: obj,
     })
     t.ok(response);
     // console.log(response);

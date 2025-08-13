@@ -154,6 +154,7 @@ export type ClientTarget = Pick<Target, "id" | "kind"> & {
 };
 
 export type ClientAction = Pick<Action, "kind"> & {
+  id: string;
   target: ClientTarget;
 }
 
@@ -174,6 +175,7 @@ export const encodeClientRule = (rule: ClientRule): Rule => {
     ...rest,
     expression: encodedExpression!, // the first expr is secured via ClientRule TS
     actions: actions.map(action => create(ActionSchema, {
+      id: action.id,
       kind: action.kind,
       target: encodeTarget(action.target),
     })),
@@ -186,6 +188,7 @@ export const decodeClientRule = (rule: Rule | VersionedRule): ClientRule => {
     sequence: rule.sequence,
     description: rule.description,
     actions: rule.actions.map(action => ({
+      id: action.id,
       kind: action.kind,
       target: decodeTarget(action.target!), // there cannot be an action without a target
     })),

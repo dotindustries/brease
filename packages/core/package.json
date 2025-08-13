@@ -1,7 +1,7 @@
 {
   "name": "@brease/core",
   "description": "The framework agnostic core that powers Brease",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "author": "nadilas",
   "license": "MIT",
   "repository": {
@@ -40,8 +40,8 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@buf/dot_brease.connectrpc_es": "^1.6.1-20250720134252-c94dcb25bb2e.2",
-    "@buf/dot_brease.bufbuild_es": "^2.6.2-20250720134252-c94dcb25bb2e.1",
+    "@buf/dot_brease.connectrpc_es": "^1.6.1-20250813170839-3ed1f1797b5e.2",
+    "@buf/dot_brease.bufbuild_es": "^2.6.3-20250813170839-3ed1f1797b5e.1",
     "@connectrpc/connect": "^2.0.3",
     "@connectrpc/connect-web": "^2.0.3",
     "@bufbuild/protobuf": "^2.6.2",

@@ -180,7 +180,7 @@ func newApp(db storage.Database, logger *zap.Logger) *gin.Engine {
 	//r.Use(auth.Middleware(logger, []*regexp.Regexp{regexp.MustCompile("^/(brease.*|v1.*)$")}))
 	r.Use(auditlog.Middleware(
 		auditLogStore(logger),
-		auditlog.WithSensitivePaths([]*regexp.Regexp{regexp.MustCompile("^/(token|refreshToken|updateCredit)$")}),
+		auditlog.WithSensitivePaths([]*regexp.Regexp{regexp.MustCompile("^/(token|refreshToken)$")}),
 		auditlog.WithIgnorePaths([]*regexp.Regexp{regexp.MustCompile("^/(stats)$")}),
 		auditlog.WithIDExtractor(func(c *gin.Context) (contextID, ownerID, userID string) {
 			ownerID = c.GetString(auth.ContextOrgKey)

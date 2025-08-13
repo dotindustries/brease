@@ -87,7 +87,7 @@ func NewAuthInterceptor(logger *zap.Logger) connect.UnaryInterceptorFunc {
 				// TODO: client side auth interceptor
 				// Send a token with client requests.
 				// req.Header().Set(tokenHeader, "sample")
-			} else if !strings.Contains(req.Spec().Procedure, "RefreshToken") {
+			} else if !strings.Contains(req.Spec().Procedure, "RefreshToken") && !strings.Contains(req.Spec().Procedure, "UpdateCredit") {
 				// server only
 				var err error
 				ctx, err = authenticate(ctx, req.Header(), logger)

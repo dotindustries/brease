@@ -1,11 +1,14 @@
 package redis
 
 import (
-	authv1 "buf.build/gen/go/dot/brease/protocolbuffers/go/brease/auth/v1"
-	rulev1 "buf.build/gen/go/dot/brease/protocolbuffers/go/brease/rule/v1"
 	"context"
 	"errors"
 	"fmt"
+	"strings"
+	"sync"
+
+	authv1 "buf.build/gen/go/dot/brease/protocolbuffers/go/brease/auth/v1"
+	rulev1 "buf.build/gen/go/dot/brease/protocolbuffers/go/brease/rule/v1"
 	"github.com/go-redis/redis/extra/redisotel/v8"
 	"github.com/go-redis/redis/v8"
 	"github.com/goccy/go-json"
@@ -15,7 +18,6 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/proto"
-	"sync"
 )
 
 const kLatestVersionField = "latest_version"
@@ -376,10 +378,13 @@ func (r *Container) ListContexts(ctx context.Context, ownerID string) ([]string,
 		return nil, err
 	}
 	// slice up key
-	res := make([]string, len(list))
-	for i, k := range list {
+	res := make([]string, 0, len(list))
+	for _, k := range list {
+		if strings.Count(k, ":") > 3 {
+			continue
+		}
 		_, ctxID := storage.SplitContextKey(k)
-		res[i] = ctxID
+		res = append(res, ctxID)
 	}
 	return res, nil
 }

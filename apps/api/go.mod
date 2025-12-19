@@ -1,14 +1,12 @@
 module go.dot.industries/brease
 
-go 1.23.1
-
-toolchain go1.23.4
+go 1.24.0
 
 require (
 	buf.build/gen/go/dot/brease/connectrpc/go v1.18.1-20250813170839-3ed1f1797b5e.1
 	buf.build/gen/go/dot/brease/grpc/go v1.5.1-20250813170839-3ed1f1797b5e.2
 	buf.build/gen/go/dot/brease/protocolbuffers/go v1.36.7-20250813170839-3ed1f1797b5e.1
-	connectrpc.com/connect v1.18.1
+	connectrpc.com/connect v1.19.1
 	connectrpc.com/grpchealth v1.4.0
 	connectrpc.com/grpcreflect v1.3.0
 	connectrpc.com/vanguard v0.3.0
@@ -61,7 +59,7 @@ require (
 	go.uber.org/zap v1.27.0
 	golang.org/x/exp v0.0.0-20250718183923-645b1fa84792
 	google.golang.org/grpc v1.73.0
-	google.golang.org/protobuf v1.36.7
+	google.golang.org/protobuf v1.36.9
 	gotest.tools/v3 v3.5.2
 )
 

@@ -11,6 +11,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	components2 "github.com/unkeyed/sdks/api/go/v2/models/components"
 	"github.com/unkeyed/unkey/sdks/golang/models/sdkerrors"
@@ -18,7 +19,6 @@ import (
 	"go.dot.industries/brease/worker"
 	"google.golang.org/grpc/metadata"
 
-	"github.com/golang-jwt/jwt/v5"
 	errors2 "github.com/juju/errors"
 	"go.dot.industries/brease/env"
 	"go.uber.org/zap"
@@ -306,7 +306,7 @@ func validateUnkey(ctx context.Context, args interface{}) (interface{}, error) {
 			},
 		}, nil
 	}
-	resp, err := unkeyClient.Keys.VerifyKey(ctx, components2.V2KeysVerifyKeyRequestBody{
+	resp, err := Unkey().Keys.VerifyKey(ctx, components2.V2KeysVerifyKeyRequestBody{
 		Key: key,
 	})
 	if err != nil {
@@ -353,6 +353,13 @@ func validateUnkey(ctx context.Context, args interface{}) (interface{}, error) {
 				error: &validationErr{
 					Status: http.StatusUnauthorized,
 					Error:  errors2.NewUnauthorized(err, "internal error"),
+				},
+			}, nil
+		default:
+			return validateAuthTokenResult{
+				error: &validationErr{
+					Status: http.StatusInternalServerError,
+					Error:  errors2.NewNotValid(err, "Unknown unkey error"),
 				},
 			}, nil
 		}
@@ -440,7 +447,7 @@ func validateRootAPIKey(ctx context.Context, args interface{}) (interface{}, err
 	a := args.(validateAuthTokenArgs)
 
 	key := a.token
-	if a.rootAPIKey == "" || strings.HasPrefix(key, jwtAuthPrefix) || strings.HasPrefix(key, bearerAuthPrefix) {
+	if a.rootAPIKey == "" || strings.HasPrefix(key, jwtAuthPrefix) {
 		// not configured to authenticate, but no errors
 		return validateAuthTokenResult{}, nil
 	}

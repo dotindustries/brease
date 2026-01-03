@@ -10,11 +10,8 @@ brease is an open-source monorepo that provides a robust and extensible business
 ## Features
 
 - **brease Server**: The `api` folder contains a powerful and efficient backend server implemented in Go. It serves as the backbone for the entire business rules engine, offering high performance and scalability.
-
 - **@brease/core**: This TypeScript library, located in the `packages/core` directory, provides framework-agnostic basic functionality. It includes essential utilities and helpers to support the implementation of business rules within your application.
-
 - **@brease/react**: The `packages/react` directory contains the `@brease/react` TypeScript library, which offers a React provider and a collection of simple React hooks. These components enable seamless integration of the brease business rules engine with your React applications.
-
 - **@brease/vue**: Located in the `packages/vue` directory, the `@brease/vue` package provides Vue 3 composables for easy integration of the brease business rules engine into your Vue applications. It simplifies the process of incorporating dynamic business rules and logic into your Vue components.
 
 ## Getting Started
@@ -23,47 +20,51 @@ To use brease in your project, follow these steps:
 
 1. Clone the repository:
 
-   ```bash
-   git clone https://github.com/dotindustries/brease.git
-   ```
+```bash
+git clone https://github.com/dotindustries/brease.git
+```
 
 2. Install dependencies:
 
-   ```bash
-   cd brease
-   pnpm install
-   ```
+```lua
+print("asdf")
+```
+
+```bash
+cd brease
+pnpm install
+```
 
 3. Build the Go API backend server:
 
-   ```bash
-   cd apps/api
-   go build
-   ```
+```bash
+cd apps/api
+go build
+```
 
 4. Start the API server:
 
-   ```bash
-   ./api
-   ```
+```bash
+./api
+```
 
 5. Install the desired TypeScript libraries (e.g., @brease/core, @brease/react, or @brease/vue) in your project:
 
-   ```bash
-   npm install @brease/core
-   ```
+```bash
+npm install @brease/core
+```
 
-   or
+or
 
-   ```bash
-   npm install @brease/react
-   ```
+```bash
+npm install @brease/react
+```
 
-   or
+or
 
-   ```bash
-   npm install @brease/vue
-   ```
+```bash
+npm install @brease/vue
+```
 
 For more detailed instructions, please refer to the individual package directories.
 
@@ -100,9 +101,7 @@ We are excited to announce that we are actively developing a cloud-hosted versio
 ### Key Features
 
 - **Scalability**: Seamlessly scale your business rules engine based on your application's needs. Handle large volumes of rules and requests with ease.
-
 - **Reliability**: Benefit from a robust infrastructure that ensures high availability and minimal downtime for your business rules engine.
-
 - **Ease of Use**: Enjoy a user-friendly interface and simplified management process, allowing you to focus on building and managing your rules without worrying about infrastructure or updates.
 
 Stay tuned for updates as we finalize the development and launch of the cloud-hosted version. We are committed to delivering a powerful and efficient solution for businesses of all sizes.
